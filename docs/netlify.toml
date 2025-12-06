@@ -1,0 +1,91 @@
+# Netlify Configuration File
+# Version: 1.0
+# Docs: https://docs.netlify.com/configure-builds/file-based-configuration/
+
+# =============================================================================
+# GLOBAL BUILD SETTINGS
+# =============================================================================
+# Estas configurações se aplicam a todos os deploys (produção, previews, etc.)
+# a menos que sejam sobrescritas em um contexto específico.
+[build]
+  # Comando para construir o site. Usamos pnpm como nosso gerenciador de pacotes.
+  command = "pnpm build"
+  
+  # Diretório de publicação. O Vite gera o build final na pasta 'dist'.
+  publish = "dist"
+  
+  # Configurações de ambiente para o processo de build.
+  [build.environment]
+    # Define a versão do Node.js para garantir consistência.
+    NODE_VERSION = "18.14.0"
+    
+    # Força o Netlify a usar o pnpm, que é mais rápido e eficiente.
+    NETLIFY_USE_PNPM = "true"
+
+# =============================================================================
+# PRODUCTION CONTEXT
+# =============================================================================
+# Configurações que se aplicam SOMENTE aos deploys da branch de produção.
+[context.production]
+  # Variáveis de ambiente específicas para o ambiente de produção.
+  [context.production.environment]
+    # URL da API de produção.
+    VITE_API_URL = "https://api.carla.money"
+    
+    # Define o ambiente do Node.js para otimizações de produção.
+    NODE_ENV = "production"
+
+# =============================================================================
+# DEPLOY PREVIEW CONTEXT
+# =============================================================================
+# Configurações que se aplicam a todos os Deploy Previews gerados a partir
+# de Pull Requests.
+[context.deploy-preview]
+  # Variáveis de ambiente para o ambiente de staging/preview.
+  [context.deploy-preview.environment]
+    # URL da API de staging para testes em previews.
+    VITE_API_URL = "https://staging-api.carla.money"
+
+# =============================================================================
+# REDIRECTS
+# =============================================================================
+# Regras de redirecionamento e reescrita.
+
+# Regra essencial para Single Page Applications (SPAs) como a nossa.
+# Redireciona todas as solicitações que não encontram um arquivo correspondente
+# para o index.html, permitindo que o roteador do React (React Router)
+# assuma o controle do roteamento no lado do cliente.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# =============================================================================
+# HEADERS
+# =============================================================================
+# Cabeçalhos HTTP customizados para segurança e cache.
+
+# Cabeçalhos de segurança globais aplicados a todas as páginas.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Previne que o site seja renderizado dentro de um <iframe> (clickjacking).
+    X-Frame-Options = "DENY"
+    
+    # Ativa a proteção contra Cross-Site Scripting (XSS) nos navegadores.
+    X-XSS-Protection = "1; mode=block"
+    
+    # Força o uso de HTTPS por um ano, incluindo subdomínios.
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    
+    # Política de Segurança de Conteúdo (CSP). Esta é uma política inicial e
+    # deve ser refinada para ser o mais restritiva possível.
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.carla.money https://staging-api.carla.money;"
+
+# Cabeçalhos de cache para assets imutáveis.
+# O Vite gera arquivos com hash no nome (ex: main.a1b2c3d4.js), então eles
+# podem ser cacheados por um longo período com segurança.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
