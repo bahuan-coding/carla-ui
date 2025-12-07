@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, BadgeCheck, Database, Gauge, Layers, Link2, ListChecks, Radar, RefreshCw, Rocket, Server, ShieldCheck, Workflow } from 'lucide-react';
+import { Activity, AlertTriangle, BadgeCheck, Database, Gauge, Layers, Link2, ListChecks, Radar, RefreshCw, Rocket, Server, ShieldCheck, Workflow, Wrench } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,9 +42,9 @@ type Group = {
 
 const boolField = (name: string, label: string, def = true): Field => ({ name, label, type: 'checkbox', defaultValue: def });
 
-const qaEndpoints = ['blacklist', 'client', 'complementary', 'account', 'onboarding-update', 'complementary-update', 'complement-query'].map((slug) => ({
+const qaEndpoints: Endpoint[] = ['blacklist', 'client', 'complementary', 'account', 'onboarding-update', 'complementary-update', 'complement-query'].map((slug) => ({
   id: `qa-${slug}`,
-  method: 'POST',
+  method: 'POST' as const,
   path: `/admin/qa/banking/${slug}`,
   description: `QA banking · ${slug.replace('-', ' ')}`,
   fields: [
@@ -56,7 +56,7 @@ const qaEndpoints = ['blacklist', 'client', 'complementary', 'account', 'onboard
   danger: false,
 }));
 
-const workerRunFields = [
+const workerRunFields: Field[] = [
   { name: 'batch_size', label: 'batch_size', type: 'number', placeholder: '50' },
   { name: 'max_retries', label: 'max_retries', type: 'number', placeholder: '3' },
   { name: 'limit_ids', label: 'limit_ids (csv)', placeholder: 'id1,id2' },
