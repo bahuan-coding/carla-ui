@@ -161,12 +161,46 @@ type ProcessDetailWithUi = ProcessDetail & {
   timestampFmt?: string | null;
 };
 
-const unwrapProcessDetail = (raw: unknown, fallback: ProcessDetail): ProcessDetail => {
-  const candidates = [raw, (raw as { data?: unknown })?.data, (raw as { data?: { data?: unknown } })?.data?.data];
-  for (const candidate of candidates) {
+const unwrapProcessDetail = (raw: unknown, fallback: ProcessDetail, id?: string): ProcessDetail => {
+  const candidates: unknown[] = [];
+  const push = (value: unknown) => {
+    if (!value) return;
+    if (Array.isArray(value)) {
+      candidates.push(...value);
+    } else {
+      candidates.push(value);
+    }
+  };
+
+  push(raw);
+  push((raw as { data?: unknown })?.data);
+  push((raw as { data?: { data?: unknown } })?.data?.data);
+
+  const matchesId = (candidateId?: unknown) =>
+    !id || (candidateId !== undefined && String(candidateId) === String(id));
+
+  const tryParse = (candidate: unknown) => {
     const parsed = processDetailSchema.safeParse(candidate);
-    if (parsed.success) return parsed.data;
+    return parsed.success ? parsed.data : null;
+  };
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      for (const item of candidate) {
+        const parsed = tryParse(item);
+        if (parsed && matchesId(parsed.id)) return parsed;
+      }
+    } else {
+      const parsed = tryParse(candidate);
+      if (parsed && matchesId(parsed.id)) return parsed;
+    }
   }
+
+  for (const candidate of candidates) {
+    const parsed = tryParse(candidate);
+    if (parsed) return parsed;
+  }
+
   return fallback;
 };
 
@@ -192,9 +226,13 @@ export const useProcessDetail = (id?: string) =>
     enabled: Boolean(id),
     queryFn: async () => {
       const raw = await apiGet<unknown>(`/admin/processes/${id}`, z.any(), defaultProcess(id) as unknown as ProcessDetail);
-      const base = unwrapProcessDetail(raw, defaultProcess(id));
+      const base = unwrapProcessDetail(raw, defaultProcess(id), id);
 
-      const account = (base as { account?: Account })?.account || base.account;
+      const mergedAccount = {
+        ...(base as Account),
+        ...(((base as { account?: Account })?.account || base.account) as Account),
+      };
+      const account = mergedAccount;
       const normalized = normalizeAccountForUi(account, { id: base.id, phone: base.phone, name: base.name });
       const phoneMasked = maskPhone(normalized.mainPhone || base.phone);
       const displayName = normalized.displayName || base.name || phoneMasked || shortId(base.id);

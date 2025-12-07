@@ -147,6 +147,7 @@ export const normalizeAccountForUi = (
   const extra = acc.extra_data || {}
   const flow = (extra.complete_flow_data || {}) as CompleteFlowData
   const renapEntry = getRenapEntry(acc)
+  const personalData = extra.personal_data_screen || {}
   const fullNameFromRenap = buildFullNameFromRenap(renapEntry)
   const fullName = (fullNameFromRenap || acc.full_name || acc.document_number || flow.numeroIdentificacion || '').trim()
   const displayName =
@@ -166,9 +167,9 @@ export const normalizeAccountForUi = (
 
   const address = acc.address_full || extra.address_screen?.direccion_completa || flow.direccion_completa || ''
   const housingType = acc.address_housing_type || extra.address_screen?.tipo_vivienda || flow.tipo_vivienda || null
-  const nationality = acc.nationality || renapEntry?.nacionalidad || flow.nacionalidad || null
-  const maritalStatus = acc.marital_status || renapEntry?.estado_civil || flow.estado_civil || null
-  const gender = acc.gender || renapEntry?.genero || null
+  const nationality = acc.nationality || personalData.nacionalidad || renapEntry?.nacionalidad || flow.nacionalidad || null
+  const maritalStatus = acc.marital_status || personalData.estado_civil || renapEntry?.estado_civil || flow.estado_civil || null
+  const gender = acc.gender || personalData.genero || renapEntry?.genero || null
 
   const employmentStatus = acc.employment_status || extra.employment_screen?.relacion_laboral || flow.relacion_laboral || null
   const employer = acc.employer_name || extra.employment_screen?.nombre_empresa || flow.nombre_empresa || null
