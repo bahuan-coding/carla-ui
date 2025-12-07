@@ -1,11 +1,10 @@
-import { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, BadgeCheck, Database, Gauge, Layers, Link2, ListChecks, Radar, RefreshCw, Rocket, Server, ShieldCheck, Workflow, Wrench } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import { Database, Gauge, Layers, Link2, Radar, RefreshCw, Rocket, Server, ShieldCheck, Workflow, Wrench } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { API_URL } from '@/lib/api';
 
@@ -48,18 +47,18 @@ const qaEndpoints: Endpoint[] = ['blacklist', 'client', 'complementary', 'accoun
   path: `/admin/qa/banking/${slug}`,
   description: `QA banking · ${slug.replace('-', ' ')}`,
   fields: [
-    { name: 'account_opening_id', label: 'account_opening_id', placeholder: 'uuid' },
-    boolField('dry_run', 'dry_run', true),
-    { name: 'payload', label: 'payload (JSON)', type: 'textarea', placeholder: '{...}' },
+    { name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' },
+    boolField('dry_run', 'Modo prueba (no ejecuta)', true),
+    { name: 'payload', label: 'Payload (JSON)', type: 'textarea', placeholder: '{...}' },
   ],
   tags: ['dry_run'],
   danger: false,
 }));
 
 const workerRunFields: Field[] = [
-  { name: 'batch_size', label: 'batch_size', type: 'number', placeholder: '50' },
-  { name: 'max_retries', label: 'max_retries', type: 'number', placeholder: '3' },
-  { name: 'limit_ids', label: 'limit_ids (csv)', placeholder: 'id1,id2' },
+  { name: 'batch_size', label: 'Tamaño del lote', type: 'number', placeholder: '50' },
+  { name: 'max_retries', label: 'Reintentos máx', type: 'number', placeholder: '3' },
+  { name: 'limit_ids', label: 'IDs (coma)', placeholder: 'id1,id2' },
 ];
 
 const endpointGroups: Group[] = [
@@ -69,18 +68,77 @@ const endpointGroups: Group[] = [
     accent: 'text-emerald-300',
     icon: ShieldCheck,
     endpoints: [
-      { id: 'ver-stats', method: 'GET', path: '/admin/verifications/stats', description: 'Contagens por status' },
-      { id: 'ver-stuck', method: 'GET', path: '/admin/verifications/stuck', description: 'Pendências acima do limiar', fields: [{ name: 'hours', label: 'hours', type: 'number', placeholder: '24', inQuery: true }] },
-      { id: 'ver-approve', method: 'POST', path: '/admin/verifications/{account_opening_id}/approve-manual', description: 'Força QIC approved', fields: [{ name: 'account_opening_id', label: 'account_opening_id', placeholder: 'uuid' }, { name: 'operator', label: 'operator', placeholder: 'email' }, { name: 'reason', label: 'reason', placeholder: 'Justificativa' }], danger: true },
-      { id: 'ver-reject', method: 'POST', path: '/admin/verifications/{account_opening_id}/reject-manual', description: 'Força QIC rejected', fields: [{ name: 'account_opening_id', label: 'account_opening_id', placeholder: 'uuid' }, { name: 'reason', label: 'reason', placeholder: 'Motivo' }, { name: 'operator', label: 'operator', placeholder: 'email' }], danger: true },
-      { id: 'ver-status-phone', method: 'GET', path: '/admin/verifications/status/{phone}', description: 'Status por telefone', fields: [{ name: 'phone', label: 'phone', placeholder: '+502...' }] },
-      { id: 'ver-status-timeline', method: 'GET', path: '/admin/verifications/{account_opening_id}/verify/status', description: 'Timeline completa', fields: [{ name: 'account_opening_id', label: 'account_opening_id', placeholder: 'uuid' }] },
-      { id: 'ver-renap', method: 'POST', path: '/admin/verifications/{account_opening_id}/verify/renap', description: 'Gatilho manual RENAP', fields: [{ name: 'account_opening_id', label: 'account_opening_id', placeholder: 'uuid' }] },
-      { id: 'ver-phone-campaign', method: 'POST', path: '/admin/verifications/phone-campaign/trigger', description: 'Dispara campanha OTP', fields: [{ name: 'batch_size', label: 'batch_size', type: 'number', placeholder: '50' }, { name: 'exclude_recent_hours', label: 'exclude_recent_hours', type: 'number', placeholder: '24' }] },
-      { id: 'ver-otp-resend', method: 'POST', path: '/admin/verifications/otp/resend', description: 'Reenvia OTP', fields: [{ name: 'phone', label: 'phone', placeholder: '+502...' }, { name: 'account_opening_id', label: 'account_opening_id', placeholder: 'uuid' }] },
-      { id: 'ver-otp-override', method: 'POST', path: '/admin/verifications/otp/mark-verified', description: 'Override OTP', fields: [{ name: 'phone', label: 'phone', placeholder: '+502...' }, { name: 'account_opening_id', label: 'account_opening_id', placeholder: 'uuid' }, { name: 'operator', label: 'operator', placeholder: 'email' }, { name: 'reason', label: 'reason', placeholder: 'Justificativa' }], danger: true },
-      { id: 'ver-didit-regenerate', method: 'POST', path: '/admin/verifications/{id}/didit/regenerate', description: 'Novo link DIDIT', fields: [{ name: 'id', label: 'id', placeholder: 'verification id' }] },
-      { id: 'ver-didit-override', method: 'POST', path: '/admin/verifications/{id}/didit/override', description: 'Override DIDIT status', fields: [{ name: 'id', label: 'id', placeholder: 'verification id' }, { name: 'status', label: 'status', type: 'select', options: ['approved', 'rejected', 'pending', 'error'].map((v) => ({ label: v, value: v })) }, { name: 'note', label: 'note', placeholder: 'Observação' }] },
+      { id: 'ver-stats', method: 'GET', path: '/admin/verifications/stats', description: 'Totales por estado' },
+      {
+        id: 'ver-stuck',
+        method: 'GET',
+        path: '/admin/verifications/stuck',
+        description: 'Pendentes acima do limite de horas',
+        fields: [{ name: 'hours', label: 'Horas pendente', type: 'number', placeholder: '24', inQuery: true }],
+      },
+      {
+        id: 'ver-approve',
+        method: 'POST',
+        path: '/admin/verifications/{account_opening_id}/approve-manual',
+        description: 'Aprovar verificação (forçado)',
+        fields: [
+          { name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' },
+          { name: 'operator', label: 'Operador (correo)', placeholder: 'agente@carla.gt' },
+          { name: 'reason', label: 'Motivo', placeholder: 'Justificación' },
+        ],
+        danger: true,
+      },
+      {
+        id: 'ver-reject',
+        method: 'POST',
+        path: '/admin/verifications/{account_opening_id}/reject-manual',
+        description: 'Rechazar verificação (forçado)',
+        fields: [
+          { name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' },
+          { name: 'reason', label: 'Motivo', placeholder: 'Por que rechazar' },
+          { name: 'operator', label: 'Operador (correo)', placeholder: 'agente@carla.gt' },
+        ],
+        danger: true,
+      },
+      { id: 'ver-status-phone', method: 'GET', path: '/admin/verifications/status/{phone}', description: 'Estado por teléfono', fields: [{ name: 'phone', label: 'Teléfono (+502)', placeholder: '+502 55 55 55 55' }] },
+      { id: 'ver-status-timeline', method: 'GET', path: '/admin/verifications/{account_opening_id}/verify/status', description: 'Timeline completa', fields: [{ name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' }] },
+      { id: 'ver-renap', method: 'POST', path: '/admin/verifications/{account_opening_id}/verify/renap', description: 'Forçar RENAP', fields: [{ name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' }] },
+      {
+        id: 'ver-phone-campaign',
+        method: 'POST',
+        path: '/admin/verifications/phone-campaign/trigger',
+        description: 'Disparar campanha OTP',
+        fields: [
+          { name: 'batch_size', label: 'Tamanho do lote', type: 'number', placeholder: '50' },
+          { name: 'exclude_recent_hours', label: 'Ignorar últimos (h)', type: 'number', placeholder: '24' },
+        ],
+      },
+      { id: 'ver-otp-resend', method: 'POST', path: '/admin/verifications/otp/resend', description: 'Reenviar OTP', fields: [{ name: 'phone', label: 'Teléfono (+502)', placeholder: '+502...' }, { name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' }] },
+      {
+        id: 'ver-otp-override',
+        method: 'POST',
+        path: '/admin/verifications/otp/mark-verified',
+        description: 'Marcar OTP verificado',
+        fields: [
+          { name: 'phone', label: 'Teléfono (+502)', placeholder: '+502...' },
+          { name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' },
+          { name: 'operator', label: 'Operador (correo)', placeholder: 'agente@carla.gt' },
+          { name: 'reason', label: 'Motivo', placeholder: 'Justificación' },
+        ],
+        danger: true,
+      },
+      { id: 'ver-didit-regenerate', method: 'POST', path: '/admin/verifications/{id}/didit/regenerate', description: 'Gerar novo link DIDIT', fields: [{ name: 'id', label: 'ID de verificação', placeholder: 'verif id' }] },
+      {
+        id: 'ver-didit-override',
+        method: 'POST',
+        path: '/admin/verifications/{id}/didit/override',
+        description: 'Ajustar status DIDIT',
+        fields: [
+          { name: 'id', label: 'ID de verificação', placeholder: 'verif id' },
+          { name: 'status', label: 'Status', type: 'select', options: ['approved', 'rejected', 'pending', 'error'].map((v) => ({ label: v, value: v })) },
+          { name: 'note', label: 'Nota', placeholder: 'Observação curta' },
+        ],
+      },
     ],
   },
   {
@@ -89,12 +147,33 @@ const endpointGroups: Group[] = [
     accent: 'text-sky-300',
     icon: Database,
     endpoints: [
-      { id: 'bank-poller', method: 'GET', path: '/admin/banking/client-poller', description: 'Roda worker sequencial', fields: [{ name: 'limit', label: 'limit', type: 'number', placeholder: '50', inQuery: true }, boolField('include_events', 'include_events', true) ] },
-      { id: 'bank-ready', method: 'GET', path: '/account-openings/ready-for-bank', description: 'Backlog pronto para banco', fields: [{ name: 'limit', label: 'limit', type: 'number', placeholder: '50', inQuery: true }] },
-      { id: 'bank-status', method: 'POST', path: '/admin/banking/{id}/status', description: 'Força status bancário', fields: [{ name: 'id', label: 'id', placeholder: 'banking id' }, { name: 'status', label: 'status', type: 'select', options: ['ready_for_bank', 'bank_queued', 'bank_processing', 'bank_retry', 'bank_rejected', 'account_created'].map((v) => ({ label: v, value: v })) }, { name: 'reason', label: 'reason', placeholder: 'Justificativa' }], danger: true },
-      { id: 'bank-retry', method: 'POST', path: '/admin/banking/{id}/retry', description: 'Coloca em bank_retry', fields: [{ name: 'id', label: 'id', placeholder: 'banking id' }] },
-      { id: 'bank-payload', method: 'POST', path: '/admin/banking/{id}/payload/save', description: 'Anexa payloads request/response', fields: [{ name: 'id', label: 'id', placeholder: 'banking id' }, { name: 'request_payload', label: 'request_payload', type: 'textarea', placeholder: '{...}' }, { name: 'response_payload', label: 'response_payload', type: 'textarea', placeholder: '{...}' }] },
-      { id: 'bank-events', method: 'GET', path: '/admin/banking/events/{id}', description: 'Timeline banking_events', fields: [{ name: 'id', label: 'id', placeholder: 'banking id' }] },
+      { id: 'bank-poller', method: 'GET', path: '/admin/banking/client-poller', description: 'Executar fila bancária', fields: [{ name: 'limit', label: 'Límite', type: 'number', placeholder: '50', inQuery: true }, boolField('include_events', 'Ver timeline', true)] },
+      { id: 'bank-ready', method: 'GET', path: '/account-openings/ready-for-bank', description: 'Clientes prontos para banco', fields: [{ name: 'limit', label: 'Límite', type: 'number', placeholder: '50', inQuery: true }] },
+      {
+        id: 'bank-status',
+        method: 'POST',
+        path: '/admin/banking/{id}/status',
+        description: 'Forçar status bancário',
+        fields: [
+          { name: 'id', label: 'ID bancário', placeholder: 'id banco' },
+          { name: 'status', label: 'Status', type: 'select', options: ['ready_for_bank', 'bank_queued', 'bank_processing', 'bank_retry', 'bank_rejected', 'account_created'].map((v) => ({ label: v, value: v })) },
+          { name: 'reason', label: 'Motivo', placeholder: 'Por que alterar' },
+        ],
+        danger: true,
+      },
+      { id: 'bank-retry', method: 'POST', path: '/admin/banking/{id}/retry', description: 'Mover para retry', fields: [{ name: 'id', label: 'ID bancário', placeholder: 'id banco' }] },
+      {
+        id: 'bank-payload',
+        method: 'POST',
+        path: '/admin/banking/{id}/payload/save',
+        description: 'Salvar payloads request/response',
+        fields: [
+          { name: 'id', label: 'ID bancário', placeholder: 'id banco' },
+          { name: 'request_payload', label: 'Request (JSON)', type: 'textarea', placeholder: '{...}' },
+          { name: 'response_payload', label: 'Response (JSON)', type: 'textarea', placeholder: '{...}' },
+        ],
+      },
+      { id: 'bank-events', method: 'GET', path: '/admin/banking/events/{id}', description: 'Timeline banking', fields: [{ name: 'id', label: 'ID bancário', placeholder: 'id banco' }] },
     ],
   },
   {
@@ -108,8 +187,8 @@ const endpointGroups: Group[] = [
       { id: 'worker-account-openings', method: 'POST', path: '/admin/workers/account-openings/run', description: 'Run account openings', fields: workerRunFields },
       { id: 'worker-phone-campaign', method: 'POST', path: '/admin/workers/phone-campaign/run', description: 'Run phone campaign', fields: workerRunFields },
       { id: 'worker-banking', method: 'POST', path: '/admin/workers/banking/run', description: 'Run banking worker', fields: [{ name: 'limit', label: 'limit', type: 'number', placeholder: '50' }, boolField('include_events', 'include_events', true)] },
-      { id: 'worker-pause', method: 'POST', path: '/admin/workers/pause', description: 'Pausa worker', fields: [{ name: 'worker', label: 'worker', placeholder: 'account-openings|phone-campaign|banking' }, { name: 'reason', label: 'reason', placeholder: 'Por quê?' }] },
-      { id: 'worker-resume', method: 'POST', path: '/admin/workers/resume', description: 'Resume worker', fields: [{ name: 'worker', label: 'worker', placeholder: 'account-openings|phone-campaign|banking' }, { name: 'reason', label: 'reason', placeholder: 'Por quê?' }] },
+      { id: 'worker-pause', method: 'POST', path: '/admin/workers/pause', description: 'Pausar worker', fields: [{ name: 'worker', label: 'Nome do worker', placeholder: 'account-openings' }, { name: 'reason', label: 'Motivo', placeholder: 'Por quê?' }] },
+      { id: 'worker-resume', method: 'POST', path: '/admin/workers/resume', description: 'Retomar worker', fields: [{ name: 'worker', label: 'Nome do worker', placeholder: 'account-openings' }, { name: 'reason', label: 'Motivo', placeholder: 'Por quê?' }] },
       { id: 'worker-status', method: 'GET', path: '/admin/workers/status', description: 'Locks e último run' },
     ],
   },
@@ -119,16 +198,16 @@ const endpointGroups: Group[] = [
     accent: 'text-purple-300',
     icon: Layers,
     endpoints: [
-      { id: 'ao-by-id', method: 'GET', path: '/account-openings/{id}', description: 'Busca por id', fields: [{ name: 'id', label: 'id', placeholder: 'uuid' }] },
-      { id: 'ao-by-phone', method: 'GET', path: '/account-openings/by-phone', description: 'Busca por telefone', fields: [{ name: 'phone', label: 'phone', placeholder: '+502...' , inQuery: true}] },
-      { id: 'ao-by-document', method: 'GET', path: '/account-openings/by-document', description: 'Busca por documento', fields: [{ name: 'document', label: 'document', placeholder: 'CPF/CUI', inQuery: true }] },
-      { id: 'ao-trigger-worker', method: 'POST', path: '/account-openings/trigger-worker', description: 'Aciona worker manual', fields: [{ name: 'account_opening_id', label: 'account_opening_id', placeholder: 'uuid' }], danger: true },
-      { id: 'ao-status-phone', method: 'GET', path: '/account-openings/status/{phone_number}', description: 'Helper verificação', fields: [{ name: 'phone_number', label: 'phone_number', placeholder: '+502...' }] },
-      { id: 'acc-tags', method: 'POST', path: '/admin/accounts/{id}/tags', description: 'Add/Remove tags', fields: [{ name: 'id', label: 'id', placeholder: 'account id' }, { name: 'action', label: 'action', type: 'select', options: ['add', 'remove'].map((v) => ({ label: v, value: v })) }, { name: 'tags', label: 'tags (csv)', placeholder: 'vip,aml' }] },
-      { id: 'acc-note', method: 'POST', path: '/admin/accounts/{id}/note', description: 'Anotar conta', fields: [{ name: 'id', label: 'id', placeholder: 'account id' }, { name: 'note', label: 'note', placeholder: 'Observação', type: 'textarea' }] },
-      { id: 'acc-assign', method: 'POST', path: '/admin/accounts/{id}/assign', description: 'Atribuir owner/agent', fields: [{ name: 'id', label: 'id', placeholder: 'account id' }, { name: 'owner', label: 'owner/agent', placeholder: 'email' }] },
-      { id: 'acc-product', method: 'POST', path: '/admin/accounts/{id}/product', description: 'Ajustar produto/currency', fields: [{ name: 'id', label: 'id', placeholder: 'account id' }, { name: 'product_type', label: 'product_type', placeholder: 'checking' }, { name: 'account_currency', label: 'account_currency', placeholder: 'GTQ/USD' }] },
-      { id: 'acc-resend-status', method: 'POST', path: '/admin/accounts/{id}/resend-status', description: 'Reenviar mensagem status', fields: [{ name: 'id', label: 'id', placeholder: 'account id' }] },
+      { id: 'ao-by-id', method: 'GET', path: '/account-openings/{id}', description: 'Buscar por ID', fields: [{ name: 'id', label: 'ID de apertura', placeholder: 'uuid' }] },
+      { id: 'ao-by-phone', method: 'GET', path: '/account-openings/by-phone', description: 'Buscar por teléfono', fields: [{ name: 'phone', label: 'Teléfono (+502)', placeholder: '+502...' , inQuery: true}] },
+      { id: 'ao-by-document', method: 'GET', path: '/account-openings/by-document', description: 'Buscar por documento', fields: [{ name: 'document', label: 'Documento (DPI)', placeholder: 'DPI', inQuery: true }] },
+      { id: 'ao-trigger-worker', method: 'POST', path: '/account-openings/trigger-worker', description: 'Acionar worker manual', fields: [{ name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' }], danger: true },
+      { id: 'ao-status-phone', method: 'GET', path: '/account-openings/status/{phone_number}', description: 'Ayuda de verificación', fields: [{ name: 'phone_number', label: 'Teléfono (+502)', placeholder: '+502...' }] },
+      { id: 'acc-tags', method: 'POST', path: '/admin/accounts/{id}/tags', description: 'Tags da conta', fields: [{ name: 'id', label: 'ID da conta', placeholder: 'account id' }, { name: 'action', label: 'Ação', type: 'select', options: ['add', 'remove'].map((v) => ({ label: v, value: v })) }, { name: 'tags', label: 'Tags (coma)', placeholder: 'vip,aml' }] },
+      { id: 'acc-note', method: 'POST', path: '/admin/accounts/{id}/note', description: 'Adicionar nota', fields: [{ name: 'id', label: 'ID da conta', placeholder: 'account id' }, { name: 'note', label: 'Nota', placeholder: 'Observação', type: 'textarea' }] },
+      { id: 'acc-assign', method: 'POST', path: '/admin/accounts/{id}/assign', description: 'Atribuir responsável', fields: [{ name: 'id', label: 'ID da conta', placeholder: 'account id' }, { name: 'owner', label: 'Responsável (email)', placeholder: 'agente@carla.gt' }] },
+      { id: 'acc-product', method: 'POST', path: '/admin/accounts/{id}/product', description: 'Produto e moeda', fields: [{ name: 'id', label: 'ID da conta', placeholder: 'account id' }, { name: 'product_type', label: 'Tipo de produto', placeholder: 'checking' }, { name: 'account_currency', label: 'Moeda', placeholder: 'GTQ/USD' }] },
+      { id: 'acc-resend-status', method: 'POST', path: '/admin/accounts/{id}/resend-status', description: 'Reenviar status por WhatsApp', fields: [{ name: 'id', label: 'ID da conta', placeholder: 'account id' }] },
     ],
   },
   {
@@ -137,10 +216,10 @@ const endpointGroups: Group[] = [
     accent: 'text-teal-200',
     icon: Database,
     endpoints: [
-      { id: 'cleanup-test', method: 'GET', path: '/admin/verifications/cleanup-test-data', description: 'Limpa test user/all', fields: [boolField('delete_all', 'delete_all', false)] },
+      { id: 'cleanup-test', method: 'GET', path: '/admin/verifications/cleanup-test-data', description: 'Limpa usuário de teste/all', fields: [boolField('delete_all', 'Apagar tudo?', false)] },
       { id: 'seed-webhook', method: 'GET', path: '/admin/verifications/seed-webhook-test-user', description: 'Seed usuário fixo webhook' },
-      { id: 'data-cleanup', method: 'POST', path: '/admin/data/cleanup', description: 'Cleanup amplo', fields: [{ name: 'scope', label: 'scope', type: 'select', options: ['test_user', 'stale_demo', 'all'].map((v) => ({ label: v, value: v })) }, boolField('dry_run', 'dry_run', true)] },
-      { id: 'data-seed', method: 'POST', path: '/admin/data/seed/demo', description: 'Popula cenários demo', fields: [{ name: 'scenario', label: 'scenario', placeholder: 'default' }] },
+      { id: 'data-cleanup', method: 'POST', path: '/admin/data/cleanup', description: 'Cleanup amplo', fields: [{ name: 'scope', label: 'Escopo', type: 'select', options: ['test_user', 'stale_demo', 'all'].map((v) => ({ label: v, value: v })) }, boolField('dry_run', 'Modo prova', true)] },
+      { id: 'data-seed', method: 'POST', path: '/admin/data/seed/demo', description: 'Popular cenários demo', fields: [{ name: 'scenario', label: 'Cenário', placeholder: 'default' }] },
       ...qaEndpoints,
     ],
   },
@@ -150,10 +229,10 @@ const endpointGroups: Group[] = [
     accent: 'text-indigo-200',
     icon: Link2,
     endpoints: [
-      { id: 'conv-list', method: 'GET', path: '/api/v1/conversations', description: 'Lista conversas', fields: [{ name: 'page', label: 'page', type: 'number', inQuery: true }, { name: 'size', label: 'size', type: 'number', inQuery: true }] },
-      { id: 'conv-detail', method: 'GET', path: '/api/v1/conversations/{conversation_id}', description: 'Detalhe + mensagens', fields: [{ name: 'conversation_id', label: 'conversation_id', placeholder: 'id' }] },
-      { id: 'conv-message', method: 'POST', path: '/api/v1/conversations/{conversation_id}/messages', description: 'Envia outbound', fields: [{ name: 'conversation_id', label: 'conversation_id', placeholder: 'id' }, { name: 'message', label: 'message', placeholder: 'Texto', type: 'textarea' }, { name: 'attachment_url', label: 'attachment_url', placeholder: 'https://...' }] },
-      { id: 'conv-ws', method: 'GET', path: '/api/v1/conversations/ws/{conversation_id}', description: 'Stream WS', fields: [{ name: 'conversation_id', label: 'conversation_id', placeholder: 'id' }] },
+      { id: 'conv-list', method: 'GET', path: '/api/v1/conversations', description: 'Lista conversas', fields: [{ name: 'page', label: 'Página', type: 'number', inQuery: true }, { name: 'size', label: 'Tamanho', type: 'number', inQuery: true }] },
+      { id: 'conv-detail', method: 'GET', path: '/api/v1/conversations/{conversation_id}', description: 'Detalhe + mensagens', fields: [{ name: 'conversation_id', label: 'ID da conversa', placeholder: 'id' }] },
+      { id: 'conv-message', method: 'POST', path: '/api/v1/conversations/{conversation_id}/messages', description: 'Enviar resposta', fields: [{ name: 'conversation_id', label: 'ID da conversa', placeholder: 'id' }, { name: 'message', label: 'Mensagem', placeholder: 'Texto', type: 'textarea' }, { name: 'attachment_url', label: 'Arquivo (URL)', placeholder: 'https://...' }] },
+      { id: 'conv-ws', method: 'GET', path: '/api/v1/conversations/ws/{conversation_id}', description: 'Stream WS', fields: [{ name: 'conversation_id', label: 'ID da conversa', placeholder: 'id' }] },
     ],
   },
   {
@@ -175,10 +254,10 @@ const endpointGroups: Group[] = [
     accent: 'text-cyan-200',
     icon: Workflow,
     endpoints: [
-      { id: 'proc-list', method: 'GET', path: '/api/v1/processes', description: 'Lista processos', fields: [{ name: 'q', label: 'q', placeholder: 'search', inQuery: true }] },
-      { id: 'proc-create', method: 'POST', path: '/api/v1/processes', description: 'Cria processo', fields: [{ name: 'name', label: 'name', placeholder: 'Nome' }, { name: 'config', label: 'config (JSON)', type: 'textarea', placeholder: '{...}' }] },
-      { id: 'proc-update', method: 'PATCH', path: '/admin/processes/{id}', description: 'Atualiza metadata/estado', fields: [{ name: 'id', label: 'id', placeholder: 'process id' }, { name: 'state', label: 'state', placeholder: 'active/draft' }, { name: 'metadata', label: 'metadata (JSON)', type: 'textarea', placeholder: '{...}' }] },
-      { id: 'proc-usage', method: 'GET', path: '/admin/processes/{id}/usage', description: 'Runs e taxa de sucesso', fields: [{ name: 'id', label: 'id', placeholder: 'process id' }] },
+      { id: 'proc-list', method: 'GET', path: '/api/v1/processes', description: 'Lista processos', fields: [{ name: 'q', label: 'Buscar', placeholder: 'nome', inQuery: true }] },
+      { id: 'proc-create', method: 'POST', path: '/api/v1/processes', description: 'Criar processo', fields: [{ name: 'name', label: 'Nome', placeholder: 'Onboarding GT' }, { name: 'config', label: 'Config (JSON)', type: 'textarea', placeholder: '{...}' }] },
+      { id: 'proc-update', method: 'PATCH', path: '/admin/processes/{id}', description: 'Atualizar metadata/estado', fields: [{ name: 'id', label: 'ID do processo', placeholder: 'id' }, { name: 'state', label: 'Estado', placeholder: 'active/draft' }, { name: 'metadata', label: 'Metadata (JSON)', type: 'textarea', placeholder: '{...}' }] },
+      { id: 'proc-usage', method: 'GET', path: '/admin/processes/{id}/usage', description: 'Uso e sucesso', fields: [{ name: 'id', label: 'ID do processo', placeholder: 'id' }] },
     ],
   },
   {
@@ -217,8 +296,6 @@ const endpointGroups: Group[] = [
   },
 ];
 
-const defaultHeaders = ['Authorization: Bearer <CHANNELS_API_KEY>', 'Idempotency-Key', 'X-Correlation-ID', 'X-Request-ID', 'X-Execution-Time-MS'];
-
 const fieldDefault = (field: Field) => {
   if (field.defaultValue !== undefined) return field.defaultValue;
   if (field.type === 'checkbox') return false;
@@ -229,7 +306,7 @@ const initialForm = (endpoint: Endpoint) =>
   (endpoint.fields || []).reduce<Record<string, any>>((acc, f) => {
     acc[f.name] = fieldDefault(f);
     return acc;
-  }, { authToken: '' });
+  }, {});
 
 const formatValue = (val: any) => {
   if (val === null || val === undefined) return '—';
@@ -246,6 +323,14 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDanger, setConfirmDanger] = useState(false);
+  const [flash, setFlash] = useState<'success' | 'error' | null>(null);
+
+  const flashStyle =
+    flash === 'success'
+      ? { boxShadow: '0 0 0 2px rgba(34,197,94,0.35)', backgroundColor: 'rgba(34,197,94,0.07)' }
+      : flash === 'error'
+        ? { boxShadow: '0 0 0 2px rgba(239,68,68,0.35)', backgroundColor: 'rgba(239,68,68,0.07)' }
+        : undefined;
 
   const onChange = (field: Field, value: any) => setForm((prev) => ({ ...prev, [field.name]: value }));
 
@@ -277,6 +362,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   const callEndpoint = async () => {
     setLoading(true);
     setError(null);
+    setFlash(null);
     try {
       const path = endpoint.path.replace(/{(\w+)}/g, (_, key) => encodeURIComponent(form[key] ?? key));
       let finalUrl = `${API_URL}${path}`.replace(/\/+$/, '').length ? `${API_URL}${path}` : path;
@@ -299,10 +385,10 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
       });
 
       const headers: Record<string, string> = { Accept: 'application/json' };
-      if (form.authToken) headers.Authorization = `Bearer ${form.authToken}`;
-      if (form.idempotencyKey) headers['Idempotency-Key'] = form.idempotencyKey;
-      if (form.correlationId) headers['X-Correlation-ID'] = form.correlationId;
-      if (form.requestId) headers['X-Request-ID'] = form.requestId;
+      const autoToken = (import.meta.env.VITE_API_TOKEN || '').trim();
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('carla_token') || '' : '';
+      const token = autoToken || stored;
+      if (token) headers.Authorization = `Bearer ${token}`;
 
       if (!API_URL) {
         setResult({ note: 'API_URL não configurado; resposta simulada', url: finalUrl, body: endpoint.method === 'GET' ? undefined : body });
@@ -320,14 +406,20 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
       if (!res.ok) {
         setError(`Erro ${res.status}`);
         setResult(json);
-        toast({ title: `Falha ${endpoint.id}`, description: `Status ${res.status}`, variant: 'destructive' });
+        setFlash('error');
+        setTimeout(() => setFlash(null), 900);
+        toast({ title: 'Erro ao executar', description: endpoint.description, variant: 'destructive' });
       } else {
         setResult({ status: res.status, data: json });
-        toast({ title: 'OK', description: endpoint.id });
+        setFlash('success');
+        setTimeout(() => setFlash(null), 900);
+        toast({ title: 'Feito', description: endpoint.description });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro inesperado');
-      toast({ title: 'Erro', description: error || 'Falha ao chamar endpoint', variant: 'destructive' });
+      setFlash('error');
+      setTimeout(() => setFlash(null), 900);
+      toast({ title: 'Erro', description: 'Falha ao chamar endpoint', variant: 'destructive' });
     } finally {
       setLoading(false);
       setConfirmDanger(false);
@@ -343,22 +435,19 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   };
 
   return (
-    <Card className="glass border-border/60 bg-surface">
+    <Card className="glass border-border/60 bg-surface transition-all" style={flashStyle}>
       <CardHeader className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Badge className={`${methodTone[endpoint.method]} text-[11px]`}>{endpoint.method}</Badge>
-            <Badge variant="outline" className="text-[11px] border-border/50 text-foreground/70">
-              {endpoint.path}
-            </Badge>
-            {endpoint.danger ? <Badge variant="destructive" className="text-[11px]">Destrutivo</Badge> : null}
+            {endpoint.danger ? <Badge variant="destructive" className="text-[11px]">Ação sensível</Badge> : null}
           </div>
-          <p className="text-sm text-foreground/80">{endpoint.description}</p>
+          <p className="text-sm font-semibold text-foreground">{endpoint.description}</p>
+          <p className="text-xs text-foreground/50">{endpoint.path}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Input placeholder="Bearer token (opcional)" value={form.authToken || ''} onChange={(e) => setForm((p) => ({ ...p, authToken: e.target.value }))} className="w-44" />
-          <Button size="sm" variant={endpoint.danger && !confirmDanger ? 'destructive' : 'default'} onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Rodando…' : confirmDanger ? 'Confirmar' : 'Executar'}
+          <Button size="sm" variant={endpoint.danger && !confirmDanger ? 'destructive' : 'default'} className="shadow-sm" onClick={handleSubmit} disabled={loading}>
+            {loading ? 'Rodando…' : confirmDanger ? 'Confirmar' : 'Ejecutar'}
           </Button>
         </div>
       </CardHeader>
@@ -379,16 +468,11 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
         ) : (
           <p className="text-xs text-foreground/60">Sem campos adicionais.</p>
         )}
-        <div className="grid gap-3 md:grid-cols-3">
-          <Input placeholder="Idempotency-Key" value={form.idempotencyKey || ''} onChange={(e) => setForm((p) => ({ ...p, idempotencyKey: e.target.value }))} />
-          <Input placeholder="X-Correlation-ID" value={form.correlationId || ''} onChange={(e) => setForm((p) => ({ ...p, correlationId: e.target.value }))} />
-          <Input placeholder="X-Request-ID" value={form.requestId || ''} onChange={(e) => setForm((p) => ({ ...p, requestId: e.target.value }))} />
-        </div>
         {error ? <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div> : null}
         {result ? (
           <pre className="max-h-72 overflow-auto rounded-lg border border-border/40 bg-background/70 px-3 py-2 text-[12px] text-foreground/80 whitespace-pre-wrap">{formatValue(result)}</pre>
         ) : (
-          <p className="text-[11px] text-foreground/60">Saída aparecerá aqui.</p>
+          <p className="text-[11px] text-foreground/60">A resposta aparecerá aqui.</p>
         )}
       </CardContent>
     </Card>
@@ -396,52 +480,17 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
 }
 
 export function PainelControlePage() {
-  const accentCards = useMemo(
-    () => [
-      { icon: Activity, title: 'Observabilidade', body: 'Headers recomendados e idempotência', tone: 'text-emerald-200', items: defaultHeaders },
-      { icon: AlertTriangle, title: 'Dry-run por padrão', body: 'Ative force/delete_all apenas quando necessário', tone: 'text-amber-200', items: ['dry_run=true em ações destrutivas', 'Confirmação dupla para overrides'] },
-      { icon: BadgeCheck, title: 'Audit', body: 'Envie operator + reason em mutações', tone: 'text-sky-200', items: ['operator', 'reason', 'before/after logs'] },
-    ],
-    [],
-  );
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/40 bg-surface px-4 py-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/40 bg-surface px-4 py-4">
         <div className="space-y-1">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-foreground/60">Mission Control · Admin API</p>
-          <h1 className="text-2xl font-semibold text-foreground">Painel de Controle Carla Channels</h1>
-          <p className="text-sm text-foreground/70">Cockpit rápido para OTP, RENAP, DIDIT, banking e bots WhatsApp.</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-foreground/60">Mission Control · GT</p>
+          <h1 className="text-2xl font-semibold text-foreground">Panel de Control Carla</h1>
+          <p className="text-sm text-foreground/70">Acciones rápidas para verificaciones, banca e bots WhatsApp.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[11px] border-emerald-400/40 text-emerald-200">
-            Live
-          </Badge>
-          <Button variant="outline" size="sm" className="text-xs">
-            <RefreshCw size={14} className="mr-1" /> Sync manual
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        {accentCards.map((card) => (
-          <Card key={card.title} className="glass border-border/60 bg-surface">
-            <CardHeader className="flex items-center gap-2">
-              <card.icon className={`h-5 w-5 ${card.tone}`} />
-              <CardTitle className="text-sm">{card.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-xs text-foreground/70">{card.body}</p>
-              <div className="flex flex-wrap gap-1">
-                {card.items.map((item: string) => (
-                  <Badge key={item} variant="outline" className="text-[11px] border-border/50 text-foreground/70">
-                    {item}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        <Button variant="ghost" size="sm" className="text-xs">
+          <RefreshCw size={14} className="mr-1" /> Actualizar lista
+        </Button>
       </div>
 
       <Tabs defaultValue={endpointGroups[0].id} className="space-y-4">
@@ -459,7 +508,7 @@ export function PainelControlePage() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
-                <p className="text-xs text-foreground/60">Endpoints deste domínio, com campos essenciais.</p>
+                <p className="text-xs text-foreground/60">Ações deste domínio, só o essencial.</p>
               </div>
               <Badge variant="outline" className="text-[11px] border-border/50 text-foreground/70">
                 {group.endpoints.length} endpoints
@@ -473,33 +522,6 @@ export function PainelControlePage() {
           </TabsContent>
         ))}
       </Tabs>
-
-      <Card className="glass border-border/60 bg-surface">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <ListChecks className="h-4 w-4 text-accent" />
-            Resumo rápido de headers e observabilidade
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Header</TableHead>
-                <TableHead>Uso</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {defaultHeaders.map((h) => (
-                <TableRow key={h}>
-                  <TableCell className="font-medium">{h}</TableCell>
-                  <TableCell className="text-xs text-foreground/70">Tracing, idempotência e auditoria</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
     </div>
   );
 }
