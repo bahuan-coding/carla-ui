@@ -64,7 +64,7 @@ const workerRunFields: Field[] = [
 const endpointGroups: Group[] = [
   {
     id: 'verifications',
-    label: 'Verificações',
+    label: 'Verificaciones',
     accent: 'text-emerald-300',
     icon: ShieldCheck,
     endpoints: [
@@ -74,7 +74,7 @@ const endpointGroups: Group[] = [
         method: 'GET',
         path: '/admin/verifications/stuck',
         description: 'Encuentra verificaciones atascadas por horas para que el equipo las libere manualmente (stuck).',
-        fields: [{ name: 'hours', label: 'Horas pendente', type: 'number', placeholder: '24', inQuery: true }],
+        fields: [{ name: 'hours', label: 'Horas en espera', type: 'number', placeholder: '24', inQuery: true }],
       },
       {
         id: 'ver-approve',
@@ -95,7 +95,7 @@ const endpointGroups: Group[] = [
         description: 'Rechaza manualmente (reject-manual) cuando el documento es inválido o sospechoso; detiene el flujo y registra la causa.',
         fields: [
           { name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' },
-          { name: 'reason', label: 'Motivo', placeholder: 'Por que rechazar' },
+          { name: 'reason', label: 'Motivo', placeholder: 'Por qué rechazar' },
           { name: 'operator', label: 'Operador (correo)', placeholder: 'agente@carla.gt' },
         ],
         danger: true,
@@ -127,8 +127,8 @@ const endpointGroups: Group[] = [
         path: '/admin/verifications/phone-campaign/trigger',
         description: 'Activa la campaña OTP (phone-campaign trigger) para enviar códigos en lote a quienes no validaron.',
         fields: [
-          { name: 'batch_size', label: 'Quantos envios', type: 'number', placeholder: '50' },
-          { name: 'exclude_recent_hours', label: 'Ignorar envios nas últimas (h)', type: 'number', placeholder: '24' },
+          { name: 'batch_size', label: 'Cantidad de envíos', type: 'number', placeholder: '50' },
+          { name: 'exclude_recent_hours', label: 'Ignorar envíos de las últimas (h)', type: 'number', placeholder: '24' },
         ],
       },
       {
@@ -151,23 +151,23 @@ const endpointGroups: Group[] = [
         ],
         danger: true,
       },
-      { id: 'ver-didit-regenerate', method: 'POST', path: '/admin/verifications/{id}/didit/regenerate', description: 'Genera un nuevo enlace DIDIT (didit/regenerate) para reenviar al cliente.', fields: [{ name: 'id', label: 'ID de verificação', placeholder: 'verif id' }] },
+      { id: 'ver-didit-regenerate', method: 'POST', path: '/admin/verifications/{id}/didit/regenerate', description: 'Genera un nuevo enlace DIDIT (didit/regenerate) para reenviar al cliente.', fields: [{ name: 'id', label: 'ID de verificación', placeholder: 'verif id' }] },
       {
         id: 'ver-didit-override',
         method: 'POST',
         path: '/admin/verifications/{id}/didit/override',
         description: 'Ajusta manualmente el estado DIDIT (didit/override: approved, rejected, pending, error) y registra nota.',
         fields: [
-          { name: 'id', label: 'ID de verificação', placeholder: 'verif id' },
+          { name: 'id', label: 'ID de verificación', placeholder: 'verif id' },
           { name: 'status', label: 'Status', type: 'select', options: ['approved', 'rejected', 'pending', 'error'].map((v) => ({ label: v, value: v })) },
-          { name: 'note', label: 'Nota', placeholder: 'Observação curta' },
+          { name: 'note', label: 'Nota', placeholder: 'Nota breve' },
         ],
       },
     ],
   },
   {
     id: 'banking',
-    label: 'Banking & Onboarding',
+    label: 'Banca y Onboarding',
     accent: 'text-sky-300',
     icon: Database,
     endpoints: [
@@ -179,9 +179,9 @@ const endpointGroups: Group[] = [
         path: '/admin/banking/{id}/status',
         description: 'Cambia manualmente el estado bancario (status) entre retry, created, etc.',
         fields: [
-          { name: 'id', label: 'ID bancário', placeholder: 'id banco' },
+          { name: 'id', label: 'ID bancario', placeholder: 'id banco' },
           { name: 'status', label: 'Status', type: 'select', options: ['ready_for_bank', 'bank_queued', 'bank_processing', 'bank_retry', 'bank_rejected', 'account_created'].map((v) => ({ label: v, value: v })) },
-          { name: 'reason', label: 'Motivo', placeholder: 'Por que alterar' },
+          { name: 'reason', label: 'Motivo', placeholder: 'Por qué cambiar' },
         ],
         danger: true,
       },
@@ -192,17 +192,17 @@ const endpointGroups: Group[] = [
         path: '/admin/banking/{id}/payload/save',
         description: 'Guarda request/response bancario (payload/save) para auditoría.',
         fields: [
-          { name: 'id', label: 'ID bancário', placeholder: 'id banco' },
+          { name: 'id', label: 'ID bancario', placeholder: 'id banco' },
           { name: 'request_payload', label: 'Request (JSON)', type: 'textarea', placeholder: '{...}' },
           { name: 'response_payload', label: 'Response (JSON)', type: 'textarea', placeholder: '{...}' },
         ],
       },
-      { id: 'bank-events', method: 'GET', path: '/admin/banking/events/{id}', description: 'Timeline del caso bancario (events) con todo lo enviado y recibido.', fields: [{ name: 'id', label: 'ID bancário', placeholder: 'id banco' }] },
+      { id: 'bank-events', method: 'GET', path: '/admin/banking/events/{id}', description: 'Timeline del caso bancario (events) con todo lo enviado y recibido.', fields: [{ name: 'id', label: 'ID bancario', placeholder: 'id banco' }] },
     ],
   },
   {
     id: 'workers',
-    label: 'Workers & Cron',
+    label: 'Workers y Cron',
     accent: 'text-amber-300',
     icon: Server,
     endpoints: [
@@ -211,49 +211,49 @@ const endpointGroups: Group[] = [
       { id: 'worker-account-openings', method: 'POST', path: '/admin/workers/account-openings/run', description: 'Procesa aperturas en lote ahora (account-openings/run) aunque el cron no corra.', fields: workerRunFields },
       { id: 'worker-phone-campaign', method: 'POST', path: '/admin/workers/phone-campaign/run', description: 'Procesa campaña OTP en lote inmediatamente (phone-campaign/run).', fields: workerRunFields },
       { id: 'worker-banking', method: 'POST', path: '/admin/workers/banking/run', description: 'Dispara worker bancario (banking/run) para enviar o actualizar casos.', fields: [{ name: 'limit', label: 'limit', type: 'number', placeholder: '50' }, boolField('include_events', 'include_events', true)] },
-      { id: 'worker-pause', method: 'POST', path: '/admin/workers/pause', description: 'Pausa un worker específico (pause) para detener colas.', fields: [{ name: 'worker', label: 'Nome do worker', placeholder: 'account-openings' }, { name: 'reason', label: 'Motivo', placeholder: 'Por quê?' }] },
-      { id: 'worker-resume', method: 'POST', path: '/admin/workers/resume', description: 'Reactiva un worker pausado (resume) con justificación.', fields: [{ name: 'worker', label: 'Nome do worker', placeholder: 'account-openings' }, { name: 'reason', label: 'Motivo', placeholder: 'Por quê?' }] },
+      { id: 'worker-pause', method: 'POST', path: '/admin/workers/pause', description: 'Pausa un worker específico (pause) para detener colas.', fields: [{ name: 'worker', label: 'Nombre del worker', placeholder: 'account-openings' }, { name: 'reason', label: 'Motivo', placeholder: '¿Por qué?' }] },
+      { id: 'worker-resume', method: 'POST', path: '/admin/workers/resume', description: 'Reactiva un worker pausado (resume) con justificación.', fields: [{ name: 'worker', label: 'Nombre del worker', placeholder: 'account-openings' }, { name: 'reason', label: 'Motivo', placeholder: '¿Por qué?' }] },
       { id: 'worker-status', method: 'GET', path: '/admin/workers/status', description: 'Consulta último run, locks y estado de cada worker (status).', fields: [] },
     ],
   },
   {
     id: 'accounts',
-    label: 'Account Openings',
+    label: 'Aperturas de cuenta',
     accent: 'text-purple-300',
     icon: Layers,
     endpoints: [
       { id: 'ao-by-id', method: 'GET', path: '/account-openings/{id}', description: 'Consulta una apertura por ID para ver su estado completo.', fields: [{ name: 'id', label: 'ID de apertura', placeholder: 'uuid' }] },
-      { id: 'ao-by-phone', method: 'GET', path: '/account-openings/by-phone', description: 'Busca apertura por teléfono (by-phone), útil para soporte rápido.', fields: [{ name: 'phone', label: 'Teléfono (+502)', placeholder: '+502...' , inQuery: true}] },
+      { id: 'ao-by-phone', method: 'GET', path: '/account-openings/by-phone', description: 'Busca apertura por teléfono (by-phone), útil para soporte rápido.', fields: [{ name: 'phone', label: 'Teléfono (+502)', placeholder: '+502...', inQuery: true }] },
       { id: 'ao-by-document', method: 'GET', path: '/account-openings/by-document', description: 'Busca por documento DPI (by-document) para confirmar identidad.', fields: [{ name: 'document', label: 'Documento (DPI)', placeholder: 'DPI', inQuery: true }] },
       { id: 'ao-trigger-worker', method: 'POST', path: '/account-openings/trigger-worker', description: 'Dispara el worker de aperturas (trigger-worker) para reprocesar manualmente.', fields: [{ name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' }], danger: true },
       { id: 'ao-status-phone', method: 'GET', path: '/account-openings/status/{phone_number}', description: 'Ayuda de verificación por teléfono (status) para clientes.', fields: [{ name: 'phone_number', label: 'Teléfono (+502)', placeholder: '+502...' }] },
-      { id: 'acc-tags', method: 'POST', path: '/admin/accounts/{id}/tags', description: 'Administra tags (add/remove) para segmentar la cuenta.', fields: [{ name: 'id', label: 'ID da conta', placeholder: 'account id' }, { name: 'action', label: 'Ação', type: 'select', options: ['add', 'remove'].map((v) => ({ label: v, value: v })) }, { name: 'tags', label: 'Tags (coma)', placeholder: 'vip,aml' }] },
-      { id: 'acc-note', method: 'POST', path: '/admin/accounts/{id}/note', description: 'Agrega nota interna breve para dejar contexto rápido (note).', fields: [{ name: 'id', label: 'ID da conta', placeholder: 'account id' }, { name: 'note', label: 'Nota', placeholder: 'Observação', type: 'textarea' }] },
-      { id: 'acc-assign', method: 'POST', path: '/admin/accounts/{id}/assign', description: 'Asigna responsable (assign) para follow-up claro.', fields: [{ name: 'id', label: 'ID da conta', placeholder: 'account id' }, { name: 'owner', label: 'Responsável (email)', placeholder: 'agente@carla.gt' }] },
-      { id: 'acc-product', method: 'POST', path: '/admin/accounts/{id}/product', description: 'Configura producto y moneda (product) como checking GTQ/USD.', fields: [{ name: 'id', label: 'ID da conta', placeholder: 'account id' }, { name: 'product_type', label: 'Tipo de produto', placeholder: 'checking' }, { name: 'account_currency', label: 'Moeda', placeholder: 'GTQ/USD' }] },
-      { id: 'acc-resend-status', method: 'POST', path: '/admin/accounts/{id}/resend-status', description: 'Reenvía status por WhatsApp (resend-status) para mantener al cliente informado.', fields: [{ name: 'id', label: 'ID da conta', placeholder: 'account id' }] },
+      { id: 'acc-tags', method: 'POST', path: '/admin/accounts/{id}/tags', description: 'Administra tags (add/remove) para segmentar la cuenta.', fields: [{ name: 'id', label: 'ID de la cuenta', placeholder: 'account id' }, { name: 'action', label: 'Acción', type: 'select', options: ['add', 'remove'].map((v) => ({ label: v, value: v })) }, { name: 'tags', label: 'Tags (coma)', placeholder: 'vip,aml' }] },
+      { id: 'acc-note', method: 'POST', path: '/admin/accounts/{id}/note', description: 'Agrega nota interna breve para dejar contexto rápido (note).', fields: [{ name: 'id', label: 'ID de la cuenta', placeholder: 'account id' }, { name: 'note', label: 'Nota', placeholder: 'Observación', type: 'textarea' }] },
+      { id: 'acc-assign', method: 'POST', path: '/admin/accounts/{id}/assign', description: 'Asigna responsable (assign) para seguimiento claro.', fields: [{ name: 'id', label: 'ID de la cuenta', placeholder: 'account id' }, { name: 'owner', label: 'Responsable (email)', placeholder: 'agente@carla.gt' }] },
+      { id: 'acc-product', method: 'POST', path: '/admin/accounts/{id}/product', description: 'Configura producto y moneda (product) como checking GTQ/USD.', fields: [{ name: 'id', label: 'ID de la cuenta', placeholder: 'account id' }, { name: 'product_type', label: 'Tipo de producto', placeholder: 'checking' }, { name: 'account_currency', label: 'Moneda', placeholder: 'GTQ/USD' }] },
+      { id: 'acc-resend-status', method: 'POST', path: '/admin/accounts/{id}/resend-status', description: 'Reenvía status por WhatsApp (resend-status) para mantener al cliente informado.', fields: [{ name: 'id', label: 'ID de la cuenta', placeholder: 'account id' }] },
     ],
   },
   {
     id: 'data',
-    label: 'Dados · Cleanup/Seed',
+    label: 'Datos · Limpieza/Seed',
     accent: 'text-teal-200',
     icon: Database,
     endpoints: [
-      { id: 'cleanup-test', method: 'GET', path: '/admin/verifications/cleanup-test-data', description: 'Limpia datos de prueba (cleanup-test-data); opcionalmente borra todo.', fields: [boolField('delete_all', 'Apagar tudo?', false)] },
+      { id: 'cleanup-test', method: 'GET', path: '/admin/verifications/cleanup-test-data', description: 'Limpia datos de prueba (cleanup-test-data); opcionalmente borra todo.', fields: [boolField('delete_all', '¿Borrar todo?', false)] },
       { id: 'seed-webhook', method: 'GET', path: '/admin/verifications/seed-webhook-test-user', description: 'Genera usuario fijo de webhook (seed-webhook-test-user) para pruebas.' },
-      { id: 'data-cleanup', method: 'POST', path: '/admin/data/cleanup', description: 'Cleanup amplio por scope (test_user, stale_demo, all) en data/cleanup.', fields: [{ name: 'scope', label: 'Escopo', type: 'select', options: ['test_user', 'stale_demo', 'all'].map((v) => ({ label: v, value: v })) }, boolField('dry_run', 'Modo prova', true)] },
-      { id: 'data-seed', method: 'POST', path: '/admin/data/seed/demo', description: 'Carga escenarios demo (data/seed/demo) para demos rápidas.', fields: [{ name: 'scenario', label: 'Cenário', placeholder: 'default' }] },
+      { id: 'data-cleanup', method: 'POST', path: '/admin/data/cleanup', description: 'Cleanup amplio por scope (test_user, stale_demo, all) en data/cleanup.', fields: [{ name: 'scope', label: 'Ámbito', type: 'select', options: ['test_user', 'stale_demo', 'all'].map((v) => ({ label: v, value: v })) }, boolField('dry_run', 'Modo prueba', true)] },
+      { id: 'data-seed', method: 'POST', path: '/admin/data/seed/demo', description: 'Carga escenarios demo (data/seed/demo) para demos rápidas.', fields: [{ name: 'scenario', label: 'Escenario', placeholder: 'default' }] },
       ...qaEndpoints,
     ],
   },
   {
     id: 'conversas',
-    label: 'Conversas & Mensagens',
+    label: 'Conversaciones y Mensajes',
     accent: 'text-indigo-200',
     icon: Link2,
     endpoints: [
-      { id: 'conv-list', method: 'GET', path: '/api/v1/conversations', description: 'Lista conversaciones con paginación (conversations).', fields: [{ name: 'page', label: 'Página', type: 'number', inQuery: true }, { name: 'size', label: 'Tamanho', type: 'number', inQuery: true }] },
+      { id: 'conv-list', method: 'GET', path: '/api/v1/conversations', description: 'Lista conversaciones con paginación (conversations).', fields: [{ name: 'page', label: 'Página', type: 'number', inQuery: true }, { name: 'size', label: 'Tamaño', type: 'number', inQuery: true }] },
       { id: 'conv-detail', method: 'GET', path: '/api/v1/conversations/{conversation_id}', description: 'Trae detalle y mensajes de una conversación específica.', fields: [{ name: 'conversation_id', label: 'ID da conversa', placeholder: 'id' }] },
       { id: 'conv-message', method: 'POST', path: '/api/v1/conversations/{conversation_id}/messages', description: 'Envía respuesta con texto y adjunto opcional a la conversación.', fields: [{ name: 'conversation_id', label: 'ID da conversa', placeholder: 'id' }, { name: 'message', label: 'Mensagem', placeholder: 'Texto', type: 'textarea' }, { name: 'attachment_url', label: 'Arquivo (URL)', placeholder: 'https://...' }] },
       { id: 'conv-ws', method: 'GET', path: '/api/v1/conversations/ws/{conversation_id}', description: 'Abre stream WebSocket para monitorear mensajes en vivo (ws).', fields: [{ name: 'conversation_id', label: 'ID da conversa', placeholder: 'id' }] },
@@ -261,7 +261,7 @@ const endpointGroups: Group[] = [
   },
   {
     id: 'kpis',
-    label: 'Dashboard & KPIs',
+    label: 'KPIs y Tableros',
     accent: 'text-rose-200',
     icon: Gauge,
     endpoints: [
@@ -274,19 +274,19 @@ const endpointGroups: Group[] = [
   },
   {
     id: 'processes',
-    label: 'Processos',
+    label: 'Procesos',
     accent: 'text-cyan-200',
     icon: Workflow,
     endpoints: [
-      { id: 'proc-list', method: 'GET', path: '/api/v1/processes', description: 'Lista procesos y permite buscar por nombre (processes).', fields: [{ name: 'q', label: 'Buscar', placeholder: 'nome', inQuery: true }] },
-      { id: 'proc-create', method: 'POST', path: '/api/v1/processes', description: 'Crea proceso con nombre y configuración JSON (processes create).', fields: [{ name: 'name', label: 'Nome', placeholder: 'Onboarding GT' }, { name: 'config', label: 'Config (JSON)', type: 'textarea', placeholder: '{...}' }] },
-      { id: 'proc-update', method: 'PATCH', path: '/admin/processes/{id}', description: 'Actualiza metadata/estado (active/draft) y metadata JSON.', fields: [{ name: 'id', label: 'ID do processo', placeholder: 'id' }, { name: 'state', label: 'Estado', placeholder: 'active/draft' }, { name: 'metadata', label: 'Metadata (JSON)', type: 'textarea', placeholder: '{...}' }] },
-      { id: 'proc-usage', method: 'GET', path: '/admin/processes/{id}/usage', description: 'Uso y éxito del proceso (usage) para seguimiento.', fields: [{ name: 'id', label: 'ID do processo', placeholder: 'id' }] },
+      { id: 'proc-list', method: 'GET', path: '/api/v1/processes', description: 'Lista procesos y permite buscar por nombre (processes).', fields: [{ name: 'q', label: 'Buscar', placeholder: 'nombre', inQuery: true }] },
+      { id: 'proc-create', method: 'POST', path: '/api/v1/processes', description: 'Crea proceso con nombre y configuración JSON (processes create).', fields: [{ name: 'name', label: 'Nombre', placeholder: 'Onboarding GT' }, { name: 'config', label: 'Config (JSON)', type: 'textarea', placeholder: '{...}' }] },
+      { id: 'proc-update', method: 'PATCH', path: '/admin/processes/{id}', description: 'Actualiza metadata/estado (active/draft) y metadata JSON.', fields: [{ name: 'id', label: 'ID del proceso', placeholder: 'id' }, { name: 'state', label: 'Estado', placeholder: 'active/draft' }, { name: 'metadata', label: 'Metadata (JSON)', type: 'textarea', placeholder: '{...}' }] },
+      { id: 'proc-usage', method: 'GET', path: '/admin/processes/{id}/usage', description: 'Uso y éxito del proceso (usage) para seguimiento.', fields: [{ name: 'id', label: 'ID del proceso', placeholder: 'id' }] },
     ],
   },
   {
     id: 'devqa',
-    label: 'Dev & QA',
+    label: 'Dev y QA',
     accent: 'text-orange-200',
     icon: Wrench,
     endpoints: [
@@ -303,14 +303,14 @@ const endpointGroups: Group[] = [
     icon: Rocket,
     endpoints: [
       { id: 'runner-presets', method: 'GET', path: '/admin/runner/presets', description: 'Lista presets disponibles (runner/presets).', fields: [] },
-      { id: 'runner-execute', method: 'POST', path: '/admin/runner/execute', description: 'Ejecuta preset (simulate/execute) con filtros opcionales.', fields: [{ name: 'preset', label: 'preset', placeholder: 'banking_full' }, { name: 'account_opening_id', label: 'account_opening_id', placeholder: 'uuid' }, { name: 'steps', label: 'steps (csv)', placeholder: 'step1,step2' }, { name: 'limit', label: 'limit', type: 'number', placeholder: '5' }, { name: 'mode', label: 'mode', type: 'select', options: ['simulate', 'execute'].map((v) => ({ label: v, value: v })) }, boolField('stop_on_error', 'stop_on_error', true), boolField('continue_on_error', 'continue_on_error', false) ] },
-      { id: 'runner-step', method: 'POST', path: '/admin/runner/step', description: 'Ejecuta un paso único (runner/step) con payload JSON.', fields: [{ name: 'step', label: 'step', placeholder: 'nome' }, { name: 'payload', label: 'payload (JSON)', type: 'textarea', placeholder: '{...}' }] },
-      { id: 'runner-history', method: 'GET', path: '/admin/runner/history', description: 'Historial de ejecuciones (runner/history) con límite configurable.', fields: [{ name: 'limit', label: 'limit', type: 'number', inQuery: true, placeholder: '20' }] },
+      { id: 'runner-execute', method: 'POST', path: '/admin/runner/execute', description: 'Ejecuta preset (simulate/execute) con filtros opcionales.', fields: [{ name: 'preset', label: 'Preset', placeholder: 'banking_full' }, { name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: 'uuid' }, { name: 'steps', label: 'Pasos (csv)', placeholder: 'step1,step2' }, { name: 'limit', label: 'Límite', type: 'number', placeholder: '5' }, { name: 'mode', label: 'Modo', type: 'select', options: ['simulate', 'execute'].map((v) => ({ label: v, value: v })) }, boolField('stop_on_error', 'Detener en error', true), boolField('continue_on_error', 'Continuar en error', false) ] },
+      { id: 'runner-step', method: 'POST', path: '/admin/runner/step', description: 'Ejecuta un paso único (runner/step) con payload JSON.', fields: [{ name: 'step', label: 'Paso', placeholder: 'nombre' }, { name: 'payload', label: 'Payload (JSON)', type: 'textarea', placeholder: '{...}' }] },
+      { id: 'runner-history', method: 'GET', path: '/admin/runner/history', description: 'Historial de ejecuciones (runner/history) con límite configurable.', fields: [{ name: 'limit', label: 'Límite', type: 'number', inQuery: true, placeholder: '20' }] },
     ],
   },
   {
     id: 'health',
-    label: 'Health & Flow',
+    label: 'Salud y Flujo',
     accent: 'text-emerald-200',
     icon: Radar,
     endpoints: [
@@ -415,8 +415,8 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
       if (token) headers.Authorization = `Bearer ${token}`;
 
       if (!API_URL) {
-        setResult({ note: 'API_URL não configurado; resposta simulada', url: finalUrl, body: endpoint.method === 'GET' ? undefined : body });
-        toast({ title: 'Simulação offline', description: finalUrl });
+        setResult({ note: 'API_URL no configurada; respuesta simulada', url: finalUrl, body: endpoint.method === 'GET' ? undefined : body });
+        toast({ title: 'Simulación offline', description: finalUrl });
         return;
       }
 
@@ -428,22 +428,22 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(`Erro ${res.status}`);
+        setError(`Error ${res.status}`);
         setResult(json);
         setFlash('error');
         setTimeout(() => setFlash(null), 900);
-        toast({ title: 'Erro ao executar', description: endpoint.description, variant: 'destructive' });
+        toast({ title: 'Error al ejecutar', description: endpoint.description, variant: 'destructive' });
       } else {
         setResult({ status: res.status, data: json });
         setFlash('success');
         setTimeout(() => setFlash(null), 900);
-        toast({ title: 'Feito', description: endpoint.description });
+        toast({ title: 'Listo', description: endpoint.description });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro inesperado');
+      setError(err instanceof Error ? err.message : 'Error inesperado');
       setFlash('error');
       setTimeout(() => setFlash(null), 900);
-      toast({ title: 'Erro', description: 'Falha ao chamar endpoint', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Falla al llamar endpoint', variant: 'destructive' });
     } finally {
       setLoading(false);
       setConfirmDanger(false);
@@ -459,19 +459,23 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   };
 
   return (
-    <Card className="glass border-border/60 bg-surface/90 shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-lg" style={flashStyle}>
-      <CardHeader className="flex flex-wrap items-start justify-between gap-3 border-b border-border/30 pb-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Badge className={`${methodTone[endpoint.method]} text-[11px]`}>{endpoint.method}</Badge>
-            {endpoint.danger ? <Badge variant="destructive" className="text-[11px]">Ação sensível</Badge> : <Badge variant="outline" className="text-[11px] border-border/50 text-foreground/60">URL oculta</Badge>}
+    <Card className="group border border-border/60 bg-surface/90 shadow-[0_0_0_1px_rgba(255,255,255,0.03)] transition-all hover:-translate-y-[2px] hover:shadow-[0_10px_45px_rgba(0,0,0,0.55)]" style={flashStyle}>
+      <CardHeader className="flex flex-wrap items-start justify-between gap-4 border-b border-border/30 pb-3">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-foreground/60">
+            <Badge className={`${methodTone[endpoint.method]} text-[11px] font-semibold`}>{endpoint.method}</Badge>
+            {endpoint.danger ? (
+              <Badge variant="destructive" className="text-[11px]">Acción sensible</Badge>
+            ) : (
+              <Badge variant="outline" className="border-border/50 text-[11px] text-foreground/60">Seguro interno</Badge>
+            )}
+            <span className="rounded-md bg-foreground/5 px-2 py-1 font-medium text-foreground/70">{endpoint.path}</span>
           </div>
-          <p className="text-sm font-semibold text-foreground leading-snug">{endpoint.description}</p>
-          <p className="text-[11px] text-foreground/60">Ejecución guiada; la ruta se usa internamente para mantener foco y seguridad.</p>
+          <p className="text-[15px] font-semibold leading-snug text-foreground">{endpoint.description}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant={endpoint.danger && !confirmDanger ? 'destructive' : 'default'} className="shadow-sm" onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Rodando…' : confirmDanger ? 'Confirmar' : 'Ejecutar'}
+            {loading ? 'Ejecutando…' : confirmDanger ? 'Confirmar' : 'Ejecutar'}
           </Button>
         </div>
       </CardHeader>
@@ -505,9 +509,9 @@ export function PainelControlePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/40 bg-surface px-4 py-4">
         <div className="space-y-1">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-foreground/60">Mission Control · GT</p>
-          <h1 className="text-2xl font-semibold text-foreground">Panel de Control Carla</h1>
-          <p className="text-sm text-foreground/70">Acciones guiadas para verificaciones, banca y bots WhatsApp sin exponer rutas.</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-foreground/60">Panel · Operaciones</p>
+          <h1 className="text-2xl font-semibold text-foreground">Panel de Verificaciones</h1>
+          <p className="text-sm text-foreground/70">Acciones guiadas y seguras para liberar cuellos de botella sin exponer rutas.</p>
         </div>
         <Button variant="ghost" size="sm" className="text-xs">
           <RefreshCw size={14} className="mr-1" /> Actualizar lista
@@ -516,7 +520,10 @@ export function PainelControlePage() {
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {endpointGroups.map((group) => (
-          <Card key={group.id} className="border-border/40 bg-foreground/5 hover:border-border/70 hover:-translate-y-[1px] transition-all">
+          <Card
+            key={group.id}
+            className="group border border-border/50 bg-surface/80 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all hover:-translate-y-[2px] hover:shadow-[0_0_0_1px_rgba(94,234,212,0.35),0_18px_45px_rgba(0,0,0,0.55)]"
+          >
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <group.icon className={`h-5 w-5 ${group.accent}`} />
@@ -546,7 +553,7 @@ export function PainelControlePage() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
-                <p className="text-xs text-foreground/60">Ações deste domínio, só o essencial.</p>
+                <p className="text-xs text-foreground/60">Acciones de este dominio, solo lo esencial.</p>
               </div>
               <Badge variant="outline" className="text-[11px] border-border/50 text-foreground/70">
                 {group.endpoints.length} endpoints
