@@ -30,7 +30,7 @@ export default function App() {
   }, [theme]);
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-[#0b1020] via-[#0c1428] to-[#0b1020] text-foreground">
+    <div className="flex min-h-screen bg-background text-foreground">
       <aside
         className={`fixed left-0 top-0 z-30 h-full w-64 border-r border-border/40 bg-background/50 p-4 backdrop-blur-xl transition-transform duration-200 lg:static lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
