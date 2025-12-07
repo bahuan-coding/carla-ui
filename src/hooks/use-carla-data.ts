@@ -16,7 +16,6 @@ import {
   carlaHealthSchema,
   carlaHealthDataSchema,
   otpHealthSchema,
-  processAdminSchema,
   processesAdminSchema,
   processDetailSchema,
   processEventsSchema,
