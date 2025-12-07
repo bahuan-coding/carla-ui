@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, ArrowRight, BadgeCheck, Check, Clock4, Database, FileInput, Link2, Phone, RefreshCw, Repeat2, Send, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,7 +47,7 @@ export function ProcesosPage() {
   const [diditNote, setDiditNote] = useState('');
   const [bridgeBlacklist, setBridgeBlacklist] = useState({ tipoDocumento: 'dpi', numeroDocumento: '' });
   const [bridgeBlacklistResult, setBridgeBlacklistResult] = useState<unknown>(null);
-  const [bridgeClientId, setBridgeClientId] = useState('');
+  const [activeClientId, setActiveClientId] = useState('');
   const [bridgeClientResult, setBridgeClientResult] = useState<unknown>(null);
   const [bridgeCreateForm, setBridgeCreateForm] = useState({
     nombre: '',
@@ -55,10 +55,10 @@ export function ProcesosPage() {
     nacimiento: '',
     correo: '',
   });
-  const [bridgeComplementaryForm, setBridgeComplementaryForm] = useState({ clientId: '', ingresos: '', direccion: '' });
-  const [bridgeAccountForm, setBridgeAccountForm] = useState({ clientId: '', producto: 'cuenta_estandar', moneda: 'GTQ' });
-  const [bridgeOnboardingForm, setBridgeOnboardingForm] = useState({ clientId: '', estado: 'started' });
-  const [bridgeMaintenanceForm, setBridgeMaintenanceForm] = useState({ clientId: '', direccion: '', pep: 'no' });
+  const [bridgeComplementaryForm, setBridgeComplementaryForm] = useState({ ingresos: '', direccion: '' });
+  const [bridgeAccountForm, setBridgeAccountForm] = useState({ producto: 'cuenta_estandar', moneda: 'GTQ' });
+  const [bridgeOnboardingForm, setBridgeOnboardingForm] = useState({ estado: 'started' });
+  const [bridgeMaintenanceForm, setBridgeMaintenanceForm] = useState({ direccion: '', pep: 'no' });
   const [bridgeMaintenanceResult, setBridgeMaintenanceResult] = useState<unknown>(null);
 
   const filters = useMemo(() => ({ q: search, status, phone, limit: 30 }), [phone, search, status]);
@@ -116,6 +116,22 @@ export function ProcesosPage() {
     return 'No se pudo completar la operación bancaria. Intenta de nuevo.';
   };
 
+  useEffect(() => {
+    setActiveClientId(currentClient.clientId);
+    setBridgeBlacklist((p) => ({
+      ...p,
+      tipoDocumento: currentClient.documentType || p.tipoDocumento,
+      numeroDocumento: currentClient.documentNumber || p.numeroDocumento,
+    }));
+    setBridgeCreateForm((p) => ({
+      ...p,
+      nombre: currentClient.fullName || p.nombre,
+      documento: currentClient.documentNumber || p.documento,
+      nacimiento: currentClient.birthDate || p.nacimiento,
+      correo: currentClient.email || p.correo,
+    }));
+  }, [currentClient]);
+
   const ensureTarget = (id?: string, message?: string) => {
     if (!id) {
       onActionError(message || 'Seleccione un proceso');
@@ -153,6 +169,16 @@ export function ProcesosPage() {
   const timeline = detailQuery.data?.timeline || detailQuery.data?.banking_events || [];
   const auditFields = useMemo(() => ({ operator: auditOperator || undefined, reason: auditReason || undefined }), [auditOperator, auditReason]);
   const actionToast = (title: string, description: string) => toast({ title, description });
+  const currentClient = useMemo(() => {
+    const meta = (detailQuery.data?.meta || {}) as Record<string, unknown>;
+    const docNumber = (meta?.document as string) || (meta?.dpi as string) || detailQuery.data?.phone || '';
+    const docType = (meta?.document_type as string) || 'dpi';
+    const clientId = (meta?.client_id as string) || (meta?.micoope_client_id as string) || detailQuery.data?.account_opening_id || detailQuery.data?.id || '';
+    const birthDate = (meta?.birth_date as string) || '';
+    const email = (meta?.email as string) || '';
+    const fullName = detailQuery.data?.displayName || detailQuery.data?.name || (meta?.full_name as string) || '';
+    return { clientId, documentNumber: docNumber, documentType: docType, fullName, birthDate, email };
+  }, [detailQuery.data]);
 
   const renderHeaderKpi = (label: string, value: number | string, tone: 'ok' | 'warn' | 'error' = 'ok', helper?: string) => {
     const style =
@@ -676,7 +702,7 @@ export function ProcesosPage() {
                   <Badge variant="outline" className="text-[11px]">Bridge API</Badge>
                 </div>
                 <p className="text-[12px] text-foreground/70">
-                  Acciones relacionadas con la integración bancaria y la creación de clientes y cuentas.
+                  Acciones relacionadas con la integración bancaria y la creación de clientes y cuentas. Usando datos del cliente de este proceso.
                 </p>
 
                 <div className="grid gap-3 md:grid-cols-2">
@@ -685,13 +711,16 @@ export function ProcesosPage() {
                       <span>Listas restrictivas</span>
                       <Badge variant="outline" className="text-[11px]">Consulta</Badge>
                     </div>
-                    <p className="text-[12px] text-foreground/65">Consulta en listas restrictivas antes de continuar con el alta.</p>
+                    <p className="text-[12px] text-foreground/65">
+                      Se utiliza automáticamente el documento del cliente de este proceso para consultar en listas restrictivas.
+                    </p>
                     <div className="space-y-2">
                       <div className="space-y-1">
                         <label className="text-[11px] text-foreground/60">Tipo de documento</label>
                         <select
                           className="h-9 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
                           value={bridgeBlacklist.tipoDocumento}
+                          disabled
                           onChange={(e) => setBridgeBlacklist((p) => ({ ...p, tipoDocumento: e.target.value }))}
                         >
                           {['dpi', 'cui', 'pasaporte'].map((opt) => (
@@ -705,6 +734,7 @@ export function ProcesosPage() {
                         <label className="text-[11px] text-foreground/60">Número de documento</label>
                         <Input
                           value={bridgeBlacklist.numeroDocumento}
+                          disabled
                           onChange={(e) => setBridgeBlacklist((p) => ({ ...p, numeroDocumento: e.target.value }))}
                           placeholder="0000000"
                           className="h-9 text-xs"
@@ -715,7 +745,7 @@ export function ProcesosPage() {
                         className="text-xs"
                         disabled={bridgeBlacklistMutation.isPending}
                         onClick={() => {
-                          if (!bridgeBlacklist.numeroDocumento.trim()) return onActionError('Completa el documento');
+                          if (!bridgeBlacklist.numeroDocumento.trim()) return onActionError('Documento no disponible en el proceso');
                           bridgeBlacklistMutation.mutate(
                             { tipoDocumento: bridgeBlacklist.tipoDocumento, numeroDocumento: bridgeBlacklist.numeroDocumento },
                             {
@@ -746,32 +776,25 @@ export function ProcesosPage() {
                     <div className="space-y-3">
                       <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
                         <p className="text-[12px] text-foreground/70">Consulta de cliente</p>
-                        <div className="flex gap-2">
-                          <Input
-                            value={bridgeClientId}
-                            onChange={(e) => setBridgeClientId(e.target.value)}
-                            placeholder="ID de cliente"
-                            className="h-9 text-xs"
-                          />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-xs"
-                            disabled={bridgeClientQuery.isPending}
-                            onClick={() => {
-                              if (!bridgeClientId.trim()) return onActionError('Ingresa el ID de cliente');
-                              bridgeClientQuery.mutate(bridgeClientId, {
-                                onSuccess: (res) => {
-                                  setBridgeClientResult(res);
-                                  toast({ title: 'Cliente encontrado', description: 'Resumen actualizado.' });
-                                },
-                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
-                              });
-                            }}
-                          >
-                            {bridgeClientQuery.isPending ? 'Buscando...' : 'Buscar cliente'}
-                          </Button>
-                        </div>
+                        <p className="text-[11px] text-foreground/60">ID de cliente cargado automáticamente: <span className="font-semibold text-foreground">{activeClientId || '—'}</span></p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          disabled={bridgeClientQuery.isPending || !activeClientId}
+                          onClick={() => {
+                            if (!activeClientId) return onActionError('ID de cliente no disponible en el proceso');
+                            bridgeClientQuery.mutate(activeClientId, {
+                              onSuccess: (res) => {
+                                setBridgeClientResult(res);
+                                toast({ title: 'Cliente encontrado', description: 'Se usó el ID del proceso.' });
+                              },
+                              onError: (e) => onActionError(bridgeFriendlyError(e), e),
+                            });
+                          }}
+                        >
+                          {bridgeClientQuery.isPending ? 'Buscando...' : 'Buscar cliente'}
+                        </Button>
                         {bridgeClientResult ? (
                           <div className="rounded border border-border/50 bg-background/80 p-2 text-[11px] text-foreground/80">
                             <p className="font-semibold text-foreground">{(bridgeClientResult as { nombre?: string })?.nombre || 'Cliente'}</p>
@@ -822,13 +845,9 @@ export function ProcesosPage() {
                                   const newId =
                                     (res as { client_id?: string; id?: string })?.client_id ||
                                     (res as { id?: string })?.id ||
-                                    bridgeClientId;
+                                    activeClientId;
                                   if (newId) {
-                                    setBridgeClientId(newId);
-                                    setBridgeComplementaryForm((p) => ({ ...p, clientId: newId }));
-                                    setBridgeAccountForm((p) => ({ ...p, clientId: newId }));
-                                    setBridgeOnboardingForm((p) => ({ ...p, clientId: newId }));
-                                    setBridgeMaintenanceForm((p) => ({ ...p, clientId: newId }));
+                                    setActiveClientId(newId);
                                   }
                                   toast({ title: 'Cliente creado correctamente', description: newId || 'Cliente listo para onboarding.' });
                                 },
@@ -853,12 +872,7 @@ export function ProcesosPage() {
                     <div className="space-y-3">
                       <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
                         <p className="text-[12px] text-foreground/70">Paso 1 – Datos complementarios</p>
-                        <Input
-                          value={bridgeComplementaryForm.clientId}
-                          onChange={(e) => setBridgeComplementaryForm((p) => ({ ...p, clientId: e.target.value }))}
-                          placeholder="ID de cliente"
-                          className="h-8 text-xs"
-                        />
+                        <p className="text-[11px] text-foreground/60">ID de cliente cargado automáticamente: <span className="font-semibold text-foreground">{activeClientId || '—'}</span></p>
                         <Input
                           value={bridgeComplementaryForm.ingresos}
                           onChange={(e) => setBridgeComplementaryForm((p) => ({ ...p, ingresos: e.target.value }))}
@@ -875,11 +889,11 @@ export function ProcesosPage() {
                           size="sm"
                           variant="outline"
                           className="text-xs"
-                          disabled={bridgeComplementaryCreate.isPending}
+                          disabled={bridgeComplementaryCreate.isPending || !activeClientId}
                           onClick={() => {
-                            if (!bridgeComplementaryForm.clientId.trim()) return onActionError('ID de cliente requerido');
+                            if (!activeClientId) return onActionError('ID de cliente no disponible en el proceso');
                             bridgeComplementaryCreate.mutate(
-                              { clientId: bridgeComplementaryForm.clientId, body: bridgeComplementaryForm },
+                              { clientId: activeClientId, body: bridgeComplementaryForm },
                               {
                                 onSuccess: () => toast({ title: 'Datos complementarios guardados', description: 'Paso 1 completado.' }),
                                 onError: (e) => onActionError(bridgeFriendlyError(e), e),
@@ -893,12 +907,7 @@ export function ProcesosPage() {
 
                       <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
                         <p className="text-[12px] text-foreground/70">Paso 2 – Crear cuenta estándar</p>
-                        <Input
-                          value={bridgeAccountForm.clientId}
-                          onChange={(e) => setBridgeAccountForm((p) => ({ ...p, clientId: e.target.value }))}
-                          placeholder="ID de cliente"
-                          className="h-8 text-xs"
-                        />
+                        <p className="text-[11px] text-foreground/60">ID de cliente cargado automáticamente: <span className="font-semibold text-foreground">{activeClientId || '—'}</span></p>
                         <Input
                           value={bridgeAccountForm.producto}
                           onChange={(e) => setBridgeAccountForm((p) => ({ ...p, producto: e.target.value }))}
@@ -915,11 +924,11 @@ export function ProcesosPage() {
                           size="sm"
                           variant="outline"
                           className="text-xs"
-                          disabled={bridgeCreateAccount.isPending}
+                          disabled={bridgeCreateAccount.isPending || !activeClientId}
                           onClick={() => {
-                            if (!bridgeAccountForm.clientId.trim()) return onActionError('ID de cliente requerido');
+                            if (!activeClientId) return onActionError('ID de cliente no disponible en el proceso');
                             bridgeCreateAccount.mutate(
-                              { clientId: bridgeAccountForm.clientId, body: bridgeAccountForm },
+                              { clientId: activeClientId, body: bridgeAccountForm },
                               {
                                 onSuccess: () => toast({ title: 'Cuenta creada', description: 'Paso 2 completado.' }),
                                 onError: (e) => onActionError(bridgeFriendlyError(e), e),
@@ -933,12 +942,7 @@ export function ProcesosPage() {
 
                       <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
                         <p className="text-[12px] text-foreground/70">Paso 3 – Actualizar estado de onboarding</p>
-                        <Input
-                          value={bridgeOnboardingForm.clientId}
-                          onChange={(e) => setBridgeOnboardingForm((p) => ({ ...p, clientId: e.target.value }))}
-                          placeholder="ID de cliente"
-                          className="h-8 text-xs"
-                        />
+                        <p className="text-[11px] text-foreground/60">ID de cliente cargado automáticamente: <span className="font-semibold text-foreground">{activeClientId || '—'}</span></p>
                         <select
                           className="h-9 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
                           value={bridgeOnboardingForm.estado}
@@ -954,11 +958,11 @@ export function ProcesosPage() {
                           size="sm"
                           variant="outline"
                           className="text-xs"
-                          disabled={bridgeUpdateOnboarding.isPending}
+                          disabled={bridgeUpdateOnboarding.isPending || !activeClientId}
                           onClick={() => {
-                            if (!bridgeOnboardingForm.clientId.trim()) return onActionError('ID de cliente requerido');
+                            if (!activeClientId) return onActionError('ID de cliente no disponible en el proceso');
                             bridgeUpdateOnboarding.mutate(
-                              { clientId: bridgeOnboardingForm.clientId, body: { estado: bridgeOnboardingForm.estado } },
+                              { clientId: activeClientId, body: { estado: bridgeOnboardingForm.estado } },
                               {
                                 onSuccess: () => toast({ title: 'Onboarding actualizado', description: 'Paso 3 completado.' }),
                                 onError: (e) => onActionError(bridgeFriendlyError(e), e),
@@ -980,12 +984,7 @@ export function ProcesosPage() {
                     <div className="space-y-3">
                       <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
                         <p className="text-[12px] text-foreground/70">Actualizar datos complementarios</p>
-                        <Input
-                          value={bridgeMaintenanceForm.clientId}
-                          onChange={(e) => setBridgeMaintenanceForm((p) => ({ ...p, clientId: e.target.value }))}
-                          placeholder="ID de cliente"
-                          className="h-8 text-xs"
-                        />
+                        <p className="text-[11px] text-foreground/60">ID de cliente cargado automáticamente: <span className="font-semibold text-foreground">{activeClientId || '—'}</span></p>
                         <Input
                           value={bridgeMaintenanceForm.direccion}
                           onChange={(e) => setBridgeMaintenanceForm((p) => ({ ...p, direccion: e.target.value }))}
@@ -1007,11 +1006,11 @@ export function ProcesosPage() {
                           size="sm"
                           variant="outline"
                           className="text-xs"
-                          disabled={bridgeUpdateComplementary.isPending}
+                          disabled={bridgeUpdateComplementary.isPending || !activeClientId}
                           onClick={() => {
-                            if (!bridgeMaintenanceForm.clientId.trim()) return onActionError('ID de cliente requerido');
+                            if (!activeClientId) return onActionError('ID de cliente no disponible en el proceso');
                             bridgeUpdateComplementary.mutate(
-                              { clientId: bridgeMaintenanceForm.clientId, body: bridgeMaintenanceForm },
+                              { clientId: activeClientId, body: bridgeMaintenanceForm },
                               {
                                 onSuccess: (res) => {
                                   setBridgeMaintenanceResult(res);
@@ -1028,31 +1027,24 @@ export function ProcesosPage() {
 
                       <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
                         <p className="text-[12px] text-foreground/70">Consultar datos complementarios</p>
-                        <div className="flex gap-2">
-                          <Input
-                            value={bridgeMaintenanceForm.clientId}
-                            onChange={(e) => setBridgeMaintenanceForm((p) => ({ ...p, clientId: e.target.value }))}
-                            placeholder="ID de cliente"
-                            className="h-8 text-xs"
-                          />
-                          <Button
-                            size="sm"
-                            className="text-xs"
-                            disabled={bridgeQueryComplement.isPending}
-                            onClick={() => {
-                              if (!bridgeMaintenanceForm.clientId.trim()) return onActionError('ID de cliente requerido');
-                              bridgeQueryComplement.mutate(bridgeMaintenanceForm.clientId, {
-                                onSuccess: (res) => {
-                                  setBridgeMaintenanceResult(res);
-                                  toast({ title: 'Consulta completada', description: 'Datos complementarios listos.' });
-                                },
-                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
-                              });
-                            }}
-                          >
-                            {bridgeQueryComplement.isPending ? 'Consultando...' : 'Consultar'}
-                          </Button>
-                        </div>
+                        <p className="text-[11px] text-foreground/60">Se usa el ID del cliente de este proceso.</p>
+                        <Button
+                          size="sm"
+                          className="text-xs"
+                          disabled={bridgeQueryComplement.isPending || !activeClientId}
+                          onClick={() => {
+                            if (!activeClientId) return onActionError('ID de cliente no disponible en el proceso');
+                            bridgeQueryComplement.mutate(activeClientId, {
+                              onSuccess: (res) => {
+                                setBridgeMaintenanceResult(res);
+                                toast({ title: 'Consulta completada', description: 'Datos complementarios listos.' });
+                              },
+                              onError: (e) => onActionError(bridgeFriendlyError(e), e),
+                            });
+                          }}
+                        >
+                          {bridgeQueryComplement.isPending ? 'Consultando...' : 'Consultar'}
+                        </Button>
                         {bridgeMaintenanceResult ? (
                           <pre className="rounded bg-foreground/5 p-2 text-[11px] leading-relaxed text-foreground/70">
                             {JSON.stringify(bridgeMaintenanceResult, null, 2)}

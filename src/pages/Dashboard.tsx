@@ -185,24 +185,43 @@ export function DashboardPage() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
           {kpisQuery.isLoading
-            ? Array.from({ length: 5 }).map((_, idx) => <Skeleton key={idx} className="h-28 w-full bg-foreground/10" />)
+            ? Array.from({ length: 5 }).map((_, idx) => (
+                <Skeleton key={idx} className="h-32 w-full rounded-xl border border-border/50 bg-foreground/5" />
+              ))
             : (kpisQuery.data || []).map((kpi) => {
                 const delta =
                   typeof kpi.delta === 'number' ? `${kpi.delta > 0 ? '+' : ''}${kpi.delta}%` : kpi.delta || '—';
                 const isNegative = delta.startsWith('-');
+                const deltaTone = isNegative
+                  ? 'bg-destructive/10 border-destructive/30 text-destructive'
+                  : delta === '—' || delta === '0%' || delta === '+0%'
+                    ? 'bg-background/60 border-border/50 text-foreground/60'
+                    : 'bg-emerald-500/10 border-emerald-300/40 text-emerald-200';
                 return (
-                  <Card key={kpi.id || kpi.label} className="glass h-full border-border/60 bg-surface text-foreground">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium text-foreground/80">{kpi.label}</CardTitle>
-                      <Badge variant="outline" className={isNegative ? 'text-red-400 border-red-400/30' : 'text-emerald-300 border-emerald-300/30'}>
-                        {delta}
-                      </Badge>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center gap-2 text-2xl font-semibold">
-                        <span className="text-accent">{kpi.value}</span>
+                  <Card
+                    key={kpi.id || kpi.label}
+                    className="group glass h-full overflow-hidden border-border/70 bg-gradient-to-br from-surface/95 via-background/90 to-surface/95 text-foreground shadow-lg"
+                  >
+                    <CardHeader className="relative overflow-hidden rounded-t-lg border-b border-border/50 pb-2">
+                      <div className="absolute inset-0 bg-gradient-to-r from-accent/15 via-surface/40 to-transparent" />
+                      <div className="relative flex items-center justify-between gap-2">
+                        <CardTitle className="text-[13px] font-semibold leading-tight text-foreground/80">{kpi.label}</CardTitle>
+                        <Badge
+                          variant="outline"
+                          className={`flex items-center gap-1 rounded-full border ${deltaTone} px-2 py-0.5 text-[11px]`}
+                        >
+                          {isNegative ? '↓' : delta === '—' ? '•' : '↑'} {delta}
+                        </Badge>
                       </div>
-                      <p className="text-xs text-foreground/60">{kpi.helper || 'Operação em tempo real'}</p>
+                    </CardHeader>
+                    <CardContent className="space-y-2 px-4 pb-4 pt-3">
+                      <div className="flex items-baseline gap-2 text-3xl font-semibold tracking-tight">
+                        <span className="text-accent drop-shadow-sm">{kpi.value}</span>
+                        <span className="text-xs font-medium uppercase text-foreground/50">últimos {period || '7d'}</span>
+                      </div>
+                      <p className="text-[12px] leading-relaxed text-foreground/65">
+                        {kpi.helper || 'Operação em tempo real'}
+                      </p>
                     </CardContent>
                   </Card>
                 );
