@@ -272,11 +272,8 @@ export function DashboardPage() {
               <Skeleton className="h-48 w-full bg-foreground/10" />
             ) : (
               <>
-                <div className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-r from-background via-surface/90 to-background p-4">
-                  <div
-                    className="pointer-events-none absolute inset-0 opacity-15"
-                    style={{ backgroundImage: 'linear-gradient(120deg, rgba(52, 211, 153, 0.12), rgba(93, 163, 255, 0.12))', backgroundSize: '200% 200%' }}
-                  />
+                <div className="relative overflow-hidden rounded-xl border border-border/50 bg-background/50 p-4 shadow-[0_10px_50px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+                  <div className="pointer-events-none absolute inset-0 opacity-35" style={{ background: 'radial-gradient(circle at 20% 20%, rgba(52,211,153,0.16), transparent 45%), radial-gradient(circle at 80% 0%, rgba(93,163,255,0.12), transparent 40%)' }} />
                   <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-center gap-3">
                       <div className="relative">
@@ -291,36 +288,41 @@ export function DashboardPage() {
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                      <span className={`rounded-full px-2 py-1 ${overallHealth ? toneBadge(overallHealth.tone) : 'bg-foreground/10 text-foreground/70'}`}>
+                      <span className={`flex items-center gap-1 rounded-full px-2 py-1 ${overallHealth ? toneBadge(overallHealth.tone) : 'bg-foreground/10 text-foreground/70'}`}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-current shadow-[0_0_8px_currentColor]" />
                         {overallHealth?.tone === 'error' ? 'Crítico' : overallHealth?.tone === 'warn' ? 'Vigilante' : statusSummary.hasHeartbeat ? 'OK ao vivo' : 'Sem sinais'}
                       </span>
-                      <span className="rounded-full border border-border/60 px-2 py-1 text-foreground/70">
+                      <span className="rounded-full border border-border/50 px-2 py-1 text-foreground/70 backdrop-blur-sm">
                         {overallHealth?.timestamp ? `Atualizado ${new Date(overallHealth.timestamp).toLocaleTimeString()}` : 'Atualizando'}
                       </span>
                     </div>
                   </div>
                   <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-foreground/10">
-                    <div className="h-full rounded-full bg-gradient-to-r from-accent via-emerald-400 to-accent" />
+                    <div className="h-full rounded-full bg-gradient-to-r from-accent/70 via-emerald-400/70 to-accent/70" />
                   </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
                   {healthServices.length ? (
-                    healthServices.map((service) => (
-                      <div key={service.name} className="rounded-lg border border-border/50 bg-background/70 p-3">
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-accent" />
-                            <span className="text-foreground/80">{service.name}</span>
+                    healthServices.map((service) => {
+                      const showLatency = service.latency !== null && service.latency !== undefined;
+                      return (
+                        <div key={service.name} className="rounded-lg border border-border/50 bg-background/70 p-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="h-2 w-2 rounded-full bg-accent" />
+                              <span className="text-foreground/80">{service.name}</span>
+                            </div>
+                            <span className={`rounded-full px-2 py-1 text-[11px] ${toneBadge(statusTone(service.status))}`}>{service.status || '—'}</span>
                           </div>
-                          <span className={`rounded-full px-2 py-1 text-[11px] ${toneBadge(statusTone(service.status))}`}>{service.status || '—'}</span>
+                          {showLatency ? (
+                            <div className="mt-2 flex items-center justify-between text-[11px] text-foreground/60">
+                              <span>Latência {formatMs(service.latency)}</span>
+                            </div>
+                          ) : null}
                         </div>
-                        <div className="mt-2 flex items-center justify-between text-[11px] text-foreground/60">
-                          <span>Latência {formatMs(service.latency)}</span>
-                          <span className="text-foreground/50"></span>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="col-span-full rounded-lg border border-border/50 bg-background/60 px-3 py-3 text-sm text-foreground/70">
                       Nenhum serviço reportando ainda. Aguardando heartbeat OTP/Core.
@@ -364,8 +366,8 @@ export function DashboardPage() {
                       />
                     </pre>
                   ) : (
-                    <div className="rounded-md border border-dashed border-border/50 bg-background/60 px-3 py-2 text-[11px] text-foreground/60">
-                      Snapshot oculto. Clique para exibir JSON vivo.
+                    <div className="rounded-md border border-dashed border-border/50 bg-background/70 px-3 py-2 text-[11px] text-foreground/70">
+                      Telemetria em buffer. Clique para rearmar o snapshot vivo.
                     </div>
                   )}
                 </div>
