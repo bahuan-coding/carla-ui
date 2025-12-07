@@ -60,9 +60,9 @@ async function request<T>({
       const payload = await response.json();
       const detail = payload?.error?.detail || payload?.detail || payload?.message;
       const message = detail ? `${base}: ${detail}` : base;
-      const error = new Error(message);
-      (error as Record<string, unknown>).violations = payload?.error?.violations;
-      (error as Record<string, unknown>).payload = payload;
+      const error = new Error(message) as Error & { violations?: unknown; payload?: unknown };
+      error.violations = payload?.error?.violations;
+      error.payload = payload;
       return error;
     } catch {
       return new Error(base);
