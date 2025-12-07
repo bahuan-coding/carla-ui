@@ -345,8 +345,6 @@ const formatValue = (val: any) => {
   return String(val);
 };
 
-const methodTone: Record<string, string> = { GET: 'bg-emerald-500/10 text-emerald-200', POST: 'bg-sky-500/10 text-sky-200', PATCH: 'bg-amber-500/10 text-amber-200' };
-
 function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   const { toast } = useToast();
   const [form, setForm] = useState<Record<string, any>>(() => initialForm(endpoint));

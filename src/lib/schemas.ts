@@ -99,6 +99,7 @@ const connectionPoolSchema = z
     max: z.number().optional(),
   })
   .passthrough()
+  .nullable()
   .optional();
 
 const carlaServiceSchema = z.object({
