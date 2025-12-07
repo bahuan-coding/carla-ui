@@ -68,19 +68,19 @@ const endpointGroups: Group[] = [
     accent: 'text-emerald-300',
     icon: ShieldCheck,
     endpoints: [
-      { id: 'ver-stats', method: 'GET', path: '/admin/verifications/stats', description: 'Totales por estado' },
+      { id: 'ver-stats', method: 'GET', path: '/admin/verifications/stats', description: 'Resumo geral: quantas verificações estão aprovadas, pendentes ou com erro. Útil para saber se há fila acumulada.' },
       {
         id: 'ver-stuck',
         method: 'GET',
         path: '/admin/verifications/stuck',
-        description: 'Pendentes acima do limite de horas',
+        description: 'Encontrar verificações presas há muitas horas para que a equipe libere manualmente.',
         fields: [{ name: 'hours', label: 'Horas pendente', type: 'number', placeholder: '24', inQuery: true }],
       },
       {
         id: 'ver-approve',
         method: 'POST',
         path: '/admin/verifications/{account_opening_id}/approve-manual',
-        description: 'Aprovar verificação (forçado)',
+        description: 'Aprovar a conta manualmente quando a pessoa já enviou tudo e o QIC falhou. Isso marca o telefone como verificado e segue o fluxo bancário.',
         fields: [
           { name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' },
           { name: 'operator', label: 'Operador (correo)', placeholder: 'agente@carla.gt' },
@@ -92,7 +92,7 @@ const endpointGroups: Group[] = [
         id: 'ver-reject',
         method: 'POST',
         path: '/admin/verifications/{account_opening_id}/reject-manual',
-        description: 'Rechazar verificação (forçado)',
+        description: 'Rejeitar manualmente quando o documento é inválido ou suspeito. Para o fluxo e registra a justificativa.',
         fields: [
           { name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' },
           { name: 'reason', label: 'Motivo', placeholder: 'Por que rechazar' },
@@ -100,25 +100,49 @@ const endpointGroups: Group[] = [
         ],
         danger: true,
       },
-      { id: 'ver-status-phone', method: 'GET', path: '/admin/verifications/status/{phone}', description: 'Estado por teléfono', fields: [{ name: 'phone', label: 'Teléfono (+502)', placeholder: '+502 55 55 55 55' }] },
-      { id: 'ver-status-timeline', method: 'GET', path: '/admin/verifications/{account_opening_id}/verify/status', description: 'Timeline completa', fields: [{ name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' }] },
-      { id: 'ver-renap', method: 'POST', path: '/admin/verifications/{account_opening_id}/verify/renap', description: 'Forçar RENAP', fields: [{ name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' }] },
+      {
+        id: 'ver-status-phone',
+        method: 'GET',
+        path: '/admin/verifications/status/{phone}',
+        description: 'Consulta o estado da verificação pela linha do WhatsApp. Use quando o cliente pergunta “ya pasé?”',
+        fields: [{ name: 'phone', label: 'Teléfono (+502)', placeholder: '+502 55 55 55 55' }],
+      },
+      {
+        id: 'ver-status-timeline',
+        method: 'GET',
+        path: '/admin/verifications/{account_opening_id}/verify/status',
+        description: 'Mostra todo o histórico da conta: OTP, RENAP, DIDIT, QIC. Bom para investigar onde travou.',
+        fields: [{ name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' }],
+      },
+      {
+        id: 'ver-renap',
+        method: 'POST',
+        path: '/admin/verifications/{account_opening_id}/verify/renap',
+        description: 'Dispara nova consulta RENAP manual quando o dado civil precisa ser rechecado.',
+        fields: [{ name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' }],
+      },
       {
         id: 'ver-phone-campaign',
         method: 'POST',
         path: '/admin/verifications/phone-campaign/trigger',
-        description: 'Disparar campanha OTP',
+        description: 'Envia OTP em lote para telefones que ainda não validaram. Use para recuperar pendentes.',
         fields: [
-          { name: 'batch_size', label: 'Tamanho do lote', type: 'number', placeholder: '50' },
-          { name: 'exclude_recent_hours', label: 'Ignorar últimos (h)', type: 'number', placeholder: '24' },
+          { name: 'batch_size', label: 'Quantos envios', type: 'number', placeholder: '50' },
+          { name: 'exclude_recent_hours', label: 'Ignorar envios nas últimas (h)', type: 'number', placeholder: '24' },
         ],
       },
-      { id: 'ver-otp-resend', method: 'POST', path: '/admin/verifications/otp/resend', description: 'Reenviar OTP', fields: [{ name: 'phone', label: 'Teléfono (+502)', placeholder: '+502...' }, { name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' }] },
+      {
+        id: 'ver-otp-resend',
+        method: 'POST',
+        path: '/admin/verifications/otp/resend',
+        description: 'Reenvia o código OTP para o mesmo telefone. Use quando o cliente diz que não recebeu.',
+        fields: [{ name: 'phone', label: 'Teléfono (+502)', placeholder: '+502...' }, { name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' }],
+      },
       {
         id: 'ver-otp-override',
         method: 'POST',
         path: '/admin/verifications/otp/mark-verified',
-        description: 'Marcar OTP verificado',
+        description: 'Marcar OTP como verificado após checagem manual (ex.: ligamos e confirmamos a linha).',
         fields: [
           { name: 'phone', label: 'Teléfono (+502)', placeholder: '+502...' },
           { name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: '8a2c-...' },
@@ -132,7 +156,7 @@ const endpointGroups: Group[] = [
         id: 'ver-didit-override',
         method: 'POST',
         path: '/admin/verifications/{id}/didit/override',
-        description: 'Ajustar status DIDIT',
+        description: 'Ajustar status DIDIT manualmente (aprovado, rejeitado ou pendente) e registrar nota.',
         fields: [
           { name: 'id', label: 'ID de verificação', placeholder: 'verif id' },
           { name: 'status', label: 'Status', type: 'select', options: ['approved', 'rejected', 'pending', 'error'].map((v) => ({ label: v, value: v })) },
@@ -147,13 +171,13 @@ const endpointGroups: Group[] = [
     accent: 'text-sky-300',
     icon: Database,
     endpoints: [
-      { id: 'bank-poller', method: 'GET', path: '/admin/banking/client-poller', description: 'Executar fila bancária', fields: [{ name: 'limit', label: 'Límite', type: 'number', placeholder: '50', inQuery: true }, boolField('include_events', 'Ver timeline', true)] },
-      { id: 'bank-ready', method: 'GET', path: '/account-openings/ready-for-bank', description: 'Clientes prontos para banco', fields: [{ name: 'limit', label: 'Límite', type: 'number', placeholder: '50', inQuery: true }] },
+      { id: 'bank-poller', method: 'GET', path: '/admin/banking/client-poller', description: 'Roda a fila de envio ao banco e mostra os detalhes por cliente. Use para acompanhar processamento.', fields: [{ name: 'limit', label: 'Límite', type: 'number', placeholder: '50', inQuery: true }, boolField('include_events', 'Ver timeline', true)] },
+      { id: 'bank-ready', method: 'GET', path: '/account-openings/ready-for-bank', description: 'Lista contas prontas para enviar ao banco (backlog).', fields: [{ name: 'limit', label: 'Límite', type: 'number', placeholder: '50', inQuery: true }] },
       {
         id: 'bank-status',
         method: 'POST',
         path: '/admin/banking/{id}/status',
-        description: 'Forçar status bancário',
+        description: 'Mudar o status bancário manualmente (ex.: colocar em retry ou marcar conta criada).',
         fields: [
           { name: 'id', label: 'ID bancário', placeholder: 'id banco' },
           { name: 'status', label: 'Status', type: 'select', options: ['ready_for_bank', 'bank_queued', 'bank_processing', 'bank_retry', 'bank_rejected', 'account_created'].map((v) => ({ label: v, value: v })) },
@@ -161,19 +185,19 @@ const endpointGroups: Group[] = [
         ],
         danger: true,
       },
-      { id: 'bank-retry', method: 'POST', path: '/admin/banking/{id}/retry', description: 'Mover para retry', fields: [{ name: 'id', label: 'ID bancário', placeholder: 'id banco' }] },
+      { id: 'bank-retry', method: 'POST', path: '/admin/banking/{id}/retry', description: 'Move o caso para fila de retry e limpa último erro.', fields: [{ name: 'id', label: 'ID bancário', placeholder: 'id banco' }] },
       {
         id: 'bank-payload',
         method: 'POST',
         path: '/admin/banking/{id}/payload/save',
-        description: 'Salvar payloads request/response',
+        description: 'Anexa o request/response trocado com o banco para auditoria.',
         fields: [
           { name: 'id', label: 'ID bancário', placeholder: 'id banco' },
           { name: 'request_payload', label: 'Request (JSON)', type: 'textarea', placeholder: '{...}' },
           { name: 'response_payload', label: 'Response (JSON)', type: 'textarea', placeholder: '{...}' },
         ],
       },
-      { id: 'bank-events', method: 'GET', path: '/admin/banking/events/{id}', description: 'Timeline banking', fields: [{ name: 'id', label: 'ID bancário', placeholder: 'id banco' }] },
+      { id: 'bank-events', method: 'GET', path: '/admin/banking/events/{id}', description: 'Timeline do caso bancário: tudo que já foi enviado e retornado.', fields: [{ name: 'id', label: 'ID bancário', placeholder: 'id banco' }] },
     ],
   },
   {
@@ -182,14 +206,14 @@ const endpointGroups: Group[] = [
     accent: 'text-amber-300',
     icon: Server,
     endpoints: [
-      { id: 'cron-account-openings', method: 'GET', path: '/cron/account-openings', description: 'Cron worker banco' },
-      { id: 'cron-phone-campaign', method: 'GET', path: '/cron/phone-verification-campaign', description: 'Cron campanha OTP' },
-      { id: 'worker-account-openings', method: 'POST', path: '/admin/workers/account-openings/run', description: 'Run account openings', fields: workerRunFields },
-      { id: 'worker-phone-campaign', method: 'POST', path: '/admin/workers/phone-campaign/run', description: 'Run phone campaign', fields: workerRunFields },
-      { id: 'worker-banking', method: 'POST', path: '/admin/workers/banking/run', description: 'Run banking worker', fields: [{ name: 'limit', label: 'limit', type: 'number', placeholder: '50' }, boolField('include_events', 'include_events', true)] },
-      { id: 'worker-pause', method: 'POST', path: '/admin/workers/pause', description: 'Pausar worker', fields: [{ name: 'worker', label: 'Nome do worker', placeholder: 'account-openings' }, { name: 'reason', label: 'Motivo', placeholder: 'Por quê?' }] },
-      { id: 'worker-resume', method: 'POST', path: '/admin/workers/resume', description: 'Retomar worker', fields: [{ name: 'worker', label: 'Nome do worker', placeholder: 'account-openings' }, { name: 'reason', label: 'Motivo', placeholder: 'Por quê?' }] },
-      { id: 'worker-status', method: 'GET', path: '/admin/workers/status', description: 'Locks e último run' },
+      { id: 'cron-account-openings', method: 'GET', path: '/cron/account-openings', description: 'Executa o cron de contas (Vercel). Útil para forçar em ambientes de teste.' },
+      { id: 'cron-phone-campaign', method: 'GET', path: '/cron/phone-verification-campaign', description: 'Roda o cron da campanha OTP automaticamente.' },
+      { id: 'worker-account-openings', method: 'POST', path: '/admin/workers/account-openings/run', description: 'Processa contas em lote agora (mesmo que o cron não rode).', fields: workerRunFields },
+      { id: 'worker-phone-campaign', method: 'POST', path: '/admin/workers/phone-campaign/run', description: 'Processa campanha OTP em lote imediatamente.', fields: workerRunFields },
+      { id: 'worker-banking', method: 'POST', path: '/admin/workers/banking/run', description: 'Dispara o worker bancário manualmente para enviar/atualizar casos.', fields: [{ name: 'limit', label: 'limit', type: 'number', placeholder: '50' }, boolField('include_events', 'include_events', true)] },
+      { id: 'worker-pause', method: 'POST', path: '/admin/workers/pause', description: 'Pausa um worker específico (para manter filas paradas).', fields: [{ name: 'worker', label: 'Nome do worker', placeholder: 'account-openings' }, { name: 'reason', label: 'Motivo', placeholder: 'Por quê?' }] },
+      { id: 'worker-resume', method: 'POST', path: '/admin/workers/resume', description: 'Retoma um worker pausado.', fields: [{ name: 'worker', label: 'Nome do worker', placeholder: 'account-openings' }, { name: 'reason', label: 'Motivo', placeholder: 'Por quê?' }] },
+      { id: 'worker-status', method: 'GET', path: '/admin/workers/status', description: 'Mostra último run, locks e estado de cada worker.' },
     ],
   },
   {
@@ -456,12 +480,9 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
           <div className="grid gap-3 md:grid-cols-2">
             {endpoint.fields.map((field) => (
               <div key={field.name} className="space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-foreground/70">{field.label}</span>
-                  {field.inQuery ? <Badge variant="outline" className="text-[10px] border-border/50">query</Badge> : null}
-                </div>
+                <span className="text-[12px] font-medium text-foreground">{field.label}</span>
                 {renderField(field)}
-                {field.helper ? <p className="text-[11px] text-foreground/50">{field.helper}</p> : null}
+                {field.helper ? <p className="text-[11px] text-foreground/60 leading-relaxed">{field.helper}</p> : null}
               </div>
             ))}
           </div>

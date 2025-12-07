@@ -114,7 +114,7 @@ const carlaHealthDataSchema = z.object({
   version: z.string().optional(),
   environment: z.string().optional(),
   uptime_seconds: z.number().optional(),
-  services: z.record(carlaServiceSchema).default({}),
+  services: z.record(z.string(), carlaServiceSchema).default({}),
   system: z
     .object({
       python_version: z.string().optional(),

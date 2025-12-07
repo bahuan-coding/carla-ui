@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Activity, AlertCircle, BarChart3, Gauge, MessagesSquare, RefreshCw, ShieldCheck, TriangleAlert, Wifi } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,22 +42,24 @@ export function DashboardPage() {
 
   const healthServices = useMemo(() => {
     const services: { name: string; status?: string; env?: string; latency?: number | null; pool?: { active?: number | null; max?: number | null }; type?: string | null }[] = [];
-    const carlaServices = healthQuery.data?.carla?.services || {};
+    const carlaData = (healthQuery.data as any)?.carla || (healthQuery.data as any)?.data || {};
+    const otpData = (healthQuery.data as any)?.otp;
+    const carlaServices = (carlaData?.services || {}) as Record<string, any>;
     Object.entries(carlaServices).forEach(([name, svc]) => {
       services.push({
         name,
         status: svc?.status,
-        env: healthQuery.data?.carla?.environment,
+        env: carlaData?.environment,
         latency: svc?.latency_ms ?? null,
         pool: svc?.connection_pool ?? undefined,
         type: svc?.type ?? null,
       });
     });
-    if (healthQuery.data?.otp) {
+    if (otpData) {
       services.push({
-        name: healthQuery.data.otp.service || 'OTP',
-        status: healthQuery.data.otp.status,
-        env: healthQuery.data.otp.environment,
+        name: otpData.service || 'OTP',
+        status: otpData.status,
+        env: otpData.environment,
         latency: null,
       });
     }
@@ -70,6 +71,8 @@ export function DashboardPage() {
       return { tone: 'error' as const, label: 'Erro ao consultar health', helper: 'Retente em instantes.' };
     }
     if (!healthQuery.data) return null;
+    const carlaData = (healthQuery.data as any)?.carla || (healthQuery.data as any)?.data || {};
+    const otpData = (healthQuery.data as any)?.otp;
     const statuses = healthServices.map((s) => s.status?.toLowerCase?.() || '');
     const hasError = statuses.some((s) => /error|down|fail|degrad/.test(s));
     const hasWarn = !hasError && statuses.some((s) => !/healthy|operational|connected|ok/.test(s));
@@ -79,9 +82,9 @@ export function DashboardPage() {
       tone,
       label,
       helper: hasError ? 'Priorizar mitigação agora' : hasWarn ? 'Monitorando latência e fila' : 'Monitorando uptime e latência',
-      uptime: healthQuery.data.carla?.uptime_seconds,
-      timestamp: healthQuery.data.carlaTimestamp || healthQuery.data.otp?.timestamp,
-      metrics: healthQuery.data.carla?.metrics,
+      uptime: carlaData?.uptime_seconds,
+      timestamp: (healthQuery.data as any)?.carlaTimestamp || otpData?.timestamp,
+      metrics: carlaData?.metrics,
     };
   }, [healthQuery.data, healthQuery.isError, healthServices]);
 
@@ -270,25 +273,15 @@ export function DashboardPage() {
             ) : (
               <>
                 <div className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-r from-background/70 via-surface to-background/70 p-4">
-                  <motion.div
-                    className="pointer-events-none absolute inset-0 opacity-30"
+                  <div
+                    className="pointer-events-none absolute inset-0 opacity-20"
                     style={{ backgroundImage: 'linear-gradient(120deg, rgba(52, 211, 153, 0.2), rgba(93, 163, 255, 0.2))', backgroundSize: '200% 200%' }}
-                    animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
-                    transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
                   />
                   <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-center gap-3">
                       <div className="relative">
-                        <motion.span
-                          className="absolute inset-0 rounded-full bg-accent/30 blur-xl"
-                          animate={{ scale: [1, 1.35, 1], opacity: [0.8, 0.15, 0.8] }}
-                          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-                        />
-                        <motion.span
-                          className="absolute inset-0 rounded-full border border-accent/40"
-                          animate={{ scale: [1, 1.1, 1], opacity: [0.7, 0.2, 0.7] }}
-                          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
-                        />
+                        <span className="absolute inset-0 rounded-full bg-accent/20 blur-xl" />
+                        <span className="absolute inset-0 rounded-full border border-accent/40 opacity-60" />
                         <span className="relative block h-11 w-11 rounded-full bg-gradient-to-br from-emerald-400 to-accent shadow-lg shadow-accent/30" />
                       </div>
                       <div>
@@ -313,11 +306,7 @@ export function DashboardPage() {
                     </div>
                   </div>
                   <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
-                    <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-accent via-emerald-400 to-accent"
-                      animate={{ x: ['-40%', '60%'] }}
-                      transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-                    />
+                    <div className="h-full rounded-full bg-gradient-to-r from-accent via-emerald-400 to-accent" />
                   </div>
                 </div>
 
@@ -337,11 +326,9 @@ export function DashboardPage() {
                           <span>{service.type || formatMs(service.latency)}</span>
                         </div>
                         <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
-                          <motion.div
+                          <div
                             className="h-full rounded-full bg-accent/80"
                             style={{ width: service.latency ? `${Math.min(100, Math.max(10, 120 - service.latency))}%` : '45%' }}
-                            animate={{ opacity: [0.6, 1, 0.6] }}
-                            transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
                           />
                         </div>
                       </div>
@@ -355,17 +342,23 @@ export function DashboardPage() {
 
                 <div className="rounded-lg border border-border/50 bg-background/70 p-3 text-[11px] font-mono text-foreground/70">
                   <p className="mb-1 text-foreground/60">Snapshot JSON</p>
+                  {(() => {
+                    const snapCarla = (healthQuery.data as any)?.carla || {};
+                    const snapOtp = (healthQuery.data as any)?.otp || {};
+                    return (
                   <pre className="max-h-28 overflow-auto whitespace-pre-wrap leading-relaxed">
                     {JSON.stringify(
                       {
-                        otp: healthQuery.data?.otp?.status,
-                        core: healthQuery.data?.carla?.status,
-                        services: Object.keys(healthQuery.data?.carla?.services || {}),
+                        otp: snapOtp?.status,
+                        core: snapCarla?.status,
+                        services: Object.keys((snapCarla?.services as Record<string, unknown>) || {}),
                       },
                       null,
                       2,
                     )}
                   </pre>
+                    );
+                  })()}
                 </div>
               </>
             )}
