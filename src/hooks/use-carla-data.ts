@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiGet, apiPost, apiWsUrl } from '@/lib/api';
+import { apiGet, apiPost, apiPut, apiWsUrl } from '@/lib/api';
 import { mapStatusDisplay, maskPhone, shortId } from '@/lib/utils';
 import {
   conversationDetailSchema,
@@ -322,6 +322,76 @@ export const useBankingPayloadSave = (bankingId?: string, processId?: string) =>
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: Generic) => apiPost(`/admin/banking/${bankingId}/payload/save`, z.any(), body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+// Bridge API
+export const useBridgeBlacklistQuery = (processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => apiPost('/bridge/listas/black-list-query', z.any(), body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useBridgeMicoopeClient = (processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (clientId: string) => apiGet(`/bridge/fena/micoope-client/${clientId}`, z.any(), {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useBridgeCreateMicoopeIndividual = (processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      apiPost('/bridge/fena/create-micoope-individual-client', z.any(), body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useBridgeComplementaryDataCreate = (processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { clientId: string; body: Record<string, unknown> }) =>
+      apiPost(`/bridge/fena/micoope-individual-client-complementary-data/${params.clientId}`, z.any(), params.body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useBridgeCreateStandardAccount = (processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { clientId: string; body: Record<string, unknown> }) =>
+      apiPost(`/bridge/fena/create-standard-account/${params.clientId}`, z.any(), params.body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useBridgeUpdateOnboarding = (processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { clientId: string; body: Record<string, unknown> }) =>
+      apiPut(`/bridge/fena/update-client-onboarding/${params.clientId}`, z.any(), params.body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useBridgeUpdateComplementaryData = (processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { clientId: string; body: Record<string, unknown> }) =>
+      apiPut(`/bridge/fena/update-client-complementary-data/${params.clientId}`, z.any(), params.body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useBridgeQueryComplementClient = (processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (clientId: string) => apiGet(`/bridge/fena/query-complement-client?clientId=${encodeURIComponent(clientId)}`, z.any(), {}),
     onSuccess: () => invalidateProcessQueries(queryClient, processId),
   });
 };

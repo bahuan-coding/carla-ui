@@ -9,6 +9,14 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import {
   useBankingRetry,
   useBankingStatus,
+  useBridgeBlacklistQuery,
+  useBridgeComplementaryDataCreate,
+  useBridgeCreateMicoopeIndividual,
+  useBridgeCreateStandardAccount,
+  useBridgeMicoopeClient,
+  useBridgeQueryComplementClient,
+  useBridgeUpdateComplementaryData,
+  useBridgeUpdateOnboarding,
   useDiditOverride,
   useDiditRegenerate,
   useOtpMarkVerified,
@@ -37,6 +45,21 @@ export function ProcesosPage() {
   const auditOperator = 'operador.demo@carla';
   const [diditStatus, setDiditStatus] = useState<'approved' | 'rejected' | 'pending' | 'error'>('approved');
   const [diditNote, setDiditNote] = useState('');
+  const [bridgeBlacklist, setBridgeBlacklist] = useState({ tipoDocumento: 'dpi', numeroDocumento: '' });
+  const [bridgeBlacklistResult, setBridgeBlacklistResult] = useState<unknown>(null);
+  const [bridgeClientId, setBridgeClientId] = useState('');
+  const [bridgeClientResult, setBridgeClientResult] = useState<unknown>(null);
+  const [bridgeCreateForm, setBridgeCreateForm] = useState({
+    nombre: '',
+    documento: '',
+    nacimiento: '',
+    correo: '',
+  });
+  const [bridgeComplementaryForm, setBridgeComplementaryForm] = useState({ clientId: '', ingresos: '', direccion: '' });
+  const [bridgeAccountForm, setBridgeAccountForm] = useState({ clientId: '', producto: 'cuenta_estandar', moneda: 'GTQ' });
+  const [bridgeOnboardingForm, setBridgeOnboardingForm] = useState({ clientId: '', estado: 'started' });
+  const [bridgeMaintenanceForm, setBridgeMaintenanceForm] = useState({ clientId: '', direccion: '', pep: 'no' });
+  const [bridgeMaintenanceResult, setBridgeMaintenanceResult] = useState<unknown>(null);
 
   const filters = useMemo(() => ({ q: search, status, phone, limit: 30 }), [phone, search, status]);
   const listQuery = useProcessesAdmin(filters);
@@ -58,6 +81,14 @@ export function ProcesosPage() {
   const diditOverride = useDiditOverride(verificationId, processId);
   const bankingStatus = useBankingStatus(processId, processId);
   const bankingRetry = useBankingRetry(processId, processId);
+  const bridgeBlacklistMutation = useBridgeBlacklistQuery(processId);
+  const bridgeClientQuery = useBridgeMicoopeClient(processId);
+  const bridgeCreateClient = useBridgeCreateMicoopeIndividual(processId);
+  const bridgeComplementaryCreate = useBridgeComplementaryDataCreate(processId);
+  const bridgeCreateAccount = useBridgeCreateStandardAccount(processId);
+  const bridgeUpdateOnboarding = useBridgeUpdateOnboarding(processId);
+  const bridgeUpdateComplementary = useBridgeUpdateComplementaryData(processId);
+  const bridgeQueryComplement = useBridgeQueryComplementClient(processId);
 
   const processes = listQuery.data || [];
 
@@ -75,6 +106,15 @@ export function ProcesosPage() {
       title: message,
       description: error instanceof Error ? error.message : 'Tente novamente em instantes.',
     });
+
+  const bridgeFriendlyError = (error: unknown) => {
+    const message = error instanceof Error ? error.message : '';
+    if (/401|expirad/i.test(message)) return 'La sesión con el servicio bancario ha expirado. Intenta nuevamente.';
+    if (/403|credencial/i.test(message)) return 'No fue posible autenticar la operación con el banco. Contacta al soporte técnico.';
+    if (/502/.test(message)) return 'El servicio bancario está temporalmente no disponible. Intenta nuevamente en unos minutos.';
+    if (/500/.test(message)) return 'Ocurrió un error interno al procesar la solicitud bancaria. Intenta más tarde o contacta al soporte.';
+    return 'No se pudo completar la operación bancaria. Intenta de nuevo.';
+  };
 
   const ensureTarget = (id?: string, message?: string) => {
     if (!id) {
@@ -623,6 +663,402 @@ export function ProcesosPage() {
                           {label}
                         </Button>
                       ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-border/50 bg-background/70 p-3">
+                <div className="flex items-center justify-between text-[11px] text-foreground/60">
+                  <span className="flex items-center gap-2">
+                    <Database size={12} /> Puentes bancarias
+                  </span>
+                  <Badge variant="outline" className="text-[11px]">Bridge API</Badge>
+                </div>
+                <p className="text-[12px] text-foreground/70">
+                  Acciones relacionadas con la integración bancaria y la creación de clientes y cuentas.
+                </p>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-2 rounded-lg border border-border/40 bg-background/80 p-3">
+                    <div className="flex items-center justify-between text-[11px] text-foreground/60">
+                      <span>Listas restrictivas</span>
+                      <Badge variant="outline" className="text-[11px]">Consulta</Badge>
+                    </div>
+                    <p className="text-[12px] text-foreground/65">Consulta en listas restrictivas antes de continuar con el alta.</p>
+                    <div className="space-y-2">
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-foreground/60">Tipo de documento</label>
+                        <select
+                          className="h-9 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
+                          value={bridgeBlacklist.tipoDocumento}
+                          onChange={(e) => setBridgeBlacklist((p) => ({ ...p, tipoDocumento: e.target.value }))}
+                        >
+                          {['dpi', 'cui', 'pasaporte'].map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt.toUpperCase()}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-foreground/60">Número de documento</label>
+                        <Input
+                          value={bridgeBlacklist.numeroDocumento}
+                          onChange={(e) => setBridgeBlacklist((p) => ({ ...p, numeroDocumento: e.target.value }))}
+                          placeholder="0000000"
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        className="text-xs"
+                        disabled={bridgeBlacklistMutation.isPending}
+                        onClick={() => {
+                          if (!bridgeBlacklist.numeroDocumento.trim()) return onActionError('Completa el documento');
+                          bridgeBlacklistMutation.mutate(
+                            { tipoDocumento: bridgeBlacklist.tipoDocumento, numeroDocumento: bridgeBlacklist.numeroDocumento },
+                            {
+                              onSuccess: (res) => {
+                                setBridgeBlacklistResult(res);
+                                toast({ title: 'Consulta enviada', description: 'Listas restrictivas consultadas.' });
+                              },
+                              onError: (e) => onActionError(bridgeFriendlyError(e), e),
+                            },
+                          );
+                        }}
+                      >
+                        {bridgeBlacklistMutation.isPending ? 'Consultando...' : 'Consultar listas'}
+                      </Button>
+                      {bridgeBlacklistResult ? (
+                        <pre className="rounded bg-foreground/5 p-2 text-[11px] leading-relaxed text-foreground/70">
+                          {JSON.stringify(bridgeBlacklistResult, null, 2)}
+                        </pre>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 rounded-lg border border-border/40 bg-background/80 p-3">
+                    <div className="flex items-center justify-between text-[11px] text-foreground/60">
+                      <span>Gestión de cliente Micoope</span>
+                      <Badge variant="outline" className="text-[11px]">Cliente</Badge>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
+                        <p className="text-[12px] text-foreground/70">Consulta de cliente</p>
+                        <div className="flex gap-2">
+                          <Input
+                            value={bridgeClientId}
+                            onChange={(e) => setBridgeClientId(e.target.value)}
+                            placeholder="ID de cliente"
+                            className="h-9 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                            disabled={bridgeClientQuery.isPending}
+                            onClick={() => {
+                              if (!bridgeClientId.trim()) return onActionError('Ingresa el ID de cliente');
+                              bridgeClientQuery.mutate(bridgeClientId, {
+                                onSuccess: (res) => {
+                                  setBridgeClientResult(res);
+                                  toast({ title: 'Cliente encontrado', description: 'Resumen actualizado.' });
+                                },
+                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
+                              });
+                            }}
+                          >
+                            {bridgeClientQuery.isPending ? 'Buscando...' : 'Buscar cliente'}
+                          </Button>
+                        </div>
+                        {bridgeClientResult ? (
+                          <div className="rounded border border-border/50 bg-background/80 p-2 text-[11px] text-foreground/80">
+                            <p className="font-semibold text-foreground">{(bridgeClientResult as { nombre?: string })?.nombre || 'Cliente'}</p>
+                            <p>{(bridgeClientResult as { documento?: string })?.documento || 'Documento no informado'}</p>
+                            <p>{(bridgeClientResult as { estado?: string })?.estado || 'Estado no disponible'}</p>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
+                        <p className="text-[12px] text-foreground/70">Crear cliente Micoope</p>
+                        <div className="grid gap-2">
+                          <Input
+                            value={bridgeCreateForm.nombre}
+                            onChange={(e) => setBridgeCreateForm((p) => ({ ...p, nombre: e.target.value }))}
+                            placeholder="Nombre completo"
+                            className="h-8 text-xs"
+                          />
+                          <Input
+                            value={bridgeCreateForm.documento}
+                            onChange={(e) => setBridgeCreateForm((p) => ({ ...p, documento: e.target.value }))}
+                            placeholder="Documento"
+                            className="h-8 text-xs"
+                          />
+                          <Input
+                            type="date"
+                            value={bridgeCreateForm.nacimiento}
+                            onChange={(e) => setBridgeCreateForm((p) => ({ ...p, nacimiento: e.target.value }))}
+                            className="h-8 text-xs"
+                          />
+                          <Input
+                            type="email"
+                            value={bridgeCreateForm.correo}
+                            onChange={(e) => setBridgeCreateForm((p) => ({ ...p, correo: e.target.value }))}
+                            placeholder="Correo electrónico"
+                            className="h-8 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            className="text-xs"
+                            disabled={bridgeCreateClient.isPending}
+                            onClick={() => {
+                              if (!bridgeCreateForm.nombre.trim() || !bridgeCreateForm.documento.trim()) {
+                                return onActionError('Completa nombre y documento');
+                              }
+                              bridgeCreateClient.mutate(bridgeCreateForm, {
+                                onSuccess: (res) => {
+                                  const newId =
+                                    (res as { client_id?: string; id?: string })?.client_id ||
+                                    (res as { id?: string })?.id ||
+                                    bridgeClientId;
+                                  if (newId) {
+                                    setBridgeClientId(newId);
+                                    setBridgeComplementaryForm((p) => ({ ...p, clientId: newId }));
+                                    setBridgeAccountForm((p) => ({ ...p, clientId: newId }));
+                                    setBridgeOnboardingForm((p) => ({ ...p, clientId: newId }));
+                                    setBridgeMaintenanceForm((p) => ({ ...p, clientId: newId }));
+                                  }
+                                  toast({ title: 'Cliente creado correctamente', description: newId || 'Cliente listo para onboarding.' });
+                                },
+                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
+                              });
+                            }}
+                          >
+                            {bridgeCreateClient.isPending ? 'Creando...' : 'Crear cliente'}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-2 rounded-lg border border-border/40 bg-background/80 p-3">
+                    <div className="flex items-center justify-between text-[11px] text-foreground/60">
+                      <span>Onboarding de cuenta</span>
+                      <Badge variant="outline" className="text-[11px]">Pasos</Badge>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
+                        <p className="text-[12px] text-foreground/70">Paso 1 – Datos complementarios</p>
+                        <Input
+                          value={bridgeComplementaryForm.clientId}
+                          onChange={(e) => setBridgeComplementaryForm((p) => ({ ...p, clientId: e.target.value }))}
+                          placeholder="ID de cliente"
+                          className="h-8 text-xs"
+                        />
+                        <Input
+                          value={bridgeComplementaryForm.ingresos}
+                          onChange={(e) => setBridgeComplementaryForm((p) => ({ ...p, ingresos: e.target.value }))}
+                          placeholder="Ingresos declarados"
+                          className="h-8 text-xs"
+                        />
+                        <Input
+                          value={bridgeComplementaryForm.direccion}
+                          onChange={(e) => setBridgeComplementaryForm((p) => ({ ...p, direccion: e.target.value }))}
+                          placeholder="Dirección"
+                          className="h-8 text-xs"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          disabled={bridgeComplementaryCreate.isPending}
+                          onClick={() => {
+                            if (!bridgeComplementaryForm.clientId.trim()) return onActionError('ID de cliente requerido');
+                            bridgeComplementaryCreate.mutate(
+                              { clientId: bridgeComplementaryForm.clientId, body: bridgeComplementaryForm },
+                              {
+                                onSuccess: () => toast({ title: 'Datos complementarios guardados', description: 'Paso 1 completado.' }),
+                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
+                              },
+                            );
+                          }}
+                        >
+                          {bridgeComplementaryCreate.isPending ? 'Guardando...' : 'Guardar datos complementarios'}
+                        </Button>
+                      </div>
+
+                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
+                        <p className="text-[12px] text-foreground/70">Paso 2 – Crear cuenta estándar</p>
+                        <Input
+                          value={bridgeAccountForm.clientId}
+                          onChange={(e) => setBridgeAccountForm((p) => ({ ...p, clientId: e.target.value }))}
+                          placeholder="ID de cliente"
+                          className="h-8 text-xs"
+                        />
+                        <Input
+                          value={bridgeAccountForm.producto}
+                          onChange={(e) => setBridgeAccountForm((p) => ({ ...p, producto: e.target.value }))}
+                          placeholder="Producto"
+                          className="h-8 text-xs"
+                        />
+                        <Input
+                          value={bridgeAccountForm.moneda}
+                          onChange={(e) => setBridgeAccountForm((p) => ({ ...p, moneda: e.target.value }))}
+                          placeholder="Moneda"
+                          className="h-8 text-xs"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          disabled={bridgeCreateAccount.isPending}
+                          onClick={() => {
+                            if (!bridgeAccountForm.clientId.trim()) return onActionError('ID de cliente requerido');
+                            bridgeCreateAccount.mutate(
+                              { clientId: bridgeAccountForm.clientId, body: bridgeAccountForm },
+                              {
+                                onSuccess: () => toast({ title: 'Cuenta creada', description: 'Paso 2 completado.' }),
+                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
+                              },
+                            );
+                          }}
+                        >
+                          {bridgeCreateAccount.isPending ? 'Creando...' : 'Crear cuenta'}
+                        </Button>
+                      </div>
+
+                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
+                        <p className="text-[12px] text-foreground/70">Paso 3 – Actualizar estado de onboarding</p>
+                        <Input
+                          value={bridgeOnboardingForm.clientId}
+                          onChange={(e) => setBridgeOnboardingForm((p) => ({ ...p, clientId: e.target.value }))}
+                          placeholder="ID de cliente"
+                          className="h-8 text-xs"
+                        />
+                        <select
+                          className="h-9 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
+                          value={bridgeOnboardingForm.estado}
+                          onChange={(e) => setBridgeOnboardingForm((p) => ({ ...p, estado: e.target.value }))}
+                        >
+                          {['started', 'in_progress', 'completed', 'error'].map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt.replace(/_/g, ' ')}
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          disabled={bridgeUpdateOnboarding.isPending}
+                          onClick={() => {
+                            if (!bridgeOnboardingForm.clientId.trim()) return onActionError('ID de cliente requerido');
+                            bridgeUpdateOnboarding.mutate(
+                              { clientId: bridgeOnboardingForm.clientId, body: { estado: bridgeOnboardingForm.estado } },
+                              {
+                                onSuccess: () => toast({ title: 'Onboarding actualizado', description: 'Paso 3 completado.' }),
+                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
+                              },
+                            );
+                          }}
+                        >
+                          {bridgeUpdateOnboarding.isPending ? 'Actualizando...' : 'Actualizar estado'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 rounded-lg border border-border/40 bg-background/80 p-3">
+                    <div className="flex items-center justify-between text-[11px] text-foreground/60">
+                      <span>Datos complementarios (mantenimiento)</span>
+                      <Badge variant="outline" className="text-[11px]">Mantenimiento</Badge>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
+                        <p className="text-[12px] text-foreground/70">Actualizar datos complementarios</p>
+                        <Input
+                          value={bridgeMaintenanceForm.clientId}
+                          onChange={(e) => setBridgeMaintenanceForm((p) => ({ ...p, clientId: e.target.value }))}
+                          placeholder="ID de cliente"
+                          className="h-8 text-xs"
+                        />
+                        <Input
+                          value={bridgeMaintenanceForm.direccion}
+                          onChange={(e) => setBridgeMaintenanceForm((p) => ({ ...p, direccion: e.target.value }))}
+                          placeholder="Dirección"
+                          className="h-8 text-xs"
+                        />
+                        <select
+                          className="h-9 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
+                          value={bridgeMaintenanceForm.pep}
+                          onChange={(e) => setBridgeMaintenanceForm((p) => ({ ...p, pep: e.target.value }))}
+                        >
+                          {['no', 'si'].map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt.toUpperCase()}
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          disabled={bridgeUpdateComplementary.isPending}
+                          onClick={() => {
+                            if (!bridgeMaintenanceForm.clientId.trim()) return onActionError('ID de cliente requerido');
+                            bridgeUpdateComplementary.mutate(
+                              { clientId: bridgeMaintenanceForm.clientId, body: bridgeMaintenanceForm },
+                              {
+                                onSuccess: (res) => {
+                                  setBridgeMaintenanceResult(res);
+                                  toast({ title: 'Datos actualizados', description: 'Datos complementarios guardados.' });
+                                },
+                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
+                              },
+                            );
+                          }}
+                        >
+                          {bridgeUpdateComplementary.isPending ? 'Actualizando...' : 'Actualizar datos'}
+                        </Button>
+                      </div>
+
+                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
+                        <p className="text-[12px] text-foreground/70">Consultar datos complementarios</p>
+                        <div className="flex gap-2">
+                          <Input
+                            value={bridgeMaintenanceForm.clientId}
+                            onChange={(e) => setBridgeMaintenanceForm((p) => ({ ...p, clientId: e.target.value }))}
+                            placeholder="ID de cliente"
+                            className="h-8 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            className="text-xs"
+                            disabled={bridgeQueryComplement.isPending}
+                            onClick={() => {
+                              if (!bridgeMaintenanceForm.clientId.trim()) return onActionError('ID de cliente requerido');
+                              bridgeQueryComplement.mutate(bridgeMaintenanceForm.clientId, {
+                                onSuccess: (res) => {
+                                  setBridgeMaintenanceResult(res);
+                                  toast({ title: 'Consulta completada', description: 'Datos complementarios listos.' });
+                                },
+                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
+                              });
+                            }}
+                          >
+                            {bridgeQueryComplement.isPending ? 'Consultando...' : 'Consultar'}
+                          </Button>
+                        </div>
+                        {bridgeMaintenanceResult ? (
+                          <pre className="rounded bg-foreground/5 p-2 text-[11px] leading-relaxed text-foreground/70">
+                            {JSON.stringify(bridgeMaintenanceResult, null, 2)}
+                          </pre>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 </div>

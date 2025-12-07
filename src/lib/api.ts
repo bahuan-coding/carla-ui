@@ -98,6 +98,22 @@ export const apiPost = async <T>(
     },
   });
 
+export const apiPut = async <T>(
+  path: string,
+  schema: z.ZodType<T>,
+  body: Record<string, unknown> | FormData,
+  fallback: T,
+) =>
+  request<T>({
+    path,
+    schema,
+    fallback,
+    init: {
+      method: 'PUT',
+      body,
+    },
+  });
+
 export const apiWsUrl = (path: string) => {
   if (!API_URL) return '';
   const wsBase = API_URL.startsWith('https') ? API_URL.replace('https', 'wss') : API_URL.replace('http', 'ws');
