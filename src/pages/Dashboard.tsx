@@ -1,4 +1,259 @@
 import { useMemo, useState } from 'react';
+import { MessagesSquare, Wifi } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useHealthServices, useKpis, useProcessDistribution } from '@/hooks/use-carla-data';
+import { useUiStore } from '@/stores/ui';
+
+const toneBadge = (tone: 'ok' | 'warn' | 'error') =>
+  tone === 'error'
+    ? 'bg-red-100 text-red-700'
+    : tone === 'warn'
+      ? 'bg-amber-100 text-amber-700'
+      : 'bg-emerald-100 text-emerald-700';
+
+const statusTone = (status?: string) => {
+  const text = status?.toLowerCase?.() || '';
+  if (/error|down|fail|degrad|blocked/.test(text)) return 'error';
+  if (!text || /warn|slow|pending|queued/.test(text)) return 'warn';
+  return 'ok';
+};
+
+const formatMs = (ms?: number | null) => {
+  if (ms === null || ms === undefined) return '—';
+  return `${Math.max(ms, 0).toFixed(0)} ms`;
+};
+
+export function DashboardPage() {
+  const { period } = useUiStore();
+  const [showSnapshot, setShowSnapshot] = useState(true);
+  const kpisQuery = useKpis(period);
+  const distributionQuery = useProcessDistribution(period);
+  const healthQuery = useHealthServices();
+
+  const distribution = distributionQuery.data || [];
+
+  const prioritizedKpis = useMemo(() => {
+    const data = kpisQuery.data || [];
+    const order = ['aberturas', 'complet', 'mens', 'erro', 'fila', 'whatsapp'];
+    const scored = data
+      .map((kpi) => {
+        const key = kpi.label.toLowerCase();
+        const score = order.findIndex((o) => key.includes(o));
+        return { ...kpi, score: score === -1 ? 99 : score };
+      })
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 6);
+    if (scored.length) return scored;
+    return data.slice(0, 6);
+  }, [kpisQuery.data]);
+
+  const healthServices = useMemo(() => {
+    const carlaData = healthQuery.data?.carla;
+    const otpData = healthQuery.data?.otp;
+    const services = Object.entries(carlaData?.services || {}).map(([name, svc]) => ({
+      name,
+      status: svc?.status as string | undefined,
+      env: carlaData?.environment,
+      latency: (svc as { latency_ms?: number | null })?.latency_ms ?? null,
+      timestamp: carlaData?.timestamp,
+    }));
+    const whatsappOnly = services.filter((s) => s.name.toLowerCase().includes('whatsapp'));
+    const otpAsWhatsapp = otpData
+      ? [
+          {
+            name: otpData.service || 'otp',
+            status: otpData.status,
+            env: otpData.environment,
+            latency: null,
+            timestamp: otpData.timestamp,
+          },
+        ]
+      : [];
+    return [...whatsappOnly, ...otpAsWhatsapp].slice(0, 2);
+  }, [healthQuery.data]);
+
+  const snapshotTimestamp =
+    healthQuery.data?.carla?.timestamp || healthQuery.data?.otp?.timestamp || new Date().toISOString();
+  const servicesCount = healthServices.length || 0;
+  const responseMs = healthQuery.data?.carla?.metrics?.average_response_time_ms;
+  const whatsappFlows = distribution.length || 0;
+  const messagesKpi = (kpisQuery.data || []).find((k) => k.label.toLowerCase().includes('mens'));
+
+  return (
+    <div className="flex flex-col gap-6 bg-[#f5f5f7] px-1 py-1 sm:px-0">
+      <section className="space-y-3">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-slate-900">KPIs críticos</h2>
+          <p className="text-sm text-slate-500">Saúde da infra + WhatsApp + compliance</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
+          {kpisQuery.isLoading
+            ? Array.from({ length: 5 }).map((_, idx) => <Skeleton key={idx} className="h-28 w-full bg-slate-200/60" />)
+            : prioritizedKpis.map((kpi) => {
+                const delta =
+                  typeof kpi.delta === 'number' ? `${kpi.delta > 0 ? '+' : ''}${kpi.delta}%` : kpi.delta || '—';
+                const isNegative = delta.startsWith('-');
+                return (
+                  <Card key={kpi.id || kpi.label} className="h-full border border-slate-200/70 bg-white shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium text-slate-800">{kpi.label}</CardTitle>
+                      <Badge variant="outline" className={isNegative ? 'border-red-200 text-red-600' : 'border-emerald-200 text-emerald-700'}>
+                        {delta}
+                      </Badge>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center gap-2 text-2xl font-semibold">
+                        <span className="text-indigo-600">{kpi.value}</span>
+                      </div>
+                      <p className="text-xs text-slate-500">{kpi.helper || 'Últimos 7 dias'}</p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+          {kpisQuery.isError ? (
+            <div className="col-span-full flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              Falha ao carregar KPIs.
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <Card className="border border-slate-200/70 bg-white text-foreground shadow-sm">
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold text-slate-900">Saúde dos serviços</CardTitle>
+            <span className="text-[11px] text-slate-500">whatsapp_api e relacionados</span>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {healthQuery.isLoading ? (
+              <Skeleton className="h-36 w-full bg-slate-200/60" />
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {healthServices.length ? (
+                    healthServices.map((service) => (
+                      <div key={service.name} className="flex items-center justify-between rounded-lg border border-slate-200/70 bg-slate-50 px-3 py-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                          <span className="text-slate-800">{service.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-slate-600">
+                          <span className={`rounded-full px-2 py-1 ${toneBadge(statusTone(service.status))}`}>{service.status || '—'}</span>
+                          <span className="text-slate-500">{formatMs(service.latency)}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-lg border border-slate-200/70 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                      Aguardando heartbeat WhatsApp/API.
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-slate-200/70 bg-slate-50 p-3 text-[11px] font-mono text-slate-700 shadow-inner">
+                  <div className="mb-2 flex items-center justify-between text-[11px] text-slate-500">
+                    <span>Snapshot vivo</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowSnapshot((prev) => !prev)}
+                      className="rounded-md border border-slate-200 px-2 py-0.5 text-[10px] text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+                    >
+                      {showSnapshot ? 'Ocultar' : 'Mostrar'}
+                    </button>
+                  </div>
+                  {showSnapshot ? (
+                    <pre className="max-h-44 overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 bg-white px-3 py-2 leading-relaxed text-[11px] text-slate-800">
+                      <code
+                        className="[color-scheme:dark] block text-[11px] leading-relaxed"
+                        dangerouslySetInnerHTML={{
+                          __html: JSON.stringify(
+                            {
+                              core: healthQuery.data?.carla?.status || '—',
+                              otp: healthQuery.data?.otp?.status || '—',
+                              services: servicesCount,
+                              timestamp: snapshotTimestamp || '—',
+                            },
+                            null,
+                            2,
+                          )
+                            .replace(/(&)/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/(".*?")(?=:)/g, '<span class="text-indigo-500">$1</span>')
+                            .replace(/: "(.*?)"/g, ': <span class="text-sky-600">$1</span>')
+                            .replace(/: ([0-9.\-]+)/g, ': <span class="text-amber-600">$1</span>')
+                            .replace(/null/g, '<span class="text-slate-500">null</span>'),
+                        }}
+                      />
+                    </pre>
+                  ) : (
+                    <div className="rounded-md border border-dashed border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-600">
+                      Telemetria em buffer. Clique para rearmar o snapshot vivo.
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+            {healthQuery.isError ? (
+              <div className="col-span-full flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                Falha ao consultar health. Tente novamente.
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card className="border border-slate-200/70 bg-white text-foreground shadow-sm">
+          <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <MessagesSquare className="h-4 w-4 text-indigo-600" />
+              Canal WhatsApp
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-slate-200/70 bg-slate-50 px-3 py-2">
+                <p className="text-xs text-slate-500">Fluxos ativos</p>
+                <p className="text-lg font-semibold text-indigo-600">{whatsappFlows || '—'}</p>
+              </div>
+              <div className="rounded-lg border border-slate-200/70 bg-slate-50 px-3 py-2">
+                <p className="text-xs text-slate-500">Mensagens</p>
+                <p className="text-lg font-semibold text-slate-800">{messagesKpi?.value ?? '—'}</p>
+                <p className="text-[11px] text-slate-500">últimos 7d</p>
+              </div>
+              <div className="rounded-lg border border-slate-200/70 bg-slate-50 px-3 py-2">
+                <p className="text-xs text-slate-500">Tempo médio resposta</p>
+                <p className="text-lg font-semibold text-slate-800">{responseMs ? `${Math.round(responseMs)} ms` : '—'}</p>
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-200/70 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+              <div className="flex items-center justify-between">
+                <span>Entrega por fluxo</span>
+                <span className="text-[11px] text-slate-500">{whatsappFlows ? `${whatsappFlows} fluxos` : 'Sem dados'}</span>
+              </div>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full rounded-full bg-indigo-500 transition-all"
+                  style={{ width: `${Math.min(whatsappFlows * 12, 100)}%` }}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <Wifi size={14} className="text-indigo-500" /> Entregabilidade e tempo dos bots monitorados por período.
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="pb-6 text-xs text-slate-500">
+        <p>
+          Removidos database/cache, rótulos redundantes, tendência/alertas/eventos. KPIs priorizados conforme API; saúde focada em whatsapp_api; paleta neutra para evitar poluição visual.
+        </p>
+      </section>
+    </div>
+  );
+}
+import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Activity, AlertCircle, BarChart3, Gauge, MessagesSquare, TriangleAlert, Wifi } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
