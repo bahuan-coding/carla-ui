@@ -116,22 +116,6 @@ export function ProcesosPage() {
     return 'No se pudo completar la operación bancaria. Intenta de nuevo.';
   };
 
-  useEffect(() => {
-    setActiveClientId(currentClient.clientId);
-    setBridgeBlacklist((p) => ({
-      ...p,
-      tipoDocumento: currentClient.documentType || p.tipoDocumento,
-      numeroDocumento: currentClient.documentNumber || p.numeroDocumento,
-    }));
-    setBridgeCreateForm((p) => ({
-      ...p,
-      nombre: currentClient.fullName || p.nombre,
-      documento: currentClient.documentNumber || p.documento,
-      nacimiento: currentClient.birthDate || p.nacimiento,
-      correo: currentClient.email || p.correo,
-    }));
-  }, [currentClient]);
-
   const ensureTarget = (id?: string, message?: string) => {
     if (!id) {
       onActionError(message || 'Seleccione un proceso');
@@ -179,6 +163,22 @@ export function ProcesosPage() {
     const fullName = detailQuery.data?.displayName || detailQuery.data?.name || (meta?.full_name as string) || '';
     return { clientId, documentNumber: docNumber, documentType: docType, fullName, birthDate, email };
   }, [detailQuery.data]);
+
+  useEffect(() => {
+    setActiveClientId(currentClient.clientId);
+    setBridgeBlacklist((p) => ({
+      ...p,
+      tipoDocumento: currentClient.documentType || p.tipoDocumento,
+      numeroDocumento: currentClient.documentNumber || p.numeroDocumento,
+    }));
+    setBridgeCreateForm((p) => ({
+      ...p,
+      nombre: currentClient.fullName || p.nombre,
+      documento: currentClient.documentNumber || p.documento,
+      nacimiento: currentClient.birthDate || p.nacimiento,
+      correo: currentClient.email || p.correo,
+    }));
+  }, [currentClient]);
 
   const renderHeaderKpi = (label: string, value: number | string, tone: 'ok' | 'warn' | 'error' = 'ok', helper?: string) => {
     const style =
