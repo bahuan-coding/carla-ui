@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Activity, AlertCircle, BarChart3, Gauge, MessagesSquare, RefreshCw, ShieldCheck, TriangleAlert, Wifi } from 'lucide-react';
+import { Activity, AlertCircle, BarChart3, Gauge, MessagesSquare, ShieldCheck, TriangleAlert, Wifi } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,6 +12,7 @@ export function DashboardPage() {
   const { toast } = useToast();
   const { period } = useUiStore();
   const [ambiente, setAmbiente] = useState<'prod' | 'homol'>('prod');
+  const [showSnapshot, setShowSnapshot] = useState(true);
   const kpisQuery = useKpis(period);
   const weeklyQuery = useWeeklyActivity(period);
   const distributionQuery = useProcessDistribution(period);
@@ -91,23 +92,24 @@ export function DashboardPage() {
   const statusSummary = useMemo(() => {
     const coreStatus = healthQuery.data?.carla?.status;
     const otpStatus = healthQuery.data?.otp?.status;
-    const servicesCount = Object.keys(healthQuery.data?.carla?.services || {}).length;
+    const coreServicesCount = Object.keys(healthQuery.data?.carla?.services || {}).length;
+    const servicesCount = coreServicesCount + (otpStatus ? 1 : 0);
+    const hasHeartbeat = Boolean(coreStatus || otpStatus || servicesCount);
 
     const headline =
-      overallHealth?.tone === 'error'
-        ? 'Intervenção imediata'
-        : overallHealth?.tone === 'warn'
-          ? 'Monitorando sinais'
-          : servicesCount > 0
-            ? 'Tudo verde'
-            : 'Aguardando sinais';
+      !hasHeartbeat
+        ? 'Aguardando heartbeat'
+        : overallHealth?.tone === 'error'
+          ? 'Intervenção imediata'
+          : overallHealth?.tone === 'warn'
+            ? 'Monitorando sinais'
+            : 'Infra em alta';
 
-    const body =
-      servicesCount === 0
-        ? 'Sem heartbeat das integrações ainda.'
-        : `Core: ${coreStatus || '—'} · OTP: ${otpStatus || '—'} · Serviços: ${servicesCount}`;
+    const body = hasHeartbeat
+      ? `${servicesCount} serviços · Core ${coreStatus || '—'} · OTP ${otpStatus || '—'}`
+      : 'Sem heartbeat ainda. Aguardando OTP/Core.';
 
-    return { headline, body, coreStatus, otpStatus, servicesCount };
+    return { headline, body, coreStatus, otpStatus, servicesCount, hasHeartbeat };
   }, [healthQuery.data, overallHealth?.tone]);
 
   const toneBadge = (tone: 'ok' | 'warn' | 'error') =>
@@ -144,12 +146,6 @@ export function DashboardPage() {
       description: error instanceof Error ? error.message : 'Reintente en unos segundos.',
       variant: 'destructive',
     });
-
-  const refreshAll = () => {
-    kpisQuery.refetch();
-    weeklyQuery.refetch();
-    distributionQuery.refetch();
-  };
 
   const alerts = useMemo(() => {
     const list: { label: string; helper?: string; severity: 'high' | 'medium' | 'ok' }[] = [];
@@ -211,13 +207,6 @@ export function DashboardPage() {
             Live
           </Badge>
           <Badge variant="outline" className="text-[11px]">Carla Channels</Badge>
-          <button
-            type="button"
-            onClick={refreshAll}
-            className="flex items-center gap-1 rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-xs text-foreground/80 transition hover:border-accent/50 hover:text-accent"
-          >
-            <RefreshCw size={14} /> Atualizar
-          </button>
         </div>
       </div>
 
@@ -276,9 +265,16 @@ export function DashboardPage() {
               <ShieldCheck className="h-4 w-4 text-accent" />
               Salud de integrações
             </CardTitle>
-            <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/70">
-              Live · 15s
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/70">
+                Live · 15s
+              </Badge>
+              <span
+                className={`rounded-full px-2 py-1 text-[11px] ${overallHealth ? toneBadge(overallHealth.tone) : 'bg-foreground/10 text-foreground/70'}`}
+              >
+                {overallHealth?.label || 'Sincronizando'}
+              </span>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {healthQuery.isLoading ? (
@@ -286,12 +282,15 @@ export function DashboardPage() {
             ) : (
               <>
                 <div className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-r from-background/70 via-surface to-background/70 p-4">
-                  <div className="pointer-events-none absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(120deg, rgba(52, 211, 153, 0.2), rgba(93, 163, 255, 0.2))', backgroundSize: '200% 200%' }} />
+                  <div
+                    className="pointer-events-none absolute inset-0 opacity-25"
+                    style={{ backgroundImage: 'linear-gradient(120deg, rgba(52, 211, 153, 0.18), rgba(93, 163, 255, 0.16))', backgroundSize: '200% 200%' }}
+                  />
                   <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-center gap-3">
                       <div className="relative">
-                        <span className="absolute inset-0 rounded-full bg-accent/20 blur-xl" />
-                        <span className="absolute inset-0 rounded-full border border-accent/40 opacity-60" />
+                        <span className="absolute inset-0 rounded-full bg-accent/15 blur-xl" />
+                        <span className="absolute inset-0 rounded-full border border-accent/35 opacity-60" />
                         <span className="relative block h-11 w-11 rounded-full bg-gradient-to-br from-emerald-400 to-accent shadow-lg shadow-accent/30" />
                       </div>
                       <div>
@@ -302,7 +301,7 @@ export function DashboardPage() {
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <span className={`rounded-full px-2 py-1 ${overallHealth ? toneBadge(overallHealth.tone) : 'bg-foreground/10 text-foreground/70'}`}>
-                        {overallHealth?.tone === 'error' ? 'Crítico' : overallHealth?.tone === 'warn' ? 'Vigilante' : 'OK ao vivo'}
+                        {overallHealth?.tone === 'error' ? 'Crítico' : overallHealth?.tone === 'warn' ? 'Vigilante' : statusSummary.hasHeartbeat ? 'OK ao vivo' : 'Sem sinais'}
                       </span>
                       <span className="rounded-full border border-border/60 px-2 py-1 text-[11px] text-foreground/70">
                         Uptime {formatUptime(overallHealth?.uptime)}
@@ -329,14 +328,14 @@ export function DashboardPage() {
                           <span className={`rounded-full px-2 py-1 text-[11px] ${toneBadge(statusTone(service.status))}`}>{service.status || '—'}</span>
                         </div>
                         <div className="mt-2 flex items-center justify-between text-[11px] text-foreground/60">
-                          <span>{formatMs(service.latency)}</span>
-                          <span className="text-foreground/50">uptime seguro</span>
+                          <span>Latência {formatMs(service.latency)}</span>
+                          <span className="text-foreground/50">status vivo</span>
                         </div>
                       </div>
                     ))
                   ) : (
                     <div className="col-span-full rounded-lg border border-border/50 bg-background/60 px-3 py-3 text-sm text-foreground/70">
-                      Sem sinais ainda. Aguardando heartbeat OTP/Core.
+                      Nenhum serviço reportando ainda. Aguardando heartbeat OTP/Core.
                     </div>
                   )}
                 </div>
@@ -344,19 +343,46 @@ export function DashboardPage() {
                 <div className="rounded-lg border border-border/60 bg-gradient-to-br from-background/80 via-surface to-background/80 p-3 text-[11px] font-mono text-foreground/80 shadow-inner">
                   <div className="mb-2 flex items-center justify-between text-[11px] text-foreground/60">
                     <span>Snapshot vivo</span>
-                    <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] text-foreground/60">tema adaptativo</span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] text-foreground/60">tema adaptativo</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowSnapshot((prev) => !prev)}
+                        className="rounded-md border border-border/60 px-2 py-0.5 text-[10px] text-foreground/70 transition hover:border-accent/50 hover:text-accent"
+                      >
+                        {showSnapshot ? 'Ocultar' : 'Mostrar'}
+                      </button>
+                    </div>
                   </div>
-                  <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-background/70 px-3 py-2 leading-relaxed">
-                    {JSON.stringify(
-                      {
-                        core: healthQuery.data?.carla?.status || '—',
-                        otp: healthQuery.data?.otp?.status || '—',
-                        services: statusSummary.servicesCount,
-                      },
-                      null,
-                      2,
-                    )}
-                  </pre>
+                  {showSnapshot ? (
+                    <pre className="max-h-44 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-[radial-gradient(circle_at_20%_20%,rgba(52,211,153,0.08),transparent),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.08),transparent)] px-3 py-2 leading-relaxed text-[11px] text-foreground">
+                      <code
+                        className="[color-scheme:dark] block text-[11px] leading-relaxed"
+                        dangerouslySetInnerHTML={{
+                          __html: JSON.stringify(
+                            {
+                              core: healthQuery.data?.carla?.status || '—',
+                              otp: healthQuery.data?.otp?.status || '—',
+                              services: statusSummary.servicesCount,
+                              timestamp: overallHealth?.timestamp || '—',
+                            },
+                            null,
+                            2,
+                          )
+                            .replace(/(&)/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/(".*?")(?=:)/g, '<span class=\"text-accent\">$1</span>')
+                            .replace(/: "(.*?)"/g, ': <span class="text-sky-200">$1</span>')
+                            .replace(/: ([0-9.\-]+)/g, ': <span class="text-amber-200">$1</span>')
+                            .replace(/null/g, '<span class="text-foreground/60">null</span>'),
+                        }}
+                      />
+                    </pre>
+                  ) : (
+                    <div className="rounded-md border border-dashed border-border/50 bg-background/60 px-3 py-2 text-[11px] text-foreground/60">
+                      Snapshot oculto. Clique para exibir JSON vivo.
+                    </div>
+                  )}
                 </div>
               </>
             )}
