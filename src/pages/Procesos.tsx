@@ -408,168 +408,206 @@ export function ProcesosPage() {
                 </div>
               </div>
 
-              <div className="space-y-2 rounded-lg border border-border/50 bg-background/70 p-3">
+              <div className="space-y-3 rounded-lg border border-border/50 bg-background/70 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Controles do cliente</p>
                   <Badge variant="outline" className="text-[11px]">Audit + Dry run seguro</Badge>
                 </div>
+                <p className="text-[12px] text-foreground/70">
+                  Use quando o fluxo automático não concluiu ou a decisão veio de análise offline. Registre quem decidiu e o motivo.
+                </p>
+
                 <div className="grid grid-cols-2 gap-2">
-                  <Input placeholder="Operador" value={auditOperator} onChange={(e) => setAuditOperator(e.target.value)} className="h-8 text-xs" />
-                  <Input placeholder="Motivo / reason" value={auditReason} onChange={(e) => setAuditReason(e.target.value)} className="h-8 text-xs" />
+                  <Input value={auditOperator || 'operador.demo@carla'} disabled className="h-8 text-xs" />
+                  <Input placeholder="Motivo da decisão e falha observada" value={auditReason} onChange={(e) => setAuditReason(e.target.value)} className="h-8 text-xs" />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    size="sm"
-                    className="text-xs"
-                    disabled={!verificationId || approveVerification.isPending}
-                    onClick={() => {
-                      if (!ensureTarget(verificationId, 'Precisa do account_opening_id')) return;
-                      approveVerification.mutate(
-                        auditFields,
-                        { onError: (e) => onActionError('Aprovar manual', e), onSuccess: () => actionToast('Aprovado', 'QIC marcado aprovado') },
-                      );
-                    }}
-                  >
-                    <Check size={14} className="mr-1" /> Aprovar manual
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs"
-                    disabled={!verificationId || rejectVerification.isPending}
-                    onClick={() => {
-                      if (!ensureTarget(verificationId, 'Precisa do account_opening_id')) return;
-                      rejectVerification.mutate(
-                        auditFields,
-                        { onError: (e) => onActionError('Rejeitar manual', e), onSuccess: () => actionToast('Rejeitado', 'QIC marcado rejeitado') },
-                      );
-                    }}
-                  >
-                    <X size={14} className="mr-1" /> Rejeitar manual
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="text-xs"
-                    disabled={!phoneForActions || otpResend.isPending}
-                    onClick={() => {
-                      if (!phoneForActions) return onActionError('Telefone não encontrado');
-                      otpResend.mutate(
-                        { ...auditFields, phone: phoneForActions, account_opening_id: verificationId },
-                        { onError: (e) => onActionError('Reenviar OTP', e), onSuccess: () => actionToast('OTP reenviado', phoneForActions) },
-                      );
-                    }}
-                  >
-                    <Send size={14} className="mr-1" /> Reenviar OTP
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs"
-                    disabled={!phoneForActions || otpMarkVerified.isPending}
-                    onClick={() => {
-                      if (!phoneForActions) return onActionError('Telefone não encontrado');
-                      otpMarkVerified.mutate(
-                        { ...auditFields, phone: phoneForActions, account_opening_id: verificationId },
-                        { onError: (e) => onActionError('Marcar verificado', e), onSuccess: () => actionToast('OTP marcado verificado', phoneForActions) },
-                      );
-                    }}
-                  >
-                    <ShieldCheck size={14} className="mr-1" /> OTP verificado
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs"
-                    disabled={!verificationId || diditRegenerate.isPending}
-                    onClick={() => {
-                      if (!ensureTarget(verificationId, 'Precisa do verification id')) return;
-                      diditRegenerate.mutate(
-                        auditFields,
-                        { onError: (e) => onActionError('Regenerar DIDIT', e), onSuccess: () => actionToast('DIDIT regenerado', 'Novo link enviado') },
-                      );
-                    }}
-                  >
-                    <RefreshCw size={14} className="mr-1" /> Regenerar DIDIT
-                  </Button>
-                  <div className="flex items-center gap-2">
-                    <select
-                      className="h-8 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
-                      value={diditStatus}
-                      onChange={(e) => setDiditStatus(e.target.value as typeof diditStatus)}
-                    >
-                      {['approved', 'rejected', 'pending', 'error'].map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                    <Input placeholder="Nota DIDIT" value={diditNote} onChange={(e) => setDiditNote(e.target.value)} className="h-8 text-xs" />
+
+                <div className="space-y-2 rounded-lg border border-border/40 bg-background/60 p-2">
+                  <div className="flex items-center justify-between text-[11px] text-foreground/60">
+                    <span>Decisão do processo</span>
+                    <span className="text-foreground/50">Aprovar ou rejeitar manualmente</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
                     <Button
                       size="sm"
-                      variant="ghost"
                       className="text-xs"
-                      disabled={!verificationId || diditOverride.isPending}
+                      title="Aprova após validação manual; envia ao banco."
+                      disabled={!verificationId || approveVerification.isPending}
                       onClick={() => {
-                        if (!ensureTarget(verificationId, 'Precisa do verification id')) return;
-                        diditOverride.mutate(
-                          { ...auditFields, status: diditStatus, note: diditNote || undefined },
-                          { onError: (e) => onActionError('Override DIDIT', e), onSuccess: () => actionToast('DIDIT override', diditStatus) },
+                        if (!ensureTarget(verificationId, 'Precisa do account_opening_id')) return;
+                        approveVerification.mutate(
+                          auditFields,
+                          { onError: (e) => onActionError('Aprovar manual', e), onSuccess: () => actionToast('Aprovado', 'QIC marcado aprovado') },
                         );
                       }}
                     >
-                      <FileInput size={14} className="mr-1" /> Override DIDIT
+                      <Check size={14} className="mr-1" /> Aprovar manualmente
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="text-xs"
+                      title="Rejeita após revisão manual; encerra o caso."
+                      disabled={!verificationId || rejectVerification.isPending}
+                      onClick={() => {
+                        if (!ensureTarget(verificationId, 'Precisa do account_opening_id')) return;
+                        rejectVerification.mutate(
+                          auditFields,
+                          { onError: (e) => onActionError('Rejeitar manual', e), onSuccess: () => actionToast('Rejeitado', 'QIC marcado rejeitado') },
+                        );
+                      }}
+                    >
+                      <X size={14} className="mr-1" /> Rejeitar manualmente
                     </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs"
-                    disabled={!phoneForActions || phoneCampaign.isPending}
-                    onClick={() => {
-                      if (!phoneForActions) return onActionError('Telefone não encontrado');
-                      phoneCampaign.mutate(
-                        { ...auditFields, batch_size: 1, phone: phoneForActions },
-                        { onError: (e) => onActionError('Campanha OTP', e), onSuccess: () => actionToast('Campanha disparada', phoneForActions) },
-                      );
-                    }}
-                  >
-                    <Zap size={14} className="mr-1" /> Campanha OTP
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="text-xs"
-                    disabled={!processId || bankingRetry.isPending}
-                    onClick={() => {
-                      if (!ensureTarget(processId, 'Selecione um processo')) return;
-                      bankingRetry.mutate(
-                        auditFields,
-                        { onError: (e) => onActionError('Retry bancário', e), onSuccess: () => actionToast('Retry bancário', 'bank_retry enviado') },
-                      );
-                    }}
-                  >
-                    <Repeat2 size={14} className="mr-1" /> Bank retry
-                  </Button>
-                  <div className="flex items-center gap-2">
-                    {['ready_for_bank', 'bank_processing', 'bank_retry', 'bank_rejected', 'account_created'].map((s) => (
+                </div>
+
+                <div className="space-y-2 rounded-lg border border-border/40 bg-background/60 p-2">
+                  <div className="flex items-center justify-between text-[11px] text-foreground/60">
+                    <span>Prova de vida</span>
+                    <span className="text-foreground/50">Reenviar link ou ajustar status</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="text-xs"
+                      title="Gera novo link de prova de vida."
+                      disabled={!verificationId || diditRegenerate.isPending}
+                      onClick={() => {
+                        if (!ensureTarget(verificationId, 'Precisa do verification id')) return;
+                        diditRegenerate.mutate(
+                          auditFields,
+                          { onError: (e) => onActionError('Reenviar prova de vida', e), onSuccess: () => actionToast('Prova de vida', 'Novo link enviado') },
+                        );
+                      }}
+                    >
+                      <RefreshCw size={14} className="mr-1" /> Reenviar prova de vida
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      <select
+                        className="h-8 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
+                        value={diditStatus}
+                        onChange={(e) => setDiditStatus(e.target.value as typeof diditStatus)}
+                        title="Status manual da prova de vida"
+                      >
+                        {['approved', 'rejected', 'pending', 'error'].map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                      <Input placeholder="Nota curta" value={diditNote} onChange={(e) => setDiditNote(e.target.value)} className="h-8 text-xs" />
                       <Button
-                        key={s}
                         size="sm"
                         variant="ghost"
-                        className="text-[11px]"
-                        disabled={!processId || bankingStatus.isPending}
+                        className="text-xs"
+                        title="Ajusta status manual da prova de vida."
+                        disabled={!verificationId || diditOverride.isPending}
                         onClick={() => {
-                          if (!ensureTarget(processId, 'Selecione um processo')) return;
-                          bankingStatus.mutate(
-                            { ...auditFields, status: s },
-                            { onError: (e) => onActionError('Estado bancário', e), onSuccess: () => actionToast('Status bancário', s) },
+                          if (!ensureTarget(verificationId, 'Precisa do verification id')) return;
+                          diditOverride.mutate(
+                            { ...auditFields, status: diditStatus, note: diditNote || undefined },
+                            { onError: (e) => onActionError('Override DIDIT', e), onSuccess: () => actionToast('DIDIT override', diditStatus) },
                           );
                         }}
                       >
-                        {s.replace(/_/g, ' ')}
+                        <FileInput size={14} className="mr-1" /> Ajustar status da prova de vida
                       </Button>
-                    ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 rounded-lg border border-border/40 bg-background/60 p-2">
+                  <div className="flex items-center justify-between text-[11px] text-foreground/60">
+                    <span>OTP / Contato</span>
+                    <span className="text-foreground/50">Confirmar canal telefônico</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="text-xs"
+                      title="Reenvia código OTP para o telefone."
+                      disabled={!phoneForActions || otpResend.isPending}
+                      onClick={() => {
+                        if (!phoneForActions) return onActionError('Telefone não encontrado');
+                        otpResend.mutate(
+                          { ...auditFields, phone: phoneForActions, account_opening_id: verificationId },
+                          { onError: (e) => onActionError('Reenviar OTP', e), onSuccess: () => actionToast('OTP reenviado', phoneForActions) },
+                        );
+                      }}
+                    >
+                      <Send size={14} className="mr-1" /> Reenviar código OTP
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs"
+                      title="Marca OTP como verificado após checagem manual."
+                      disabled={!phoneForActions || otpMarkVerified.isPending}
+                      onClick={() => {
+                        if (!phoneForActions) return onActionError('Telefone não encontrado');
+                        otpMarkVerified.mutate(
+                          { ...auditFields, phone: phoneForActions, account_opening_id: verificationId },
+                          { onError: (e) => onActionError('Marcar verificado', e), onSuccess: () => actionToast('OTP marcado verificado', phoneForActions) },
+                        );
+                      }}
+                    >
+                      <ShieldCheck size={14} className="mr-1" /> Marcar OTP como verificado
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 rounded-lg border border-border/40 bg-background/60 p-2">
+                  <div className="flex items-center justify-between text-[11px] text-foreground/60">
+                    <span>Integração bancária</span>
+                    <span className="text-foreground/50">Reenviar ou ajustar estado</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="text-xs"
+                      title="Reenvia o caso para a fila do banco limpando o último erro."
+                      disabled={!processId || bankingRetry.isPending}
+                      onClick={() => {
+                        if (!ensureTarget(processId, 'Selecione um processo')) return;
+                        bankingRetry.mutate(
+                          auditFields,
+                          { onError: (e) => onActionError('Retry bancário', e), onSuccess: () => actionToast('Retry bancário', 'bank_retry enviado') },
+                        );
+                      }}
+                    >
+                      <Repeat2 size={14} className="mr-1" /> Tentar novamente no banco
+                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { key: 'ready_for_bank', label: 'Pronto para enviar' },
+                        { key: 'bank_processing', label: 'Processando no banco' },
+                        { key: 'bank_retry', label: 'Aguardando novo envio' },
+                        { key: 'bank_rejected', label: 'Rejeitado pelo banco' },
+                        { key: 'account_created', label: 'Conta criada' },
+                      ].map(({ key, label }) => (
+                        <Button
+                          key={key}
+                          size="sm"
+                          variant="ghost"
+                          className="text-[11px]"
+                          title={`Status técnico: ${key}`}
+                          disabled={!processId || bankingStatus.isPending}
+                          onClick={() => {
+                            if (!ensureTarget(processId, 'Selecione um processo')) return;
+                            bankingStatus.mutate(
+                              { ...auditFields, status: key },
+                              { onError: (e) => onActionError('Estado bancário', e), onSuccess: () => actionToast('Status bancário', key) },
+                            );
+                          }}
+                        >
+                          {label}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
