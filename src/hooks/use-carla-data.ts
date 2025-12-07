@@ -77,6 +77,12 @@ export const useSendMessage = (conversationId?: string) => {
 };
 
 type Message = z.infer<typeof messageSchema>;
+type Generic = Record<string, unknown>;
+const invalidateProcessQueries = (qc: ReturnType<typeof useQueryClient>, id?: string) => {
+  qc.invalidateQueries({ queryKey: ['admin-process', id] });
+  qc.invalidateQueries({ queryKey: ['admin-process-events', id] });
+  qc.invalidateQueries({ queryKey: ['admin-processes'] });
+};
 
 export const useConversationStream = (conversationId?: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -209,8 +215,7 @@ export const useProcessStatus = (id?: string) => {
     mutationFn: (body: AuditPayload & { status: string }) =>
       apiPost(`/admin/processes/${id}/status`, processDetailSchema, body, defaultProcess(id)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-process', id] });
-      queryClient.invalidateQueries({ queryKey: ['admin-processes'] });
+      invalidateProcessQueries(queryClient, id);
     },
   });
 };
@@ -220,8 +225,7 @@ export const useProcessRetry = (id?: string) => {
   return useMutation({
     mutationFn: (body: AuditPayload = {}) => apiPost(`/admin/processes/${id}/retry`, processDetailSchema, body, defaultProcess(id)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-process', id] });
-      queryClient.invalidateQueries({ queryKey: ['admin-processes'] });
+      invalidateProcessQueries(queryClient, id);
     },
   });
 };
@@ -232,10 +236,93 @@ export const useProcessRerun = (id?: string) => {
     mutationFn: (body: AuditPayload & { include_events?: boolean } = { include_events: true }) =>
       apiPost(`/admin/processes/${id}/rerun`, processDetailSchema, body, defaultProcess(id)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-process', id] });
-      queryClient.invalidateQueries({ queryKey: ['admin-process-events', id] });
-      queryClient.invalidateQueries({ queryKey: ['admin-processes'] });
+      invalidateProcessQueries(queryClient, id);
     },
+  });
+};
+
+export const useVerificationApproveManual = (accountOpeningId?: string, processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AuditPayload = {}) =>
+      apiPost(`/admin/verifications/${accountOpeningId}/approve-manual`, z.any(), body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useVerificationRejectManual = (accountOpeningId?: string, processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AuditPayload = {}) =>
+      apiPost(`/admin/verifications/${accountOpeningId}/reject-manual`, z.any(), body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useOtpResend = (processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Generic) => apiPost('/admin/verifications/otp/resend', z.any(), body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useOtpMarkVerified = (processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Generic) => apiPost('/admin/verifications/otp/mark-verified', z.any(), body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useDiditRegenerate = (verificationId?: string, processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Generic = {}) =>
+      apiPost(`/admin/verifications/${verificationId}/didit/regenerate`, z.any(), body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useDiditOverride = (verificationId?: string, processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Generic) =>
+      apiPost(`/admin/verifications/${verificationId}/didit/override`, z.any(), body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const usePhoneCampaignTrigger = (processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Generic) => apiPost('/admin/verifications/phone-campaign/trigger', z.any(), body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useBankingStatus = (bankingId?: string, processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AuditPayload & { status: string }) =>
+      apiPost(`/admin/banking/${bankingId}/status`, z.any(), body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useBankingRetry = (bankingId?: string, processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AuditPayload = {}) => apiPost(`/admin/banking/${bankingId}/retry`, z.any(), body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
+  });
+};
+
+export const useBankingPayloadSave = (bankingId?: string, processId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Generic) => apiPost(`/admin/banking/${bankingId}/payload/save`, z.any(), body, {}),
+    onSuccess: () => invalidateProcessQueries(queryClient, processId),
   });
 };
 

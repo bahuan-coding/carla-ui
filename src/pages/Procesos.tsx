@@ -1,12 +1,28 @@
 import { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, ArrowRight, BadgeCheck, Clock4, Database, Link2, MoreHorizontal, Phone, RefreshCw, Repeat2, ShieldCheck, Sparkles } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowRight, BadgeCheck, Check, Clock4, Database, FileInput, Link2, Phone, RefreshCw, Repeat2, Send, ShieldCheck, Sparkles, X, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { useProcessesAdmin, useProcessDetail, useProcessEvents, useProcessRetry, useProcessRerun, useProcessStatus } from '@/hooks/use-carla-data';
+import {
+  useBankingRetry,
+  useBankingStatus,
+  useDiditOverride,
+  useDiditRegenerate,
+  useOtpMarkVerified,
+  useOtpResend,
+  usePhoneCampaignTrigger,
+  useProcessDetail,
+  useProcessEvents,
+  useProcessRetry,
+  useProcessRerun,
+  useProcessStatus,
+  useProcessesAdmin,
+  useVerificationApproveManual,
+  useVerificationRejectManual,
+} from '@/hooks/use-carla-data';
 import { useToast } from '@/hooks/use-toast';
 import { mapStatusDisplay, maskPhone, shortId, toneBadge, toneDot } from '@/lib/utils';
 
@@ -16,6 +32,10 @@ export function ProcesosPage() {
   const [status, setStatus] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
+  const [auditReason, setAuditReason] = useState('');
+  const [auditOperator, setAuditOperator] = useState('');
+  const [diditStatus, setDiditStatus] = useState<'approved' | 'rejected' | 'pending' | 'error'>('approved');
+  const [diditNote, setDiditNote] = useState('');
 
   const filters = useMemo(() => ({ q: search, status, phone, limit: 30 }), [phone, search, status]);
   const listQuery = useProcessesAdmin(filters);
@@ -25,6 +45,19 @@ export function ProcesosPage() {
   const statusMutation = useProcessStatus(selectedId);
   const retryMutation = useProcessRetry(selectedId);
   const rerunMutation = useProcessRerun(selectedId);
+  const processId = detailQuery.data?.id || selectedId;
+  const verificationId = detailQuery.data?.account_opening_id || processId;
+  const phoneForActions = detailQuery.data?.phone;
+
+  const approveVerification = useVerificationApproveManual(verificationId, processId);
+  const rejectVerification = useVerificationRejectManual(verificationId, processId);
+  const otpResend = useOtpResend(processId);
+  const otpMarkVerified = useOtpMarkVerified(processId);
+  const diditRegenerate = useDiditRegenerate(verificationId, processId);
+  const diditOverride = useDiditOverride(verificationId, processId);
+  const phoneCampaign = usePhoneCampaignTrigger(processId);
+  const bankingStatus = useBankingStatus(processId, processId);
+  const bankingRetry = useBankingRetry(processId, processId);
 
   const processes = listQuery.data || [];
 
@@ -44,6 +77,13 @@ export function ProcesosPage() {
     });
 
   const confirmDanger = (label: string) => window.confirm(label);
+  const ensureTarget = (id?: string, message?: string) => {
+    if (!id) {
+      onActionError(message || 'Selecione um processo');
+      return false;
+    }
+    return true;
+  };
 
   const cards = processes.map((p) => {
     const displayName =
@@ -69,6 +109,11 @@ export function ProcesosPage() {
       bankingDisplay,
     };
   });
+
+  const eventList = eventsQuery.data || detailQuery.data?.events || [];
+  const timeline = detailQuery.data?.timeline || detailQuery.data?.banking_events || [];
+  const auditFields = useMemo(() => ({ operator: auditOperator || undefined, reason: auditReason || undefined }), [auditOperator, auditReason]);
+  const actionToast = (title: string, description: string) => toast({ title, description });
 
   const renderHeaderKpi = (label: string, value: number | string, tone: 'ok' | 'warn' | 'error' = 'ok', helper?: string) => {
     const style =
@@ -147,7 +192,8 @@ export function ProcesosPage() {
               : cards.map((card) => (
                   <article
                     key={card.id}
-                    className="group relative flex h-full flex-col gap-3 rounded-xl border border-border/50 bg-background/70 p-4 shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-[0_16px_40px_rgba(93,163,255,0.25)]"
+                    className="group relative flex h-full cursor-pointer flex-col gap-3 rounded-xl border border-border/50 bg-background/70 p-4 shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-[0_16px_40px_rgba(93,163,255,0.25)]"
+                    onClick={() => setSelectedId(card.id)}
                   >
                     <header className="flex items-start justify-between gap-2">
                       <div className="space-y-1">
@@ -189,19 +235,17 @@ export function ProcesosPage() {
                     )}
                     <footer className="flex items-center justify-between gap-2 pt-1">
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedId(card.id)}>
-                          <MoreHorizontal size={16} />
-                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           className="text-xs"
                           disabled={retryMutation.isPending}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (!confirmDanger('Recolocar en retry?')) return;
                             retryMutation.mutate(
-                              {},
-                              { onError: (e) => onActionError('Fallo al retry', e), onSuccess: () => toast({ title: 'Retry enviado', description: 'Worker actualizado.' }) },
+                              { ...auditFields },
+                              { onError: (er) => onActionError('Fallo al retry', er), onSuccess: () => toast({ title: 'Retry enviado', description: 'Worker actualizado.' }) },
                             );
                           }}
                         >
@@ -213,11 +257,12 @@ export function ProcesosPage() {
                         size="sm"
                         className="text-xs"
                         disabled={rerunMutation.isPending}
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (!confirmDanger('Rerun incluye eventos. ¿Continuar?')) return;
                           rerunMutation.mutate(
-                            { include_events: true },
-                            { onError: (e) => onActionError('Fallo al rerun', e), onSuccess: () => toast({ title: 'Rerun disparado', description: 'Worker en ejecución.' }) },
+                            { include_events: true, ...auditFields },
+                            { onError: (er) => onActionError('Fallo al rerun', er), onSuccess: () => toast({ title: 'Rerun disparado', description: 'Worker en ejecución.' }) },
                           );
                         }}
                       >
@@ -259,7 +304,7 @@ export function ProcesosPage() {
                     onClick={() => {
                       if (!confirmDanger(`Forzar estado "${s}"?`)) return;
                       statusMutation.mutate(
-                        { status: s },
+                        { status: s, ...auditFields },
                         { onError: (e) => onActionError('Fallo al forzar estado', e), onSuccess: () => toast({ title: 'Estado ajustado', description: s }) },
                       );
                     }}
@@ -301,7 +346,7 @@ export function ProcesosPage() {
               <Skeleton className="h-32 w-full bg-foreground/10" />
             </div>
           ) : detailQuery.data ? (
-            <div className="space-y-3 py-4 text-sm">
+            <div className="space-y-4 py-4 text-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.14em] text-foreground/60">{detailQuery.data.id}</p>
@@ -309,9 +354,14 @@ export function ProcesosPage() {
                     {detailQuery.data.displayName || detailQuery.data.name || detailQuery.data.phone || 'Proceso'}
                   </p>
                 </div>
-                <span className={`rounded-full px-2 py-1 text-[11px] ${toneBadge(detailQuery.data.statusDisplay?.tone || 'info')}`}>
-                  {detailQuery.data.statusDisplay?.label || '—'}
-                </span>
+                <div className="flex flex-col items-end gap-1 text-right">
+                  <span className={`rounded-full px-2 py-1 text-[11px] ${toneBadge(detailQuery.data.statusDisplay?.tone || 'info')}`}>
+                    {detailQuery.data.statusDisplay?.label || '—'}
+                  </span>
+                  {detailQuery.data.correlation_id ? (
+                    <span className="rounded bg-foreground/10 px-2 py-1 text-[11px] text-foreground/70">corr: {detailQuery.data.correlation_id}</span>
+                  ) : null}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[12px] text-foreground/70">
                 <div className="rounded-lg border border-border/50 bg-background/70 p-2">
@@ -330,38 +380,249 @@ export function ProcesosPage() {
                   <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Verificación</p>
                   <p>{detailQuery.data.verificationDisplay?.label || '—'}</p>
                 </div>
-              </div>
-              {detailQuery.data.last_error ? (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-[12px] text-destructive">
-                  {detailQuery.data.last_error}
+                <div className="rounded-lg border border-border/50 bg-background/70 p-2">
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Eventos</p>
+                  <p>{detailQuery.data.events_count ?? eventList.length ?? '—'}</p>
                 </div>
-              ) : null}
+                <div className="rounded-lg border border-border/50 bg-background/70 p-2">
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Atualizado</p>
+                  <p>{detailQuery.data.timestampFmt || '—'}</p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border/50 bg-background/70 p-3 text-[12px] text-foreground/80">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-foreground/60">
+                  <Database size={12} /> Dados do processo
+                </div>
+                <div className="mt-2 grid gap-2">
+                  <p>ID abertura: {detailQuery.data.account_opening_id || '—'}</p>
+                  <p>Produto: {detailQuery.data.product_type || '—'} · Moeda: {detailQuery.data.account_currency || '—'}</p>
+                  {detailQuery.data.last_error ? (
+                    <span className="rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-destructive">{detailQuery.data.last_error}</span>
+                  ) : null}
+                  {detailQuery.data.meta ? (
+                    <pre className="rounded bg-foreground/5 p-2 text-[11px] leading-relaxed text-foreground/70">
+                      {JSON.stringify(detailQuery.data.meta, null, 2)}
+                    </pre>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="space-y-2 rounded-lg border border-border/50 bg-background/70 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Controles do cliente</p>
+                  <Badge variant="outline" className="text-[11px]">Audit + Dry run seguro</Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input placeholder="Operador" value={auditOperator} onChange={(e) => setAuditOperator(e.target.value)} className="h-8 text-xs" />
+                  <Input placeholder="Motivo / reason" value={auditReason} onChange={(e) => setAuditReason(e.target.value)} className="h-8 text-xs" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    size="sm"
+                    className="text-xs"
+                    disabled={!verificationId || approveVerification.isPending}
+                    onClick={() => {
+                      if (!ensureTarget(verificationId, 'Precisa do account_opening_id')) return;
+                      approveVerification.mutate(
+                        auditFields,
+                        { onError: (e) => onActionError('Aprovar manual', e), onSuccess: () => actionToast('Aprovado', 'QIC marcado aprovado') },
+                      );
+                    }}
+                  >
+                    <Check size={14} className="mr-1" /> Aprovar manual
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    disabled={!verificationId || rejectVerification.isPending}
+                    onClick={() => {
+                      if (!ensureTarget(verificationId, 'Precisa do account_opening_id')) return;
+                      rejectVerification.mutate(
+                        auditFields,
+                        { onError: (e) => onActionError('Rejeitar manual', e), onSuccess: () => actionToast('Rejeitado', 'QIC marcado rejeitado') },
+                      );
+                    }}
+                  >
+                    <X size={14} className="mr-1" /> Rejeitar manual
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="text-xs"
+                    disabled={!phoneForActions || otpResend.isPending}
+                    onClick={() => {
+                      if (!phoneForActions) return onActionError('Telefone não encontrado');
+                      otpResend.mutate(
+                        { ...auditFields, phone: phoneForActions, account_opening_id: verificationId },
+                        { onError: (e) => onActionError('Reenviar OTP', e), onSuccess: () => actionToast('OTP reenviado', phoneForActions) },
+                      );
+                    }}
+                  >
+                    <Send size={14} className="mr-1" /> Reenviar OTP
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    disabled={!phoneForActions || otpMarkVerified.isPending}
+                    onClick={() => {
+                      if (!phoneForActions) return onActionError('Telefone não encontrado');
+                      otpMarkVerified.mutate(
+                        { ...auditFields, phone: phoneForActions, account_opening_id: verificationId },
+                        { onError: (e) => onActionError('Marcar verificado', e), onSuccess: () => actionToast('OTP marcado verificado', phoneForActions) },
+                      );
+                    }}
+                  >
+                    <ShieldCheck size={14} className="mr-1" /> OTP verificado
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    disabled={!verificationId || diditRegenerate.isPending}
+                    onClick={() => {
+                      if (!ensureTarget(verificationId, 'Precisa do verification id')) return;
+                      diditRegenerate.mutate(
+                        auditFields,
+                        { onError: (e) => onActionError('Regenerar DIDIT', e), onSuccess: () => actionToast('DIDIT regenerado', 'Novo link enviado') },
+                      );
+                    }}
+                  >
+                    <RefreshCw size={14} className="mr-1" /> Regenerar DIDIT
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <select
+                      className="h-8 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
+                      value={diditStatus}
+                      onChange={(e) => setDiditStatus(e.target.value as typeof diditStatus)}
+                    >
+                      {['approved', 'rejected', 'pending', 'error'].map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                    <Input placeholder="Nota DIDIT" value={diditNote} onChange={(e) => setDiditNote(e.target.value)} className="h-8 text-xs" />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-xs"
+                      disabled={!verificationId || diditOverride.isPending}
+                      onClick={() => {
+                        if (!ensureTarget(verificationId, 'Precisa do verification id')) return;
+                        diditOverride.mutate(
+                          { ...auditFields, status: diditStatus, note: diditNote || undefined },
+                          { onError: (e) => onActionError('Override DIDIT', e), onSuccess: () => actionToast('DIDIT override', diditStatus) },
+                        );
+                      }}
+                    >
+                      <FileInput size={14} className="mr-1" /> Override DIDIT
+                    </Button>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    disabled={!phoneForActions || phoneCampaign.isPending}
+                    onClick={() => {
+                      if (!phoneForActions) return onActionError('Telefone não encontrado');
+                      phoneCampaign.mutate(
+                        { ...auditFields, batch_size: 1, phone: phoneForActions },
+                        { onError: (e) => onActionError('Campanha OTP', e), onSuccess: () => actionToast('Campanha disparada', phoneForActions) },
+                      );
+                    }}
+                  >
+                    <Zap size={14} className="mr-1" /> Campanha OTP
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="text-xs"
+                    disabled={!processId || bankingRetry.isPending}
+                    onClick={() => {
+                      if (!ensureTarget(processId, 'Selecione um processo')) return;
+                      bankingRetry.mutate(
+                        auditFields,
+                        { onError: (e) => onActionError('Retry bancário', e), onSuccess: () => actionToast('Retry bancário', 'bank_retry enviado') },
+                      );
+                    }}
+                  >
+                    <Repeat2 size={14} className="mr-1" /> Bank retry
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    {['ready_for_bank', 'bank_processing', 'bank_retry', 'bank_rejected', 'account_created'].map((s) => (
+                      <Button
+                        key={s}
+                        size="sm"
+                        variant="ghost"
+                        className="text-[11px]"
+                        disabled={!processId || bankingStatus.isPending}
+                        onClick={() => {
+                          if (!ensureTarget(processId, 'Selecione um processo')) return;
+                          bankingStatus.mutate(
+                            { ...auditFields, status: s },
+                            { onError: (e) => onActionError('Estado bancário', e), onSuccess: () => actionToast('Status bancário', s) },
+                          );
+                        }}
+                      >
+                        {s.replace(/_/g, ' ')}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Timeline</p>
                 {eventsQuery.isLoading ? (
                   <Skeleton className="h-24 w-full bg-foreground/10" />
-                ) : (eventsQuery.data || detailQuery.data.events || []).length ? (
+                ) : eventList.length ? (
                   <div className="space-y-2 rounded-lg border border-border/50 bg-background/70 p-2">
-                    {(eventsQuery.data || detailQuery.data.events || []).map((ev) => (
-                        <div key={`${ev.id}-${ev.created_at}-${ev.correlation_id}`} className="flex items-start gap-2 rounded-md border border-border/40 bg-background/80 px-2 py-2">
-                          <span className={`mt-1 h-2 w-2 rounded-full ${toneDot(mapStatusDisplay(ev.status).tone)}`} />
-                          <div className="space-y-1 text-[12px]">
-                            <div className="flex flex-wrap items-center gap-2 text-foreground">
-                              <span className="font-semibold">{ev.type || ev.step || 'evento'}</span>
-                              <Badge variant="outline" className="text-[11px]">
-                                {ev.status || '—'}
-                              </Badge>
-                              {ev.correlation_id ? <span className="rounded bg-foreground/10 px-2 py-0.5 text-[11px] text-foreground/70">{ev.correlation_id}</span> : null}
-                            </div>
-                            <p className="text-foreground/70">{ev.message || ev.created_at || '—'}</p>
+                    {eventList.map((ev) => (
+                      <div key={`${ev.id}-${ev.created_at}-${ev.correlation_id}`} className="flex items-start gap-2 rounded-md border border-border/40 bg-background/80 px-2 py-2">
+                        <span className={`mt-1 h-2 w-2 rounded-full ${toneDot(mapStatusDisplay(ev.status).tone)}`} />
+                        <div className="space-y-1 text-[12px]">
+                          <div className="flex flex-wrap items-center gap-2 text-foreground">
+                            <span className="font-semibold">{ev.type || ev.step || 'evento'}</span>
+                            <Badge variant="outline" className="text-[11px]">
+                              {ev.status || '—'}
+                            </Badge>
+                            {ev.correlation_id ? <span className="rounded bg-foreground/10 px-2 py-0.5 text-[11px] text-foreground/70">{ev.correlation_id}</span> : null}
                           </div>
+                          <p className="text-foreground/70">{ev.message || ev.created_at || '—'}</p>
                         </div>
+                      </div>
                     ))}
                   </div>
                 ) : (
                   <div className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-[12px] text-foreground/60">Sem eventos ainda.</div>
                 )}
               </div>
+
+              {timeline.length ? (
+                <div className="space-y-2">
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Timeline bancário/verificación</p>
+                  <div className="space-y-2 rounded-lg border border-border/50 bg-background/70 p-2">
+                    {timeline.map((ev) => (
+                      <div key={`${ev.id}-${ev.created_at}-${ev.correlation_id}-timeline`} className="flex items-start gap-2 rounded-md border border-border/40 bg-background/80 px-2 py-2">
+                        <span className={`mt-1 h-2 w-2 rounded-full ${toneDot(mapStatusDisplay(ev.status).tone)}`} />
+                        <div className="space-y-1 text-[12px]">
+                          <div className="flex flex-wrap items-center gap-2 text-foreground">
+                            <span className="font-semibold">{ev.step || ev.type || 'evento'}</span>
+                            <Badge variant="outline" className="text-[11px]">
+                              {ev.status || '—'}
+                            </Badge>
+                            {ev.correlation_id ? <span className="rounded bg-foreground/10 px-2 py-0.5 text-[11px] text-foreground/70">{ev.correlation_id}</span> : null}
+                          </div>
+                          <p className="text-foreground/70">{ev.message || ev.created_at || '—'}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="py-6 text-sm text-foreground/60">Selecione um card para ver detalhes.</div>

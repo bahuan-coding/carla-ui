@@ -54,8 +54,23 @@ async function request<T>({
     body: init?.body ? JSON.stringify(init.body) : undefined,
   });
 
+  const buildError = async () => {
+    const base = `Carla API error ${response.status}`;
+    try {
+      const payload = await response.json();
+      const detail = payload?.error?.detail || payload?.detail || payload?.message;
+      const message = detail ? `${base}: ${detail}` : base;
+      const error = new Error(message);
+      (error as Record<string, unknown>).violations = payload?.error?.violations;
+      (error as Record<string, unknown>).payload = payload;
+      return error;
+    } catch {
+      return new Error(base);
+    }
+  };
+
   if (!response.ok) {
-    throw new Error(`Carla API error ${response.status}`);
+    throw await buildError();
   }
 
   const json = await response.json().catch(() => null);
