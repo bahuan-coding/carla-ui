@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, apiWsUrl } from '@/lib/api';
+import { mapStatusDisplay, maskPhone, shortId } from '@/lib/utils';
 import {
   conversationDetailSchema,
   conversationListSchema,
@@ -164,7 +165,30 @@ export const useProcessDetail = (id?: string) =>
   useQuery({
     queryKey: ['admin-process', id],
     enabled: Boolean(id),
-    queryFn: () => apiGet(`/admin/processes/${id}`, processDetailSchema, defaultProcess(id)),
+    queryFn: async () => {
+      const raw = await apiGet(`/admin/processes/${id}`, processDetailSchema, defaultProcess(id));
+      const name =
+        (raw as { account?: { name?: string } })?.account?.name ||
+        (raw as { beneficiaries?: Array<{ name?: string }> })?.beneficiaries?.[0]?.name ||
+        raw.name ||
+        '';
+      const phoneMasked = maskPhone(raw.phone);
+      const displayName = name || phoneMasked || shortId(raw.id);
+      const statusDisplay = mapStatusDisplay(raw.status || raw.banking_status);
+      const verificationDisplay = mapStatusDisplay(raw.verification_status);
+      const bankingDisplay = mapStatusDisplay(raw.banking_status);
+      const timestampFmt = raw.updated_at || raw.last_error_at || raw.created_at;
+
+      return {
+        ...raw,
+        displayName,
+        phoneMasked,
+        statusDisplay,
+        verificationDisplay,
+        bankingDisplay,
+        timestampFmt,
+      };
+    },
     staleTime: 1000 * 20,
   });
 
