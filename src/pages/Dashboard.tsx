@@ -281,10 +281,10 @@ export function DashboardPage() {
               <Skeleton className="h-48 w-full bg-foreground/10" />
             ) : (
               <>
-                <div className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-r from-background/70 via-surface to-background/70 p-4">
+                <div className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-r from-background via-surface/90 to-background p-4">
                   <div
-                    className="pointer-events-none absolute inset-0 opacity-25"
-                    style={{ backgroundImage: 'linear-gradient(120deg, rgba(52, 211, 153, 0.18), rgba(93, 163, 255, 0.16))', backgroundSize: '200% 200%' }}
+                    className="pointer-events-none absolute inset-0 opacity-15"
+                    style={{ backgroundImage: 'linear-gradient(120deg, rgba(52, 211, 153, 0.12), rgba(93, 163, 255, 0.12))', backgroundSize: '200% 200%' }}
                   />
                   <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-center gap-3">
@@ -296,22 +296,19 @@ export function DashboardPage() {
                       <div>
                         <p className="text-[11px] uppercase tracking-[0.2em] text-foreground/60">Monitoramento vivo</p>
                         <p className="text-lg font-semibold text-foreground">{statusSummary.headline}</p>
-                        <p className="text-xs text-foreground/60">{statusSummary.body}</p>
+                        <p className="text-sm text-foreground/70">{statusSummary.body}</p>
                       </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
                       <span className={`rounded-full px-2 py-1 ${overallHealth ? toneBadge(overallHealth.tone) : 'bg-foreground/10 text-foreground/70'}`}>
                         {overallHealth?.tone === 'error' ? 'Crítico' : overallHealth?.tone === 'warn' ? 'Vigilante' : statusSummary.hasHeartbeat ? 'OK ao vivo' : 'Sem sinais'}
                       </span>
-                      <span className="rounded-full border border-border/60 px-2 py-1 text-[11px] text-foreground/70">
-                        Uptime {formatUptime(overallHealth?.uptime)}
-                      </span>
-                      <span className="rounded-full border border-border/60 px-2 py-1 text-[11px] text-foreground/70">
-                        {overallHealth?.timestamp ? `Atualizado ${new Date(overallHealth.timestamp).toLocaleTimeString()}` : 'Sincronizando'}
+                      <span className="rounded-full border border-border/60 px-2 py-1 text-foreground/70">
+                        {overallHealth?.timestamp ? `Atualizado ${new Date(overallHealth.timestamp).toLocaleTimeString()}` : 'Atualizando'}
                       </span>
                     </div>
                   </div>
-                  <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
+                  <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-foreground/10">
                     <div className="h-full rounded-full bg-gradient-to-r from-accent via-emerald-400 to-accent" />
                   </div>
                 </div>
@@ -329,7 +326,7 @@ export function DashboardPage() {
                         </div>
                         <div className="mt-2 flex items-center justify-between text-[11px] text-foreground/60">
                           <span>Latência {formatMs(service.latency)}</span>
-                          <span className="text-foreground/50">status vivo</span>
+                          <span className="text-foreground/50"></span>
                         </div>
                       </div>
                     ))
@@ -340,22 +337,19 @@ export function DashboardPage() {
                   )}
                 </div>
 
-                <div className="rounded-lg border border-border/60 bg-gradient-to-br from-background/80 via-surface to-background/80 p-3 text-[11px] font-mono text-foreground/80 shadow-inner">
+                <div className="rounded-lg border border-border/60 bg-gradient-to-br from-background/85 via-surface to-background/85 p-3 text-[11px] font-mono text-foreground/80 shadow-inner">
                   <div className="mb-2 flex items-center justify-between text-[11px] text-foreground/60">
                     <span>Snapshot vivo</span>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] text-foreground/60">tema adaptativo</span>
-                      <button
-                        type="button"
-                        onClick={() => setShowSnapshot((prev) => !prev)}
-                        className="rounded-md border border-border/60 px-2 py-0.5 text-[10px] text-foreground/70 transition hover:border-accent/50 hover:text-accent"
-                      >
-                        {showSnapshot ? 'Ocultar' : 'Mostrar'}
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowSnapshot((prev) => !prev)}
+                      className="rounded-md border border-border/60 px-2 py-0.5 text-[10px] text-foreground/70 transition hover:border-accent/50 hover:text-accent"
+                    >
+                      {showSnapshot ? 'Ocultar' : 'Mostrar'}
+                    </button>
                   </div>
                   {showSnapshot ? (
-                    <pre className="max-h-44 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-[radial-gradient(circle_at_20%_20%,rgba(52,211,153,0.08),transparent),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.08),transparent)] px-3 py-2 leading-relaxed text-[11px] text-foreground">
+                    <pre className="max-h-44 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-[radial-gradient(circle_at_20%_20%,rgba(52,211,153,0.06),transparent),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.06),transparent)] px-3 py-2 leading-relaxed text-[11px] text-foreground">
                       <code
                         className="[color-scheme:dark] block text-[11px] leading-relaxed"
                         dangerouslySetInnerHTML={{
