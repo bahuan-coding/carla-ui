@@ -3,16 +3,18 @@ import { NavLink, Route, Routes } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useUiStore } from '@/stores/ui';
-import { BrainCircuit, ChartPie, MessageCircle, Settings, Sun, Moon, Workflow } from 'lucide-react';
+import { BrainCircuit, ChartPie, Command, MessageCircle, Settings, Sun, Moon, Workflow } from 'lucide-react';
 import { DashboardPage } from '@/pages/Dashboard';
 import { ConversacionesPage } from '@/pages/Conversaciones';
 import { TransaccionesPage } from '@/pages/Transacciones';
 import { ProcesosPage } from '@/pages/Procesos';
+import { PainelControlePage } from '@/pages/PainelControle';
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: ChartPie },
   { to: '/conversaciones', label: 'Conversaciones', icon: MessageCircle },
   { to: '/transacciones', label: 'Transacciones', icon: BrainCircuit },
+  { to: '/painel', label: 'Painel', icon: Command },
   { to: '/procesos', label: 'Procesos', icon: Workflow },
   { to: '/config', label: 'Configuración', icon: Settings },
 ];
@@ -101,6 +103,7 @@ export default function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/conversaciones" element={<ConversacionesPage />} />
           <Route path="/transacciones" element={<TransaccionesPage />} />
+          <Route path="/painel" element={<PainelControlePage />} />
           <Route path="/procesos" element={<ProcesosPage />} />
           <Route path="/config" element={<DashboardPage />} />
         </Routes>
