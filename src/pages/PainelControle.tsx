@@ -468,21 +468,12 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   return (
     <Card className="group border border-border/60 bg-surface/90 shadow-[0_0_0_1px_rgba(255,255,255,0.03)] transition-all hover:-translate-y-[2px] hover:shadow-[0_10px_45px_rgba(0,0,0,0.55)]" style={flashStyle}>
       <CardHeader className="flex flex-wrap items-start justify-between gap-4 border-b border-border/30 pb-3">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-foreground/60">
-            <Badge className={`${methodTone[endpoint.method]} text-[11px] font-semibold`}>{endpoint.method}</Badge>
-            {endpoint.danger ? (
-              <Badge variant="destructive" className="text-[11px]">Acción sensible</Badge>
-            ) : (
-              <Badge variant="outline" className="border-border/50 text-[11px] text-foreground/60">Seguro interno</Badge>
-            )}
-            <span className="rounded-md bg-foreground/5 px-2 py-1 font-medium text-foreground/70">{endpoint.path}</span>
-          </div>
+        <div className="space-y-1.5">
           {endpoint.displayTitle ? (
-            <div className="space-y-1">
+            <>
               <p className="text-[15px] font-semibold leading-snug text-foreground">{endpoint.displayTitle}</p>
               <p className="text-sm leading-relaxed text-foreground/80">{endpoint.description}</p>
-            </div>
+            </>
           ) : (
             <p className="text-[15px] font-semibold leading-snug text-foreground">{endpoint.description}</p>
           )}
