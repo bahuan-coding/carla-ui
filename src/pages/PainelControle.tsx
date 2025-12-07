@@ -364,7 +364,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   const onChange = (field: Field, value: any) => setForm((prev) => ({ ...prev, [field.name]: value }));
 
   const renderField = (field: Field) => {
-    const common = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-accent';
+    const common = 'w-full rounded-lg border border-border/50 bg-background/60 px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-accent';
     if (field.type === 'textarea')
       return <textarea className={`${common} min-h-[96px]`} placeholder={field.placeholder} value={form[field.name] ?? ''} onChange={(e) => onChange(field, e.target.value)} />;
     if (field.type === 'select')
@@ -464,8 +464,8 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   };
 
   return (
-    <Card className="group border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md" style={flashStyle}>
-      <CardHeader className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-3">
+    <Card className="group border border-border/60 bg-surface/90 shadow-[0_0_0_1px_rgba(255,255,255,0.03)] transition-all hover:-translate-y-[2px] hover:shadow-[0_10px_45px_rgba(0,0,0,0.55)]" style={flashStyle}>
+      <CardHeader className="flex flex-wrap items-start justify-between gap-4 border-b border-border/30 pb-3">
         <div className="space-y-1.5">
           {endpoint.displayTitle ? (
             <>
@@ -510,7 +510,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
 export function PainelControlePage() {
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/40 bg-surface px-4 py-4">
         <div className="space-y-1">
           <p className="text-[11px] uppercase tracking-[0.18em] text-foreground/60">Panel · Operaciones</p>
           <h1 className="text-2xl font-semibold text-foreground">Panel de Verificaciones</h1>
@@ -525,7 +525,7 @@ export function PainelControlePage() {
         {endpointGroups.map((group) => (
           <Card
             key={group.id}
-            className="group border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md"
+            className="group border border-border/50 bg-surface/80 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all hover:-translate-y-[2px] hover:shadow-[0_0_0_1px_rgba(94,234,212,0.35),0_18px_45px_rgba(0,0,0,0.55)]"
           >
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -535,7 +535,7 @@ export function PainelControlePage() {
                   <p className="text-[11px] text-foreground/60">{group.endpoints.length} acciones guiadas</p>
                 </div>
               </div>
-              <Badge variant="outline" className="text-[11px] border-slate-200">Seguro</Badge>
+              <Badge variant="outline" className="text-[11px] border-border/60">Seguro</Badge>
             </CardHeader>
           </Card>
         ))}
@@ -558,7 +558,7 @@ export function PainelControlePage() {
                 <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
                 <p className="text-xs text-foreground/60">Acciones de este dominio, solo lo esencial.</p>
               </div>
-              <Badge variant="outline" className="text-[11px] border-slate-200 text-foreground/70">
+              <Badge variant="outline" className="text-[11px] border-border/50 text-foreground/70">
                 {group.endpoints.length} endpoints
               </Badge>
             </div>
