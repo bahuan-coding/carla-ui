@@ -151,6 +151,24 @@ export const useCreateProcess = () => {
 
 // Admin Processes
 const defaultProcess = (id?: string) => processDetailSchema.parse({ id: id || crypto.randomUUID() });
+type ProcessDetail = z.infer<typeof processDetailSchema>;
+type ProcessDetailWithUi = ProcessDetail & {
+  displayName: string;
+  phoneMasked: string;
+  statusDisplay: ReturnType<typeof mapStatusDisplay>;
+  verificationDisplay: ReturnType<typeof mapStatusDisplay>;
+  bankingDisplay: ReturnType<typeof mapStatusDisplay>;
+  timestampFmt?: string | null;
+};
+
+const unwrapProcessDetail = (raw: unknown, fallback: ProcessDetail): ProcessDetail => {
+  const candidates = [raw, (raw as { data?: unknown })?.data, (raw as { data?: { data?: unknown } })?.data?.data];
+  for (const candidate of candidates) {
+    const parsed = processDetailSchema.safeParse(candidate);
+    if (parsed.success) return parsed.data;
+  }
+  return fallback;
+};
 
 export const useProcessesAdmin = (filters: Partial<{ q: string; status: string; phone: string; limit: number; offset: number }>) => {
   const queryString = useMemo(() => {
@@ -169,26 +187,16 @@ export const useProcessesAdmin = (filters: Partial<{ q: string; status: string; 
 };
 
 export const useProcessDetail = (id?: string) =>
-  useQuery({
+  useQuery<ProcessDetailWithUi>({
     queryKey: ['admin-process', id],
     enabled: Boolean(id),
     queryFn: async () => {
-      // Unwrap flexible payloads: some envs return { data: { account, ... } } without top-level ids
-      const raw = await apiGet(`/admin/processes/${id}`, z.any() as unknown as typeof processDetailSchema, defaultProcess(id) as unknown);
-      const envelope = (raw as { data?: unknown })?.data || raw;
-      const inner = (envelope as { data?: unknown })?.data || envelope;
-      const base = { ...defaultProcess(id), ...(envelope as Record<string, unknown>), ...(inner as Record<string, unknown>) } as Account & {
-        id?: string;
-        phone?: string;
-        name?: string;
-        status?: string;
-        banking_status?: string;
-        verification_status?: string;
-      };
+      const raw = await apiGet<unknown>(`/admin/processes/${id}`, z.any(), defaultProcess(id) as unknown as ProcessDetail);
+      const base = unwrapProcessDetail(raw, defaultProcess(id));
 
-      const account = (base as { account?: Account })?.account || (base as unknown as Account);
+      const account = (base as { account?: Account })?.account || base.account;
       const normalized = normalizeAccountForUi(account, { id: base.id, phone: base.phone, name: base.name });
-      const phoneMasked = maskPhone(normalized.mainPhone || raw.phone);
+      const phoneMasked = maskPhone(normalized.mainPhone || base.phone);
       const displayName = normalized.displayName || base.name || phoneMasked || shortId(base.id);
       const statusDisplay = mapStatusDisplay(base.status || base.banking_status);
       const verificationDisplay = mapStatusDisplay(base.verification_status);

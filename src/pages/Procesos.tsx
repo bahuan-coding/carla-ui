@@ -359,7 +359,7 @@ export function ProcesosPage() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-foreground/70"
-                            onClick={() => navigator.clipboard.writeText(detailQuery.data.id)}
+                            onClick={() => detailQuery.data?.id && navigator.clipboard.writeText(detailQuery.data.id)}
                             title="Copiar ID"
                           >
                             <ClipboardCopy size={14} />
