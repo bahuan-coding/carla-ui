@@ -3,12 +3,20 @@
 Arquivo raiz `netlify.toml`:
 - build: `pnpm build`, publish `dist`.
 - env build: `NODE_VERSION=18.14.0`, `NETLIFY_USE_PNPM=true`.
-- contexts: production (`VITE_API_URL=https://api.carla.money`), deploy-preview (`VITE_API_URL=https://staging-api.carla.money`).
+- contexts: production (`VITE_API_URL=https://x.carla.money`), deploy-preview (`VITE_API_URL=https://x.carla.money`).
 - Redirect SPA: `/* -> /index.html 200`.
 - Headers: X-Frame-Options DENY, X-XSS-Protection, HSTS, CSP (ajustar se novos domínios), cache /assets/* immutable.
 
 Variáveis via UI Netlify (Site settings > Build & deploy > Environment):
-- `VITE_API_URL`, `VITE_CLERK_PUBLISHABLE_KEY`, `API_SIGNATURE_TOKEN` (se proxy), outras chaves públicas.
+- `VITE_API_URL=https://x.carla.money`
+- `VITE_API_TOKEN=<token da Carla API>`
+- `VITE_CLERK_PUBLISHABLE_KEY`, `API_SIGNATURE_TOKEN` (se proxy), outras chaves públicas.
+
+Local (.env.local):
+```
+VITE_API_URL=https://x.carla.money
+VITE_API_TOKEN=<token da Carla API>
+```
 
 CLI fluxo:
 ```bash

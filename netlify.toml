@@ -6,11 +6,11 @@
     NETLIFY_USE_PNPM = "true"
 
 [context.production.environment]
-  VITE_API_URL = "https://api.carla.money"
+  VITE_API_URL = "https://x.carla.money"
   NODE_ENV = "production"
 
 [context.deploy-preview.environment]
-  VITE_API_URL = "https://staging-api.carla.money"
+  VITE_API_URL = "https://x.carla.money"
 
 [[redirects]]
   from = "/*"
@@ -23,7 +23,7 @@
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
-    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.carla.money https://staging-api.carla.money;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://x.carla.money;"
 
 [[headers]]
   for = "/assets/*"
