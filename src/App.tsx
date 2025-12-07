@@ -39,8 +39,8 @@ export default function App() {
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-accent/20" />
             <div>
-              <p className="text-sm font-semibold">Carla Channels</p>
-              <p className="text-xs text-foreground/60">Automatización financiera</p>
+              <p className="text-sm font-semibold">Carla</p>
+              <p className="text-xs text-foreground/60">Mission Control</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(false)}>
@@ -50,29 +50,41 @@ export default function App() {
         <nav className="flex flex-col gap-2">
           {nav.map((item) => {
             const Icon = item.icon;
+            const isConfig = item.to === '/config';
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-foreground/10 ${
+                  `flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-foreground/10 ${
                     isActive ? 'bg-foreground/10 text-accent' : 'text-foreground'
                   }`
                 }
                 onClick={() => setSidebarOpen(false)}
               >
-                <Icon size={16} />
-                {item.label}
+                <span className="flex items-center gap-2">
+                  <Icon size={16} />
+                  {item.label}
+                </span>
+                {isConfig ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Alternar tema"
+                    className="text-foreground/70"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setTheme(theme === 'dark' ? 'light' : 'dark');
+                    }}
+                  >
+                    {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                  </Button>
+                ) : null}
               </NavLink>
             );
           })}
         </nav>
-        <div className="mt-auto flex items-center justify-between rounded-lg border border-border/40 bg-foreground/5 px-3 py-2">
-          <span className="text-xs text-foreground/70">Tema</span>
-          <Button variant="ghost" size="icon" aria-label="Alternar tema" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-          </Button>
-        </div>
       </aside>
 
       <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
@@ -82,8 +94,8 @@ export default function App() {
               ☰
             </Button>
             <div>
-              <p className="text-xs uppercase tracking-[0.12em] text-foreground/60">Panel de Control · GT</p>
-              <h1 className="text-2xl font-semibold">Carla Channels</h1>
+              <p className="text-xs uppercase tracking-[0.12em] text-foreground/60">Mission Control</p>
+              <h1 className="text-2xl font-semibold">Carla</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">

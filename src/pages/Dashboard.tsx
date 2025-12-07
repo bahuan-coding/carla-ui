@@ -11,7 +11,6 @@ import { useUiStore } from '@/stores/ui';
 export function DashboardPage() {
   const { toast } = useToast();
   const { period } = useUiStore();
-  const [ambiente, setAmbiente] = useState<'prod' | 'homol'>('prod');
   const [showSnapshot, setShowSnapshot] = useState(true);
   const kpisQuery = useKpis(period);
   const weeklyQuery = useWeeklyActivity(period);
@@ -177,44 +176,11 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/40 bg-surface/70 px-4 py-3">
-        <div className="space-y-2">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-foreground/60">Mission Control · Infra WhatsApp + Core</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="text-xs text-accent border-accent/30">
-              Ambiente: {ambiente === 'prod' ? 'Produção' : 'Homologação'}
-            </Badge>
-            <Badge variant="outline" className="text-xs border-border/60 text-foreground/70">
-              Instituições: Todas
-            </Badge>
-            <Badge variant="outline" className="text-xs border-border/60 text-foreground/70">
-              Período: {period?.toUpperCase?.() || 'ISO-WEEK'}
-            </Badge>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="flex items-center gap-1 text-[11px] border-emerald-400/40 text-emerald-300">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-            Live
-          </Badge>
-          <Badge variant="outline" className="text-[11px]">Carla Channels</Badge>
-        </div>
-      </div>
-
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
           <div>
             <h3 className="text-sm font-semibold text-foreground">KPIs críticos</h3>
             <p className="text-xs text-foreground/60">Saúde da infra (core + WhatsApp + compliance)</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setAmbiente(ambiente === 'prod' ? 'homol' : 'prod')}
-              className="rounded-lg border border-border/60 bg-background/60 px-3 py-1 text-[11px] text-foreground/70 transition hover:border-accent/60 hover:text-accent"
-            >
-              Alternar ambiente
-            </button>
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
@@ -251,50 +217,15 @@ export function DashboardPage() {
 
       <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
         <Card className="glass border-border/60 bg-surface text-foreground">
-          <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/70">
-                Live · 15s
-              </Badge>
-              <span
-                className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] ${overallHealth ? toneBadge(overallHealth.tone) : 'bg-foreground/10 text-foreground/70'}`}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-current shadow-[0_0_8px_currentColor]" />
-                {overallHealth?.tone === 'error' ? 'Crítico' : overallHealth?.tone === 'warn' ? 'Vigilante' : statusSummary.hasHeartbeat ? 'OK ao vivo' : 'Sem sinais'}
-              </span>
-            </div>
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold">Saúde dos serviços</CardTitle>
+            <span className="text-[11px] text-foreground/60">{statusSummary.servicesCount || 0} serviços monitorados</span>
           </CardHeader>
           <CardContent className="space-y-4">
             {healthQuery.isLoading ? (
               <Skeleton className="h-48 w-full bg-foreground/10" />
             ) : (
               <>
-                <div className="relative overflow-hidden rounded-xl border border-border/50 bg-background/50 p-4 shadow-[0_10px_50px_rgba(0,0,0,0.35)] backdrop-blur-xl">
-                  <div className="pointer-events-none absolute inset-0 opacity-35" style={{ background: 'radial-gradient(circle at 20% 20%, rgba(52,211,153,0.16), transparent 45%), radial-gradient(circle at 80% 0%, rgba(93,163,255,0.12), transparent 40%)' }} />
-                  <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <span className="absolute inset-0 rounded-full bg-accent/15 blur-xl" />
-                        <span className="absolute inset-0 rounded-full border border-accent/35 opacity-60" />
-                        <span className="relative block h-11 w-11 rounded-full bg-gradient-to-br from-emerald-400 to-accent shadow-lg shadow-accent/30" />
-                      </div>
-                      <div>
-                        <p className="text-lg font-semibold text-foreground/90">{statusSummary.headline}</p>
-                        <p className="text-sm text-foreground/65">{statusSummary.body}</p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                      <span className={`flex items-center gap-1 rounded-full px-2 py-1 ${overallHealth ? toneBadge(overallHealth.tone) : 'bg-foreground/10 text-foreground/70'}`}>
-                        <span className="h-1.5 w-1.5 rounded-full bg-current shadow-[0_0_8px_currentColor]" />
-                        {overallHealth?.tone === 'error' ? 'Crítico' : overallHealth?.tone === 'warn' ? 'Vigilante' : statusSummary.hasHeartbeat ? 'OK ao vivo' : 'Sem sinais'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-foreground/10">
-                    <div className="h-full rounded-full bg-gradient-to-r from-accent/70 via-emerald-400/70 to-accent/70" />
-                  </div>
-                </div>
-
                 <div className="grid gap-3 md:grid-cols-2">
                   {healthServices.length ? (
                     healthServices.map((service) => {
