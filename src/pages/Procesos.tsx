@@ -74,10 +74,9 @@ export function ProcesosPage() {
       description: error instanceof Error ? error.message : 'Tente novamente em instantes.',
     });
 
-  const confirmDanger = (label: string) => window.confirm(label);
   const ensureTarget = (id?: string, message?: string) => {
     if (!id) {
-      onActionError(message || 'Selecione um processo');
+      onActionError(message || 'Seleccione un proceso');
       return false;
     }
     return true;
@@ -383,18 +382,18 @@ export function ProcesosPage() {
                   <p>{detailQuery.data.events_count ?? eventList.length ?? '—'}</p>
                 </div>
                 <div className="rounded-lg border border-border/50 bg-background/70 p-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Atualizado</p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Actualizado</p>
                   <p>{detailQuery.data.timestampFmt || '—'}</p>
                 </div>
               </div>
 
               <div className="rounded-lg border border-border/50 bg-background/70 p-3 text-[12px] text-foreground/80">
                 <div className="flex flex-wrap items-center gap-2 text-[11px] text-foreground/60">
-                  <Database size={12} /> Dados do processo
+                  <Database size={12} /> Datos del proceso
                 </div>
                 <div className="mt-2 grid gap-2">
-                  <p>ID abertura: {detailQuery.data.account_opening_id || '—'}</p>
-                  <p>Produto: {detailQuery.data.product_type || '—'} · Moeda: {detailQuery.data.account_currency || '—'}</p>
+                  <p>ID de apertura: {detailQuery.data.account_opening_id || '—'}</p>
+                  <p>Producto: {detailQuery.data.product_type || '—'} · Moneda: {detailQuery.data.account_currency || '—'}</p>
                   {detailQuery.data.last_error ? (
                     <span className="rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-destructive">{detailQuery.data.last_error}</span>
                   ) : null}
@@ -408,128 +407,145 @@ export function ProcesosPage() {
 
               <div className="space-y-3 rounded-lg border border-border/50 bg-background/70 p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Controles do cliente</p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Controles del cliente</p>
                   <Badge variant="outline" className="text-[11px]">Audit + Dry run seguro</Badge>
                 </div>
                 <p className="text-[12px] text-foreground/70">
-                  Use quando o fluxo automático não concluiu ou a decisão veio de análise offline. Registre quem decidiu e o motivo.
+                  Utilice este bloque cuando el flujo automático no haya concluido o la decisión provenga de un análisis offline. Registre quién decidió y el motivo.
                 </p>
 
                 <div className="grid grid-cols-2 gap-2">
                   <Input value={auditOperator || 'operador.demo@carla'} disabled className="h-8 text-xs" />
-                  <Input placeholder="Motivo da decisão e falha observada" value={auditReason} onChange={(e) => setAuditReason(e.target.value)} className="h-8 text-xs" />
+                  <Input placeholder="Motivo de la decisión y falla observada" value={auditReason} onChange={(e) => setAuditReason(e.target.value)} className="h-8 text-xs" />
                 </div>
 
                 <div className="space-y-2 rounded-lg border border-border/40 bg-background/60 p-2">
                   <div className="flex items-center justify-between text-[11px] text-foreground/60">
-                    <span>Decisão do processo</span>
-                    <span className="text-foreground/50">Aprovar ou rejeitar manualmente</span>
+                    <span>Decisión del proceso</span>
+                    <span className="text-foreground/50">Aprobar o rechazar manualmente</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       size="sm"
                       className="text-xs"
-                      title="Aprova após validação manual; envia ao banco."
+                      title="Aprueba tras validación manual; envía al banco."
                       disabled={!verificationId || approveVerification.isPending}
                       onClick={() => {
-                        if (!ensureTarget(verificationId, 'Precisa do account_opening_id')) return;
+                        if (!ensureTarget(verificationId, 'Necesita account_opening_id')) return;
                         approveVerification.mutate(
                           auditFields,
-                          { onError: (e) => onActionError('Aprovar manual', e), onSuccess: () => actionToast('Aprovado', 'QIC marcado aprovado') },
+                          { onError: (e) => onActionError('Aprobar manual', e), onSuccess: () => actionToast('Aprobado', 'QIC marcado aprobado') },
                         );
                       }}
                     >
-                      <Check size={14} className="mr-1" /> Aprovar manualmente
+                      <Check size={14} className="mr-1" /> Aprobar manualmente
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
                       className="text-xs"
-                      title="Rejeita após revisão manual; encerra o caso."
+                      title="Rechaza tras revisión manual; cierra el caso."
                       disabled={!verificationId || rejectVerification.isPending}
                       onClick={() => {
-                        if (!ensureTarget(verificationId, 'Precisa do account_opening_id')) return;
+                        if (!ensureTarget(verificationId, 'Necesita account_opening_id')) return;
                         rejectVerification.mutate(
                           auditFields,
-                          { onError: (e) => onActionError('Rejeitar manual', e), onSuccess: () => actionToast('Rejeitado', 'QIC marcado rejeitado') },
+                          { onError: (e) => onActionError('Rechazar manual', e), onSuccess: () => actionToast('Rechazado', 'QIC marcado rechazado') },
                         );
                       }}
                     >
-                      <X size={14} className="mr-1" /> Rejeitar manualmente
+                      <X size={14} className="mr-1" /> Rechazar manualmente
                     </Button>
                   </div>
                 </div>
 
-                <div className="space-y-2 rounded-lg border border-border/40 bg-background/60 p-2">
+                {/* Prueba de vida: separado em reenvío vs ajuste manual */}
+                <div className="space-y-3 rounded-lg border border-border/40 bg-background/60 p-3">
                   <div className="flex items-center justify-between text-[11px] text-foreground/60">
-                    <span>Prova de vida</span>
-                    <span className="text-foreground/50">Reenviar link ou ajustar status</span>
+                    <span>Prueba de vida</span>
+                    <span className="text-foreground/50">Reenvío de enlace y ajuste manual</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+
+                  <div className="space-y-1">
+                    <p className="text-[11px] uppercase tracking-[0.08em] text-foreground/60">Reenvío de enlace</p>
+                    <p className="text-[12px] text-foreground/60">Envía nuevamente el enlace de prueba de vida al cliente.</p>
                     <Button
                       size="sm"
                       variant="secondary"
                       className="text-xs"
-                      title="Gera novo link de prova de vida."
+                      title="Genera y envía un nuevo enlace de prueba de vida."
                       disabled={!verificationId || diditRegenerate.isPending}
                       onClick={() => {
-                        if (!ensureTarget(verificationId, 'Precisa do verification id')) return;
+                        if (!ensureTarget(verificationId, 'Necesita verification id')) return;
                         diditRegenerate.mutate(
                           auditFields,
-                          { onError: (e) => onActionError('Reenviar prova de vida', e), onSuccess: () => actionToast('Prova de vida', 'Novo link enviado') },
+                          { onError: (e) => onActionError('Reenviar prueba de vida', e), onSuccess: () => actionToast('Prueba de vida', 'Nuevo enlace enviado') },
                         );
                       }}
                     >
-                      <RefreshCw size={14} className="mr-1" /> Reenviar prova de vida
+                      <RefreshCw size={14} className="mr-1" /> Reenviar enlace de prueba de vida
                     </Button>
-                    <div className="flex items-center gap-2">
-                      <select
-                        className="h-8 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
-                        value={diditStatus}
-                        onChange={(e) => setDiditStatus(e.target.value as typeof diditStatus)}
-                        title="Status manual da prova de vida"
-                      >
-                        {['approved', 'rejected', 'pending', 'error'].map((s) => (
-                          <option key={s} value={s}>
-                            {s}
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-[11px] uppercase tracking-[0.08em] text-foreground/60">Ajustar estado manualmente</p>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-foreground/60">Nuevo estado de la prueba de vida</label>
+                        <select
+                          className="h-9 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
+                          value={diditStatus}
+                          onChange={(e) => setDiditStatus(e.target.value as typeof diditStatus)}
+                          title="Seleccione el nuevo estado manual"
+                        >
+                          <option value="" disabled>
+                            Seleccione el nuevo estado
                           </option>
-                        ))}
-                      </select>
-                      <Input placeholder="Nota curta" value={diditNote} onChange={(e) => setDiditNote(e.target.value)} className="h-8 text-xs" />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-xs"
-                        title="Ajusta status manual da prova de vida."
-                        disabled={!verificationId || diditOverride.isPending}
-                        onClick={() => {
-                          if (!ensureTarget(verificationId, 'Precisa do verification id')) return;
-                          diditOverride.mutate(
-                            { ...auditFields, status: diditStatus, note: diditNote || undefined },
-                            { onError: (e) => onActionError('Override DIDIT', e), onSuccess: () => actionToast('DIDIT override', diditStatus) },
-                          );
-                        }}
-                      >
-                        <FileInput size={14} className="mr-1" /> Ajustar status da prova de vida
-                      </Button>
+                          {['approved', 'rejected', 'pending', 'error'].map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1 sm:w-48">
+                        <label className="text-[11px] text-foreground/60">Nota (opcional)</label>
+                        <Input placeholder="Nota breve" value={diditNote} onChange={(e) => setDiditNote(e.target.value)} className="h-9 text-xs" />
+                      </div>
                     </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs"
+                      title="Aplica el estado manual seleccionado."
+                      disabled={!verificationId || diditOverride.isPending}
+                      onClick={() => {
+                        if (!ensureTarget(verificationId, 'Necesita verification id')) return;
+                        diditOverride.mutate(
+                          { ...auditFields, status: diditStatus, note: diditNote || undefined },
+                          { onError: (e) => onActionError('Override DIDIT', e), onSuccess: () => actionToast('DIDIT override', diditStatus) },
+                        );
+                      }}
+                    >
+                      <FileInput size={14} className="mr-1" /> Aplicar cambio de estado
+                    </Button>
                   </div>
                 </div>
 
                 <div className="space-y-2 rounded-lg border border-border/40 bg-background/60 p-2">
                   <div className="flex items-center justify-between text-[11px] text-foreground/60">
-                    <span>OTP / Contato</span>
-                    <span className="text-foreground/50">Confirmar canal telefônico</span>
+                    <span>OTP / Contacto</span>
+                    <span className="text-foreground/50">Confirmar canal telefónico</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       size="sm"
                       variant="secondary"
                       className="text-xs"
-                      title="Reenvia código OTP para o telefone."
+                      title="Reenvía el código OTP al teléfono."
                       disabled={!phoneForActions || otpResend.isPending}
                       onClick={() => {
-                        if (!phoneForActions) return onActionError('Telefone não encontrado');
+                        if (!phoneForActions) return onActionError('Teléfono no encontrado');
                         otpResend.mutate(
                           { ...auditFields, phone: phoneForActions, account_opening_id: verificationId },
                           { onError: (e) => onActionError('Reenviar OTP', e), onSuccess: () => actionToast('OTP reenviado', phoneForActions) },
@@ -542,13 +558,13 @@ export function ProcesosPage() {
                       size="sm"
                       variant="outline"
                       className="text-xs"
-                      title="Marca OTP como verificado após checagem manual."
+                      title="Marca OTP como verificado tras comprobación manual."
                       disabled={!phoneForActions || otpMarkVerified.isPending}
                       onClick={() => {
-                        if (!phoneForActions) return onActionError('Telefone não encontrado');
+                        if (!phoneForActions) return onActionError('Teléfono no encontrado');
                         otpMarkVerified.mutate(
                           { ...auditFields, phone: phoneForActions, account_opening_id: verificationId },
-                          { onError: (e) => onActionError('Marcar verificado', e), onSuccess: () => actionToast('OTP marcado verificado', phoneForActions) },
+                          { onError: (e) => onActionError('Marcar verificado', e), onSuccess: () => actionToast('OTP marcado como verificado', phoneForActions) },
                         );
                       }}
                     >
@@ -559,46 +575,46 @@ export function ProcesosPage() {
 
                 <div className="space-y-2 rounded-lg border border-border/40 bg-background/60 p-2">
                   <div className="flex items-center justify-between text-[11px] text-foreground/60">
-                    <span>Integração bancária</span>
-                    <span className="text-foreground/50">Reenviar ou ajustar estado</span>
+                    <span>Integración bancaria</span>
+                    <span className="text-foreground/50">Reenviar o ajustar estado</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       size="sm"
                       variant="secondary"
                       className="text-xs"
-                      title="Reenvia o caso para a fila do banco limpando o último erro."
+                      title="Reenvía el caso a la fila del banco limpiando el último error."
                       disabled={!processId || bankingRetry.isPending}
                       onClick={() => {
-                        if (!ensureTarget(processId, 'Selecione um processo')) return;
+                        if (!ensureTarget(processId, 'Seleccione un proceso')) return;
                         bankingRetry.mutate(
                           auditFields,
-                          { onError: (e) => onActionError('Retry bancário', e), onSuccess: () => actionToast('Retry bancário', 'bank_retry enviado') },
+                          { onError: (e) => onActionError('Reintento bancario', e), onSuccess: () => actionToast('Reintento bancario', 'bank_retry enviado') },
                         );
                       }}
                     >
-                      <Repeat2 size={14} className="mr-1" /> Tentar novamente no banco
+                      <Repeat2 size={14} className="mr-1" /> Intentar de nuevo en el banco
                     </Button>
                     <div className="flex flex-wrap gap-2">
                       {[
-                        { key: 'ready_for_bank', label: 'Pronto para enviar' },
-                        { key: 'bank_processing', label: 'Processando no banco' },
-                        { key: 'bank_retry', label: 'Aguardando novo envio' },
-                        { key: 'bank_rejected', label: 'Rejeitado pelo banco' },
-                        { key: 'account_created', label: 'Conta criada' },
+                        { key: 'ready_for_bank', label: 'Listo para enviar' },
+                        { key: 'bank_processing', label: 'Procesando en el banco' },
+                        { key: 'bank_retry', label: 'Esperando nuevo envío' },
+                        { key: 'bank_rejected', label: 'Rechazado por el banco' },
+                        { key: 'account_created', label: 'Cuenta creada' },
                       ].map(({ key, label }) => (
                         <Button
                           key={key}
                           size="sm"
                           variant="ghost"
                           className="text-[11px]"
-                          title={`Status técnico: ${key}`}
+                          title={`Estado técnico: ${key}`}
                           disabled={!processId || bankingStatus.isPending}
                           onClick={() => {
-                            if (!ensureTarget(processId, 'Selecione um processo')) return;
+                            if (!ensureTarget(processId, 'Seleccione un proceso')) return;
                             bankingStatus.mutate(
                               { ...auditFields, status: key },
-                              { onError: (e) => onActionError('Estado bancário', e), onSuccess: () => actionToast('Status bancário', key) },
+                              { onError: (e) => onActionError('Estado bancario', e), onSuccess: () => actionToast('Estado bancario', key) },
                             );
                           }}
                         >
@@ -611,7 +627,7 @@ export function ProcesosPage() {
               </div>
 
               <div className="space-y-2">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Timeline</p>
+                <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Línea de tiempo</p>
                 {eventsQuery.isLoading ? (
                   <Skeleton className="h-24 w-full bg-foreground/10" />
                 ) : eventList.length ? (
@@ -633,13 +649,13 @@ export function ProcesosPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-[12px] text-foreground/60">Sem eventos ainda.</div>
+                  <div className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-[12px] text-foreground/60">Sin eventos todavía.</div>
                 )}
               </div>
 
               {timeline.length ? (
                 <div className="space-y-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Timeline bancário/verificación</p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Línea de tiempo bancaria/verificación</p>
                   <div className="space-y-2 rounded-lg border border-border/50 bg-background/70 p-2">
                     {timeline.map((ev) => (
                       <div key={`${ev.id}-${ev.created_at}-${ev.correlation_id}-timeline`} className="flex items-start gap-2 rounded-md border border-border/40 bg-background/80 px-2 py-2">
@@ -661,7 +677,7 @@ export function ProcesosPage() {
               ) : null}
             </div>
           ) : (
-            <div className="py-6 text-sm text-foreground/60">Selecione um card para ver detalhes.</div>
+            <div className="py-6 text-sm text-foreground/60">Seleccione una tarjeta para ver detalles.</div>
           )}
         </SheetContent>
       </Sheet>
