@@ -527,15 +527,11 @@ export function PainelControlePage() {
             key={group.id}
             className="group border border-border/50 bg-surface/80 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all hover:-translate-y-[2px] hover:shadow-[0_0_0_1px_rgba(94,234,212,0.35),0_18px_45px_rgba(0,0,0,0.55)]"
           >
-            <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <CardHeader className="flex flex-row items-center gap-3">
               <div className="flex items-center gap-3">
                 <group.icon className={`h-5 w-5 ${group.accent}`} />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{group.label}</p>
-                  <p className="text-[11px] text-foreground/60">{group.endpoints.length} acciones guiadas</p>
-                </div>
+                <p className="text-sm font-semibold text-foreground">{group.label}</p>
               </div>
-              <Badge variant="outline" className="text-[11px] border-border/60">Seguro</Badge>
             </CardHeader>
           </Card>
         ))}
@@ -553,15 +549,7 @@ export function PainelControlePage() {
 
         {endpointGroups.map((group) => (
           <TabsContent key={group.id} value={group.id} className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
-                <p className="text-xs text-foreground/60">Acciones de este dominio, solo lo esencial.</p>
-              </div>
-              <Badge variant="outline" className="text-[11px] border-border/50 text-foreground/70">
-                {group.endpoints.length} endpoints
-              </Badge>
-            </div>
+            <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {group.endpoints.map((endpoint) => (
                 <EndpointCard key={endpoint.id} endpoint={endpoint} />
