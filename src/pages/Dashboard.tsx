@@ -131,15 +131,6 @@ export function DashboardPage() {
     return `${Math.max(ms, 0).toFixed(0)} ms`;
   };
 
-  const formatUptime = (seconds?: number) => {
-    if (!seconds && seconds !== 0) return '—';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    if (h) return `${h}h ${m}m`;
-    if (m) return `${m}m`;
-    return `${seconds}s`;
-  };
-
   const onError = (label: string, error?: unknown) =>
     toast({
       title: `Erro ao cargar ${label}`,
