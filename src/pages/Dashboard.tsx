@@ -252,18 +252,15 @@ export function DashboardPage() {
       <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
         <Card className="glass border-border/60 bg-surface text-foreground">
           <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <ShieldCheck className="h-4 w-4 text-accent" />
-              Salud de integrações
-            </CardTitle>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/70">
                 Live · 15s
               </Badge>
               <span
-                className={`rounded-full px-2 py-1 text-[11px] ${overallHealth ? toneBadge(overallHealth.tone) : 'bg-foreground/10 text-foreground/70'}`}
+                className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] ${overallHealth ? toneBadge(overallHealth.tone) : 'bg-foreground/10 text-foreground/70'}`}
               >
-                {overallHealth?.label || 'Sincronizando'}
+                <span className="h-1.5 w-1.5 rounded-full bg-current shadow-[0_0_8px_currentColor]" />
+                {overallHealth?.tone === 'error' ? 'Crítico' : overallHealth?.tone === 'warn' ? 'Vigilante' : statusSummary.hasHeartbeat ? 'OK ao vivo' : 'Sem sinais'}
               </span>
             </div>
           </CardHeader>
