@@ -279,18 +279,14 @@ export function DashboardPage() {
                         <span className="relative block h-11 w-11 rounded-full bg-gradient-to-br from-emerald-400 to-accent shadow-lg shadow-accent/30" />
                       </div>
                       <div>
-                        <p className="text-[11px] uppercase tracking-[0.2em] text-foreground/60">Monitoramento vivo</p>
-                        <p className="text-lg font-semibold text-foreground">{statusSummary.headline}</p>
-                        <p className="text-sm text-foreground/70">{statusSummary.body}</p>
+                        <p className="text-lg font-semibold text-foreground/90">{statusSummary.headline}</p>
+                        <p className="text-sm text-foreground/65">{statusSummary.body}</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-[11px]">
                       <span className={`flex items-center gap-1 rounded-full px-2 py-1 ${overallHealth ? toneBadge(overallHealth.tone) : 'bg-foreground/10 text-foreground/70'}`}>
                         <span className="h-1.5 w-1.5 rounded-full bg-current shadow-[0_0_8px_currentColor]" />
                         {overallHealth?.tone === 'error' ? 'Crítico' : overallHealth?.tone === 'warn' ? 'Vigilante' : statusSummary.hasHeartbeat ? 'OK ao vivo' : 'Sem sinais'}
-                      </span>
-                      <span className="rounded-full border border-border/50 px-2 py-1 text-foreground/70 backdrop-blur-sm">
-                        {overallHealth?.timestamp ? `Atualizado ${new Date(overallHealth.timestamp).toLocaleTimeString()}` : 'Atualizando'}
                       </span>
                     </div>
                   </div>
