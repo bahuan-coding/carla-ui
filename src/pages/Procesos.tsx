@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, ArrowRight, BadgeCheck, Check, Clock4, Database, FileInput, Link2, Phone, RefreshCw, Repeat2, Send, ShieldCheck, Sparkles, X, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowRight, BadgeCheck, Check, Clock4, Database, FileInput, Link2, Phone, RefreshCw, Repeat2, Send, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +13,6 @@ import {
   useDiditRegenerate,
   useOtpMarkVerified,
   useOtpResend,
-  usePhoneCampaignTrigger,
   useProcessDetail,
   useProcessEvents,
   useProcessRetry,
@@ -33,7 +32,7 @@ export function ProcesosPage() {
   const [phone, setPhone] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [auditReason, setAuditReason] = useState('');
-  const [auditOperator, setAuditOperator] = useState('');
+  const auditOperator = 'operador.demo@carla';
   const [diditStatus, setDiditStatus] = useState<'approved' | 'rejected' | 'pending' | 'error'>('approved');
   const [diditNote, setDiditNote] = useState('');
 
@@ -55,7 +54,6 @@ export function ProcesosPage() {
   const otpMarkVerified = useOtpMarkVerified(processId);
   const diditRegenerate = useDiditRegenerate(verificationId, processId);
   const diditOverride = useDiditOverride(verificationId, processId);
-  const phoneCampaign = usePhoneCampaignTrigger(processId);
   const bankingStatus = useBankingStatus(processId, processId);
   const bankingRetry = useBankingRetry(processId, processId);
 
