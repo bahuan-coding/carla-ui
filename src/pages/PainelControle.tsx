@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Database, Gauge, Layers, Link2, Radar, RefreshCw, Rocket, Server, ShieldCheck, Workflow, Wrench } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
