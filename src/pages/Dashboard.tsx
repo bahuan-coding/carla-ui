@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Activity, AlertCircle, BarChart3, Gauge, MessagesSquare, ShieldCheck, TriangleAlert, Wifi } from 'lucide-react';
+import { Activity, AlertCircle, BarChart3, Gauge, MessagesSquare, TriangleAlert, Wifi } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
