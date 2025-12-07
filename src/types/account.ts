@@ -73,6 +73,23 @@ export type RenapCitizenData = {
   error_message?: string | null;
 };
 
+export type CompleteFlowData = {
+  flow_token?: string;
+  estado_civil?: string;
+  nacionalidad?: string;
+  tipo_vivienda?: string;
+  nombre_empresa?: string;
+  relacion_laboral?: string;
+  compliance_checks?: string;
+  egresos_mensuales?: string;
+  ingresos_mensuales?: string;
+  quiere_beneficiario?: string;
+  numeroIdentificacion?: string;
+  direccion_completa?: string;
+  correo_electronico?: string;
+  [key: string]: unknown;
+};
+
 export type ExtraData = {
   data_source?: string;
   last_screen?: string;
@@ -103,7 +120,7 @@ export type ExtraData = {
   };
   flow_completed_at?: string;
   beneficiary_screen?: Record<string, unknown>;
-  complete_flow_data?: Record<string, unknown>;
+  complete_flow_data?: CompleteFlowData;
   verification_check?: Record<string, unknown>;
   whatsapp_phone_e164?: string | null;
   personal_data_screen?: Record<string, unknown>;
@@ -192,7 +209,7 @@ export type Account = {
   didit_last_check?: string | null;
   didit_metadata?: DiditMetadata;
   renap_status?: string | null;
-  renap_citizen_data?: RenapCitizenData[];
+  renap_citizen_data?: RenapCitizenData | RenapCitizenData[];
   renap_last_check?: string | null;
   renap_metadata?: {
     full_name?: string | null;

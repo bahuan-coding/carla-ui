@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import type { Account, CompleteFlowData, RenapCitizenEntry } from "@/types/account"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -96,4 +97,112 @@ export const buildFullNameFromRenap = (entry?: RenapName) => {
   ]
     .filter(Boolean)
     .join(' ')
+}
+
+const getRenapEntry = (account?: Account): RenapCitizenEntry | undefined => {
+  if (!account) return undefined
+  const raw = account.renap_citizen_data
+  if (!raw) return undefined
+  const container = Array.isArray(raw) ? raw[0] : raw
+  return (container?.citizen_data || [])[0] as RenapCitizenEntry | undefined
+}
+
+const asNumber = (value?: string | number | null): number | undefined => {
+  if (value === null || value === undefined || value === '') return undefined
+  const num = typeof value === 'number' ? value : Number(value)
+  return Number.isNaN(num) ? undefined : num
+}
+
+export const normalizeAccountForUi = (
+  account?: Account,
+  processFallback?: { id?: string; phone?: string; name?: string },
+): {
+  renapEntry?: RenapCitizenEntry
+  fullName: string
+  displayName: string
+  email?: string
+  mainPhone?: string
+  documentLabel: string
+  address?: string
+  housingType?: string | null
+  nationality?: string | null
+  maritalStatus?: string | null
+  gender?: string | null
+  employmentStatus?: string | null
+  employer?: string | null
+  monthlyIncome?: number | null
+  monthlyExpenses?: number | null
+  otherIncomeSources?: string | null
+  complianceSource: string[]
+  riskFlags: { pep?: boolean; pepRelated?: boolean; usTax?: boolean; risk: boolean }
+} => {
+  const acc = account || {}
+  const extra = acc.extra_data || {}
+  const flow = (extra.complete_flow_data || {}) as CompleteFlowData
+  const renapEntry = getRenapEntry(acc)
+  const fullNameFromRenap = buildFullNameFromRenap(renapEntry)
+  const fullName = (fullNameFromRenap || acc.full_name || acc.document_number || flow.numeroIdentificacion || '').trim()
+  const displayName =
+    fullName ||
+    acc.full_name ||
+    acc.document_number ||
+    flow.numeroIdentificacion ||
+    processFallback?.name ||
+    maskPhone(processFallback?.phone) ||
+    shortId(processFallback?.id)
+
+  const email = acc.email || extra.contact_screen?.correo_electronico || flow.correo_electronico || ''
+  const mainPhone =
+    acc.phone_main || acc.whatsapp_phone_e164 || extra.whatsapp_phone_e164 || processFallback?.phone || acc.phone_secondary || ''
+
+  const documentLabel = `${acc.document_type || '—'} · ${acc.document_number || '—'} · ${acc.document_country || '—'}`
+
+  const address = acc.address_full || extra.address_screen?.direccion_completa || flow.direccion_completa || ''
+  const housingType = acc.address_housing_type || extra.address_screen?.tipo_vivienda || flow.tipo_vivienda || null
+  const nationality = acc.nationality || renapEntry?.nacionalidad || flow.nacionalidad || null
+  const maritalStatus = acc.marital_status || renapEntry?.estado_civil || flow.estado_civil || null
+  const gender = acc.gender || renapEntry?.genero || null
+
+  const employmentStatus = acc.employment_status || extra.employment_screen?.relacion_laboral || flow.relacion_laboral || null
+  const employer = acc.employer_name || extra.employment_screen?.nombre_empresa || flow.nombre_empresa || null
+  const monthlyIncome = acc.monthly_income ?? asNumber(extra.employment_screen?.ingresos_mensuales) ?? asNumber(flow.ingresos_mensuales) ?? null
+  const monthlyExpenses = acc.monthly_expenses ?? asNumber(extra.employment_screen?.egresos_mensuales) ?? asNumber(flow.egresos_mensuales) ?? null
+  const otherIncomeSources = acc.other_income_sources || extra.employment_screen?.otra_fuente_ingresos || flow.otra_fuente_ingresos || null
+
+  const complianceSource =
+    (acc.compliance_checks_raw && acc.compliance_checks_raw.length ? acc.compliance_checks_raw : []) ||
+    (extra.compliance_screen?.compliance_checks ? [extra.compliance_screen.compliance_checks] : []) ||
+    (flow.compliance_checks ? [flow.compliance_checks] : [])
+
+  const riskFlags = {
+    pep: acc.is_pep,
+    pepRelated: acc.is_pep_related,
+    usTax: acc.has_us_tax_obligations,
+    risk:
+      Boolean(acc.is_pep) ||
+      Boolean(acc.is_pep_related) ||
+      Boolean(acc.has_us_tax_obligations) ||
+      complianceSource.some((c) => c && c !== 'noneApply'),
+  }
+
+  return {
+    renapEntry,
+    fullName,
+    displayName,
+    email,
+    mainPhone,
+    documentLabel,
+    address,
+    housingType,
+    nationality,
+    maritalStatus,
+    gender,
+    employmentStatus,
+    employer,
+    monthlyIncome,
+    monthlyExpenses,
+    otherIncomeSources,
+    complianceSource,
+    riskFlags,
+  }
 }

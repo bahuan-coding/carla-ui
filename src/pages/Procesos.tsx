@@ -29,7 +29,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProcessDetail, useProcessRetry, useProcessRerun, useProcessStatus, useProcessesAdmin } from '@/hooks/use-carla-data';
 import { useToast } from '@/hooks/use-toast';
-import { buildFullNameFromRenap, formatCurrency, formatDate, mapStatusDisplay, maskPhone, shortId, toneBadge } from '@/lib/utils';
+import { formatCurrency, formatDate, mapStatusDisplay, maskPhone, normalizeAccountForUi, shortId, toneBadge } from '@/lib/utils';
 import type { Account, RenapCitizenEntry } from '@/types/account';
 
 const confirmDanger = (message: string) => window.confirm(message || '¿Continuar?');
@@ -69,12 +69,9 @@ export function ProcesosPage() {
     });
 
   const cards = processes.map((p) => {
-    const displayName =
-      (p as { account?: { name?: string } })?.account?.name ||
-      (p as { beneficiaries?: Array<{ name?: string }> })?.beneficiaries?.[0]?.name ||
-      p.name ||
-      maskPhone(p.phone) ||
-      shortId(p.id);
+    const account = (p as { account?: Account })?.account;
+    const normalized = normalizeAccountForUi(account, { id: p.id, phone: p.phone, name: p.name });
+    const displayName = normalized.displayName || maskPhone(p.phone) || shortId(p.id);
     const statusDisplay = mapStatusDisplay(p.status || p.banking_status);
     const verificationDisplay = mapStatusDisplay(p.verification_status);
     const bankingDisplay = mapStatusDisplay(p.banking_status);
@@ -329,15 +326,13 @@ export function ProcesosPage() {
             (() => {
               const account = (detailQuery.data?.account || {}) as Account;
               const extra = account.extra_data || {};
-              const renap = account.renap_citizen_data?.[0];
-              const renapEntry = renap?.citizen_data?.[0] as RenapCitizenEntry | undefined;
-              const fullName = account.full_name || buildFullNameFromRenap(renapEntry) || '—';
-              const mainPhone = account.phone_main || account.whatsapp_phone_e164 || detailQuery.data?.phone || '—';
-              const email = account.email || extra.contact_screen?.correo_electronico || '—';
-              const complianceSource =
-                (account.compliance_checks_raw && account.compliance_checks_raw.length ? account.compliance_checks_raw : []) ||
-                (extra.compliance_screen?.compliance_checks ? [extra.compliance_screen.compliance_checks] : []);
-              const risk = (account.is_pep || account.is_pep_related || account.has_us_tax_obligations || complianceSource.some((c) => c && c !== 'noneApply')) ?? false;
+              const normalized = normalizeAccountForUi(account, { id: detailQuery.data.id, phone: detailQuery.data.phone, name: detailQuery.data.name });
+              const renapEntry = normalized.renapEntry as RenapCitizenEntry | undefined;
+              const fullName = normalized.fullName || normalized.displayName || '—';
+              const mainPhone = normalized.mainPhone || '—';
+              const email = normalized.email || '—';
+              const complianceSource = normalized.complianceSource;
+              const risk = normalized.riskFlags.risk;
               const valueOrDash = (v?: string | number | null) => (v === undefined || v === null || v === '' ? '—' : v);
               const badgeTone = (v?: boolean) => (v ? 'bg-destructive/15 text-destructive' : 'bg-emerald-500/10 text-emerald-200');
               const renderField = (label: string, value?: string | number | null) => (
@@ -440,10 +435,10 @@ export function ProcesosPage() {
                       <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
                         {renderField('Nombre completo', fullName)}
                         {renderField('CUI (RENAP)', renapEntry?.cui)}
-                        {renderField('Documento', `${valueOrDash(account.document_type)} · ${valueOrDash(account.document_number)} · ${valueOrDash(account.document_country)}`)}
-                        {renderField('Fecha de nacimiento', formatDate(renapEntry?.fecha_nacimiento))}
-                        {renderField('Nacionalidad', account.nationality || renapEntry?.nacionalidad)}
-                        {renderField('Estado civil', account.marital_status || renapEntry?.estado_civil)}
+                        {renderField('Documento', normalized.documentLabel)}
+                        {renderField('Fecha de nacimiento', formatDate(renapEntry?.fecha_nacimiento || account.birth_date))}
+                        {renderField('Nacionalidad', normalized.nationality)}
+                        {renderField('Estado civil', normalized.maritalStatus)}
                         <div className="space-y-1 md:col-span-2">
                           <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Flags de riesgo</p>
                           <div className="flex flex-wrap gap-2">
@@ -461,21 +456,21 @@ export function ProcesosPage() {
                         {renderField('Teléfono principal', mainPhone)}
                         {renderField('Teléfono secundario', account.phone_secondary)}
                         {renderField('WhatsApp', account.whatsapp_phone_e164)}
-                        {renderField('Dirección', account.address_full || extra.address_screen?.direccion_completa)}
+                        {renderField('Dirección', normalized.address)}
                         {renderField('Ciudad', account.address_city)}
                         {renderField('Estado/Depto', account.address_state)}
                         {renderField('País', account.address_country)}
-                        {renderField('Tipo vivienda', account.address_housing_type || extra.address_screen?.tipo_vivienda)}
+                        {renderField('Tipo vivienda', normalized.housingType)}
                       </div>
                     </TabsContent>
 
                     <TabsContent value="ingresos" className="pt-3">
                       <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
-                        {renderField('Situación laboral', account.employment_status || extra.employment_screen?.relacion_laboral)}
-                        {renderField('Empresa', account.employer_name || extra.employment_screen?.nombre_empresa)}
-                        {renderField('Ingresos mensuales', formatCurrency(account.monthly_income ?? Number(extra.employment_screen?.ingresos_mensuales), account.account_currency))}
-                        {renderField('Egresos mensuales', formatCurrency(account.monthly_expenses ?? Number(extra.employment_screen?.egresos_mensuales), account.account_currency))}
-                        {renderField('Otras fuentes', account.other_income_sources || extra.employment_screen?.otra_fuente_ingresos)}
+                        {renderField('Situación laboral', normalized.employmentStatus)}
+                        {renderField('Empresa', normalized.employer)}
+                        {renderField('Ingresos mensuales', formatCurrency(normalized.monthlyIncome ?? undefined, account.account_currency))}
+                        {renderField('Egresos mensuales', formatCurrency(normalized.monthlyExpenses ?? undefined, account.account_currency))}
+                        {renderField('Otras fuentes', normalized.otherIncomeSources)}
                       </div>
                     </TabsContent>
 

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, apiPut, apiWsUrl } from '@/lib/api';
-import { mapStatusDisplay, maskPhone, shortId } from '@/lib/utils';
+import type { Account } from '@/types/account';
+import { mapStatusDisplay, maskPhone, normalizeAccountForUi, shortId } from '@/lib/utils';
 import {
   conversationDetailSchema,
   conversationListSchema,
@@ -173,13 +174,10 @@ export const useProcessDetail = (id?: string) =>
     enabled: Boolean(id),
     queryFn: async () => {
       const raw = await apiGet(`/admin/processes/${id}`, processDetailSchema, defaultProcess(id));
-      const name =
-        (raw as { account?: { name?: string } })?.account?.name ||
-        (raw as { beneficiaries?: Array<{ name?: string }> })?.beneficiaries?.[0]?.name ||
-        raw.name ||
-        '';
-      const phoneMasked = maskPhone(raw.phone);
-      const displayName = name || phoneMasked || shortId(raw.id);
+      const account = (raw as { account?: Account })?.account;
+      const normalized = normalizeAccountForUi(account, { id: raw.id, phone: raw.phone, name: raw.name });
+      const phoneMasked = maskPhone(normalized.mainPhone || raw.phone);
+      const displayName = normalized.displayName || raw.name || phoneMasked || shortId(raw.id);
       const statusDisplay = mapStatusDisplay(raw.status || raw.banking_status);
       const verificationDisplay = mapStatusDisplay(raw.verification_status);
       const bankingDisplay = mapStatusDisplay(raw.banking_status);
