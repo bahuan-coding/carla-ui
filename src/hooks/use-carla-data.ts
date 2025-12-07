@@ -173,18 +173,30 @@ export const useProcessDetail = (id?: string) =>
     queryKey: ['admin-process', id],
     enabled: Boolean(id),
     queryFn: async () => {
-      const raw = await apiGet(`/admin/processes/${id}`, processDetailSchema, defaultProcess(id));
-      const account = (raw as { account?: Account })?.account;
-      const normalized = normalizeAccountForUi(account, { id: raw.id, phone: raw.phone, name: raw.name });
+      // Unwrap flexible payloads: some envs return { data: { account, ... } } without top-level ids
+      const raw = await apiGet(`/admin/processes/${id}`, z.any() as unknown as typeof processDetailSchema, defaultProcess(id) as unknown);
+      const envelope = (raw as { data?: unknown })?.data || raw;
+      const inner = (envelope as { data?: unknown })?.data || envelope;
+      const base = { ...defaultProcess(id), ...(envelope as Record<string, unknown>), ...(inner as Record<string, unknown>) } as Account & {
+        id?: string;
+        phone?: string;
+        name?: string;
+        status?: string;
+        banking_status?: string;
+        verification_status?: string;
+      };
+
+      const account = (base as { account?: Account })?.account || (base as unknown as Account);
+      const normalized = normalizeAccountForUi(account, { id: base.id, phone: base.phone, name: base.name });
       const phoneMasked = maskPhone(normalized.mainPhone || raw.phone);
-      const displayName = normalized.displayName || raw.name || phoneMasked || shortId(raw.id);
-      const statusDisplay = mapStatusDisplay(raw.status || raw.banking_status);
-      const verificationDisplay = mapStatusDisplay(raw.verification_status);
-      const bankingDisplay = mapStatusDisplay(raw.banking_status);
-      const timestampFmt = raw.updated_at || raw.last_error_at || raw.created_at;
+      const displayName = normalized.displayName || base.name || phoneMasked || shortId(base.id);
+      const statusDisplay = mapStatusDisplay(base.status || base.banking_status);
+      const verificationDisplay = mapStatusDisplay(base.verification_status);
+      const bankingDisplay = mapStatusDisplay(base.banking_status);
+      const timestampFmt = base.updated_at || base.last_error_at || base.created_at;
 
       return {
-        ...raw,
+        ...base,
         displayName,
         phoneMasked,
         statusDisplay,
