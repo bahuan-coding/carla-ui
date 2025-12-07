@@ -13,6 +13,8 @@ import {
   transactionSchema,
   transactionsSchema,
   weeklyActivitySchema,
+  carlaHealthSchema,
+  otpHealthSchema,
 } from '@/lib/schemas';
 
 export const useKpis = (period?: string) =>
@@ -134,4 +136,39 @@ export const useCreateProcess = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['processes'] }),
   });
 };
+
+type OtpHealth = z.infer<typeof otpHealthSchema>;
+type CarlaHealth = z.infer<typeof carlaHealthSchema>;
+
+const fetchJson = async <T>(url: string, schema: z.ZodType<T>, fallback: T): Promise<T> => {
+  try {
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) return fallback;
+    const json = await res.json().catch(() => null);
+    if (!json) return fallback;
+    const parsed = schema.safeParse(json);
+    if (parsed.success) return parsed.data;
+    return fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+export const useHealthServices = () =>
+  useQuery({
+    queryKey: ['health-services'],
+    queryFn: async () => {
+      const [otp, carla] = await Promise.all([
+        fetchJson<OtpHealth | null>('https://carla-otp.vercel.app/health', otpHealthSchema, null),
+        fetchJson<CarlaHealth | null>('https://x.carla.money/health', carlaHealthSchema, null),
+      ]);
+
+      const normalizedCarla = carla && 'data' in carla ? (carla as { data: CarlaHealth }).data : carla;
+      const carlaTimestamp = carla && 'meta' in carla ? (carla as { meta?: { timestamp?: string } }).meta?.timestamp : undefined;
+
+      return { otp, carla: normalizedCarla as CarlaHealth | null, carlaTimestamp };
+    },
+    refetchInterval: 15000,
+    staleTime: 10000,
+  });
 

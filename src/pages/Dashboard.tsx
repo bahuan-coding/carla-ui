@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Activity, AlertCircle, BarChart3, Gauge, MessagesSquare, RefreshCw, ShieldCheck, TriangleAlert, Wifi } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { useKpis, useProcessDistribution, useWeeklyActivity } from '@/hooks/use-carla-data';
+import { useHealthServices, useKpis, useProcessDistribution, useWeeklyActivity } from '@/hooks/use-carla-data';
 import { useUiStore } from '@/stores/ui';
 
 export function DashboardPage() {
@@ -15,6 +16,7 @@ export function DashboardPage() {
   const kpisQuery = useKpis(period);
   const weeklyQuery = useWeeklyActivity(period);
   const distributionQuery = useProcessDistribution(period);
+  const healthQuery = useHealthServices();
 
   const weeklyData = useMemo(
     () =>
@@ -38,6 +40,78 @@ export function DashboardPage() {
 
   const distribution = distributionQuery.data || [];
   const palette = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+
+  const healthServices = useMemo(() => {
+    const services: { name: string; status?: string; env?: string; latency?: number | null; pool?: { active?: number | null; max?: number | null }; type?: string | null }[] = [];
+    const carlaServices = healthQuery.data?.carla?.services || {};
+    Object.entries(carlaServices).forEach(([name, svc]) => {
+      services.push({
+        name,
+        status: svc?.status,
+        env: healthQuery.data?.carla?.environment,
+        latency: svc?.latency_ms ?? null,
+        pool: svc?.connection_pool ?? undefined,
+        type: svc?.type ?? null,
+      });
+    });
+    if (healthQuery.data?.otp) {
+      services.push({
+        name: healthQuery.data.otp.service || 'OTP',
+        status: healthQuery.data.otp.status,
+        env: healthQuery.data.otp.environment,
+        latency: null,
+      });
+    }
+    return services;
+  }, [healthQuery.data]);
+
+  const overallHealth = useMemo(() => {
+    if (healthQuery.isError) {
+      return { tone: 'error' as const, label: 'Erro ao consultar health', helper: 'Retente em instantes.' };
+    }
+    if (!healthQuery.data) return null;
+    const statuses = healthServices.map((s) => s.status?.toLowerCase?.() || '');
+    const hasError = statuses.some((s) => /error|down|fail|degrad/.test(s));
+    const hasWarn = !hasError && statuses.some((s) => !/healthy|operational|connected|ok/.test(s));
+    const tone = hasError ? ('error' as const) : hasWarn ? ('warn' as const) : ('ok' as const);
+    const label = hasError ? 'Alerta crítico' : hasWarn ? 'Atenção aos serviços' : 'Tudo verde';
+    return {
+      tone,
+      label,
+      helper: hasError ? 'Priorizar mitigação agora' : hasWarn ? 'Monitorando latência e fila' : 'Monitorando uptime e latência',
+      uptime: healthQuery.data.carla?.uptime_seconds,
+      timestamp: healthQuery.data.carlaTimestamp || healthQuery.data.otp?.timestamp,
+      metrics: healthQuery.data.carla?.metrics,
+    };
+  }, [healthQuery.data, healthQuery.isError, healthServices]);
+
+  const toneBadge = (tone: 'ok' | 'warn' | 'error') =>
+    tone === 'error'
+      ? 'bg-destructive/15 text-destructive'
+      : tone === 'warn'
+        ? 'bg-amber-500/15 text-amber-200'
+        : 'bg-emerald-500/15 text-emerald-200';
+
+  const statusTone = (status?: string) => {
+    const text = status?.toLowerCase?.() || '';
+    if (/error|down|fail|degrad|blocked/.test(text)) return 'error';
+    if (!text || /warn|slow|pending|queued/.test(text)) return 'warn';
+    return 'ok';
+  };
+
+  const formatMs = (ms?: number | null) => {
+    if (ms === null || ms === undefined) return '—';
+    return `${Math.max(ms, 0).toFixed(0)} ms`;
+  };
+
+  const formatUptime = (seconds?: number) => {
+    if (!seconds && seconds !== 0) return '—';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h) return `${h}h ${m}m`;
+    if (m) return `${m}m`;
+    return `${seconds}s`;
+  };
 
   const onError = (label: string, error?: unknown) =>
     toast({
@@ -88,27 +162,6 @@ export function DashboardPage() {
       })),
     [weeklyData],
   );
-
-  const healthStatuses = [
-    {
-      label: 'KPIs core',
-      status: kpisQuery.isError ? 'Erro' : kpisQuery.isLoading ? 'Carregando' : 'Estável',
-      tone: kpisQuery.isError ? 'error' : 'ok',
-      helper: 'Fonte /dashboard/kpis',
-    },
-    {
-      label: 'Atividade semanal',
-      status: weeklyQuery.isError ? 'Erro' : weeklyData.length ? 'OK' : 'Sem dados',
-      tone: weeklyQuery.isError ? 'error' : weeklyData.length ? 'ok' : 'warn',
-      helper: 'Fluxos e contas por período',
-    },
-    {
-      label: 'Distribuição de processos',
-      status: distributionQuery.isError ? 'Erro' : distribution.length ? 'OK' : 'Sem dados',
-      tone: distributionQuery.isError ? 'error' : distribution.length ? 'ok' : 'warn',
-      helper: 'Mix por fluxo WhatsApp/core',
-    },
-  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -196,40 +249,131 @@ export function DashboardPage() {
           <CardHeader className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
               <ShieldCheck className="h-4 w-4 text-accent" />
-              Saúde de integrações
+              Salud de integrações (live)
             </CardTitle>
-            <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/70">
-              Core banking · AML/KYC · Assinatura
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/70">
+                Auto-check 15s
+              </Badge>
+              <button
+                type="button"
+                onClick={() => healthQuery.refetch()}
+                className="flex items-center gap-1 rounded-lg border border-border/60 bg-background/60 px-3 py-1.5 text-[11px] text-foreground/80 transition hover:border-accent/60 hover:text-accent"
+              >
+                <RefreshCw size={14} className={healthQuery.isFetching ? 'animate-spin' : ''} /> Refrescar
+              </button>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid gap-3 md:grid-cols-3">
-              {healthStatuses.map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-lg border border-border/50 bg-background/60 px-3 py-3"
-                >
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-foreground/70">{item.label}</span>
-                    <span
-                      className={`rounded-full px-2 py-1 text-[11px] ${
-                        item.tone === 'error'
-                          ? 'bg-destructive/15 text-destructive'
-                          : item.tone === 'warn'
-                            ? 'bg-amber-500/15 text-amber-200'
-                            : 'bg-emerald-500/15 text-emerald-200'
-                      }`}
-                    >
-                      {item.status}
-                    </span>
+          <CardContent className="space-y-4">
+            {healthQuery.isLoading ? (
+              <Skeleton className="h-48 w-full bg-foreground/10" />
+            ) : (
+              <>
+                <div className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-r from-background/70 via-surface to-background/70 p-4">
+                  <motion.div
+                    className="pointer-events-none absolute inset-0 opacity-30"
+                    style={{ backgroundImage: 'linear-gradient(120deg, rgba(52, 211, 153, 0.2), rgba(93, 163, 255, 0.2))', backgroundSize: '200% 200%' }}
+                    animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
+                    transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                  <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <motion.span
+                          className="absolute inset-0 rounded-full bg-accent/30 blur-xl"
+                          animate={{ scale: [1, 1.35, 1], opacity: [0.8, 0.15, 0.8] }}
+                          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                        />
+                        <motion.span
+                          className="absolute inset-0 rounded-full border border-accent/40"
+                          animate={{ scale: [1, 1.1, 1], opacity: [0.7, 0.2, 0.7] }}
+                          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                        />
+                        <span className="relative block h-11 w-11 rounded-full bg-gradient-to-br from-emerald-400 to-accent shadow-lg shadow-accent/30" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-foreground/60">Monitoramento vivo</p>
+                        <p className="text-lg font-semibold text-foreground">{overallHealth?.label || 'Aguardando sinais'}</p>
+                        <p className="text-xs text-foreground/60">{overallHealth?.helper || 'Checando latência e uptime'}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className={`rounded-full px-2 py-1 ${overallHealth ? toneBadge(overallHealth.tone) : 'bg-foreground/10 text-foreground/70'}`}>
+                        {overallHealth?.tone === 'error' ? 'Crítico' : overallHealth?.tone === 'warn' ? 'Vigilante' : 'OK ao vivo'}
+                      </span>
+                      <Badge variant="outline" className="border-border/60 text-foreground/70">
+                        Uptime {formatUptime(overallHealth?.uptime)}
+                      </Badge>
+                      <Badge variant="outline" className="border-border/60 text-foreground/70">
+                        {overallHealth?.metrics?.requests_per_minute ? `${overallHealth.metrics.requests_per_minute.toFixed(1)} req/min` : 'Ping a cada 15s'}
+                      </Badge>
+                      <Badge variant="outline" className="border-border/60 text-foreground/70">
+                        {overallHealth?.timestamp ? `Atualizado ${new Date(overallHealth.timestamp).toLocaleTimeString()}` : 'Relógio sincronizado'}
+                      </Badge>
+                    </div>
                   </div>
-                  <p className="mt-2 text-[11px] text-foreground/60">{item.helper}</p>
+                  <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-accent via-emerald-400 to-accent"
+                      animate={{ x: ['-40%', '60%'] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                  </div>
                 </div>
-              ))}
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-foreground/60">
-              <Activity size={14} className="text-accent" /> Monitorar SLA de APIs e filas de eventos.
-            </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  {healthServices.length ? (
+                    healthServices.map((service) => (
+                      <div key={service.name} className="rounded-lg border border-border/50 bg-background/60 p-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-accent" />
+                            <span className="text-foreground/80">{service.name}</span>
+                          </div>
+                          <span className={`rounded-full px-2 py-1 text-[11px] ${toneBadge(statusTone(service.status))}`}>{service.status || '—'}</span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-[11px] text-foreground/60">
+                          <span>{service.env || 'produção'}</span>
+                          <span>{service.type || formatMs(service.latency)}</span>
+                        </div>
+                        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
+                          <motion.div
+                            className="h-full rounded-full bg-accent/80"
+                            style={{ width: service.latency ? `${Math.min(100, Math.max(10, 120 - service.latency))}%` : '45%' }}
+                            animate={{ opacity: [0.6, 1, 0.6] }}
+                            transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full rounded-lg border border-border/50 bg-background/60 px-3 py-3 text-sm text-foreground/70">
+                      Sem sinais ainda. Aguardando heartbeat das integrações.
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-border/50 bg-background/70 p-3 text-[11px] font-mono text-foreground/70">
+                  <p className="mb-1 text-foreground/60">Snapshot JSON</p>
+                  <pre className="max-h-28 overflow-auto whitespace-pre-wrap leading-relaxed">
+                    {JSON.stringify(
+                      {
+                        otp: healthQuery.data?.otp?.status,
+                        core: healthQuery.data?.carla?.status,
+                        services: Object.keys(healthQuery.data?.carla?.services || {}),
+                      },
+                      null,
+                      2,
+                    )}
+                  </pre>
+                </div>
+              </>
+            )}
+            {healthQuery.isError ? (
+              <div className="col-span-full flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <TriangleAlert size={16} /> Falha ao consultar health. Tente novamente.
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 

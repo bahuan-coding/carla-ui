@@ -92,3 +92,62 @@ export const procesoSchema = z.object({
 
 export const procesosSchema = z.array(procesoSchema);
 
+const connectionPoolSchema = z
+  .object({
+    active: z.number().optional(),
+    idle: z.number().optional(),
+    max: z.number().optional(),
+  })
+  .passthrough()
+  .optional();
+
+const carlaServiceSchema = z.object({
+  status: z.string(),
+  type: z.string().nullable().optional(),
+  latency_ms: z.number().nullable().optional(),
+  connection_pool: connectionPoolSchema,
+  rate_limit_remaining: z.number().nullable().optional(),
+});
+
+const carlaHealthDataSchema = z.object({
+  status: z.string(),
+  version: z.string().optional(),
+  environment: z.string().optional(),
+  uptime_seconds: z.number().optional(),
+  services: z.record(carlaServiceSchema).default({}),
+  system: z
+    .object({
+      python_version: z.string().optional(),
+      platform: z.string().optional(),
+      process_id: z.number().optional(),
+    })
+    .optional(),
+  metrics: z
+    .object({
+      requests_total: z.number().optional(),
+      requests_per_minute: z.number().optional(),
+      average_response_time_ms: z.number().optional(),
+    })
+    .optional(),
+});
+
+export const carlaHealthSchema = z.union([
+  carlaHealthDataSchema,
+  z.object({
+    data: carlaHealthDataSchema,
+    meta: z
+      .object({
+        timestamp: z.string().optional(),
+      })
+      .optional(),
+  }),
+]);
+
+export const otpHealthSchema = z.object({
+  status: z.string(),
+  service: z.string().optional(),
+  version: z.string().optional(),
+  environment: z.string().optional(),
+  timestamp: z.string().optional(),
+});
+
