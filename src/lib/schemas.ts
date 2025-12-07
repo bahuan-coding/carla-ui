@@ -92,6 +92,61 @@ export const procesoSchema = z.object({
 
 export const procesosSchema = z.array(procesoSchema);
 
+// Admin Processes (360)
+const idAsString = z.union([z.string(), z.number()]).transform((v) => String(v));
+
+export const processEventSchema = z
+  .object({
+    id: idAsString.optional(),
+    type: z.string().optional(),
+    status: z.string().optional(),
+    step: z.string().optional(),
+    message: z.string().optional(),
+    correlation_id: z.string().optional(),
+    created_at: z.string().optional(),
+    payload: z.unknown().optional(),
+    meta: z.record(z.string(), z.unknown()).optional(),
+  })
+  .passthrough();
+
+export const processEventsSchema = z.array(processEventSchema);
+
+export const processAdminSchema = z
+  .object({
+    id: idAsString,
+    account_opening_id: idAsString.optional(),
+    phone: z.string().optional(),
+    name: z.string().optional(),
+    status: z.string().optional(),
+    banking_status: z.string().optional(),
+    verification_status: z.string().optional(),
+    verification_summary: z.record(z.string(), z.unknown()).optional(),
+    ready_for_bank: z.boolean().optional(),
+    attempts: z.number().optional(),
+    events_count: z.number().optional(),
+    last_error: z.string().optional(),
+    last_error_at: z.string().optional(),
+    steps: z.number().optional(),
+    usage: z.number().optional(),
+    tags: z.array(z.string()).optional(),
+    updated_at: z.string().optional(),
+    created_at: z.string().optional(),
+    product_type: z.string().optional(),
+    account_currency: z.string().optional(),
+    correlation_id: z.string().optional(),
+    meta: z.record(z.string(), z.unknown()).optional(),
+  })
+  .passthrough();
+
+export const processesAdminSchema = z.array(processAdminSchema);
+export const processDetailSchema = processAdminSchema.extend({
+  account: z.record(z.string(), z.unknown()).optional(),
+  beneficiaries: z.array(z.record(z.string(), z.unknown())).optional(),
+  events: processEventsSchema.optional(),
+  timeline: z.array(processEventSchema).optional(),
+  banking_events: processEventsSchema.optional(),
+});
+
 const connectionPoolSchema = z
   .object({
     active: z.number().optional(),

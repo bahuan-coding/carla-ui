@@ -16,6 +16,10 @@ import {
   carlaHealthSchema,
   carlaHealthDataSchema,
   otpHealthSchema,
+  processAdminSchema,
+  processesAdminSchema,
+  processDetailSchema,
+  processEventsSchema,
 } from '@/lib/schemas';
 
 export const useKpis = (period?: string) =>
@@ -135,6 +139,80 @@ export const useCreateProcess = () => {
   return useMutation({
     mutationFn: (body: Record<string, unknown>) => apiPost('/api/v1/processes', procesoSchema, body, body as never),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['processes'] }),
+  });
+};
+
+// Admin Processes
+const defaultProcess = (id?: string) => processDetailSchema.parse({ id: id || crypto.randomUUID() });
+
+export const useProcessesAdmin = (filters: Partial<{ q: string; status: string; phone: string; limit: number; offset: number }>) => {
+  const queryString = useMemo(() => {
+    const parts = Object.entries(filters || {})
+      .filter(([, v]) => v !== undefined && v !== '')
+      .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`);
+    return parts.length ? `?${parts.join('&')}` : '';
+  }, [filters]);
+
+  return useQuery({
+    queryKey: ['admin-processes', queryString],
+    queryFn: () => apiGet(`/admin/processes${queryString}`, processesAdminSchema, []),
+    staleTime: 1000 * 30,
+    refetchInterval: 30000,
+  });
+};
+
+export const useProcessDetail = (id?: string) =>
+  useQuery({
+    queryKey: ['admin-process', id],
+    enabled: Boolean(id),
+    queryFn: () => apiGet(`/admin/processes/${id}`, processDetailSchema, defaultProcess(id)),
+    staleTime: 1000 * 20,
+  });
+
+export const useProcessEvents = (id?: string) =>
+  useQuery({
+    queryKey: ['admin-process-events', id],
+    enabled: Boolean(id),
+    queryFn: () => apiGet(`/admin/processes/${id}/events`, processEventsSchema, []),
+    staleTime: 1000 * 20,
+    refetchInterval: 20000,
+  });
+
+type AuditPayload = { reason?: string; operator?: string; increment_attempts?: boolean };
+
+export const useProcessStatus = (id?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AuditPayload & { status: string }) =>
+      apiPost(`/admin/processes/${id}/status`, processDetailSchema, body, defaultProcess(id)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-process', id] });
+      queryClient.invalidateQueries({ queryKey: ['admin-processes'] });
+    },
+  });
+};
+
+export const useProcessRetry = (id?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AuditPayload = {}) => apiPost(`/admin/processes/${id}/retry`, processDetailSchema, body, defaultProcess(id)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-process', id] });
+      queryClient.invalidateQueries({ queryKey: ['admin-processes'] });
+    },
+  });
+};
+
+export const useProcessRerun = (id?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AuditPayload & { include_events?: boolean } = { include_events: true }) =>
+      apiPost(`/admin/processes/${id}/rerun`, processDetailSchema, body, defaultProcess(id)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-process', id] });
+      queryClient.invalidateQueries({ queryKey: ['admin-process-events', id] });
+      queryClient.invalidateQueries({ queryKey: ['admin-processes'] });
+    },
   });
 };
 
