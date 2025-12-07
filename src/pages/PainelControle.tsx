@@ -520,22 +520,6 @@ export function PainelControlePage() {
         </Button>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {endpointGroups.map((group) => (
-          <Card
-            key={group.id}
-            className="group border border-border/50 bg-surface/80 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all hover:-translate-y-[2px] hover:shadow-[0_0_0_1px_rgba(94,234,212,0.35),0_18px_45px_rgba(0,0,0,0.55)]"
-          >
-            <CardHeader className="flex flex-row items-center gap-3">
-              <div className="flex items-center gap-3">
-                <group.icon className={`h-5 w-5 ${group.accent}`} />
-                <p className="text-sm font-semibold text-foreground">{group.label}</p>
-              </div>
-            </CardHeader>
-          </Card>
-        ))}
-      </div>
-
       <Tabs defaultValue={endpointGroups[0].id} className="space-y-4">
         <TabsList className="flex flex-wrap gap-2 bg-background/40">
           {endpointGroups.map((group) => (
