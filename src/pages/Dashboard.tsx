@@ -88,6 +88,28 @@ export function DashboardPage() {
     };
   }, [healthQuery.data, healthQuery.isError, healthServices]);
 
+  const statusSummary = useMemo(() => {
+    const coreStatus = healthQuery.data?.carla?.status;
+    const otpStatus = healthQuery.data?.otp?.status;
+    const servicesCount = Object.keys(healthQuery.data?.carla?.services || {}).length;
+
+    const headline =
+      overallHealth?.tone === 'error'
+        ? 'Intervenção imediata'
+        : overallHealth?.tone === 'warn'
+          ? 'Monitorando sinais'
+          : servicesCount > 0
+            ? 'Tudo verde'
+            : 'Aguardando sinais';
+
+    const body =
+      servicesCount === 0
+        ? 'Sem heartbeat das integrações ainda.'
+        : `Core: ${coreStatus || '—'} · OTP: ${otpStatus || '—'} · Serviços: ${servicesCount}`;
+
+    return { headline, body, coreStatus, otpStatus, servicesCount };
+  }, [healthQuery.data, overallHealth?.tone]);
+
   const toneBadge = (tone: 'ok' | 'warn' | 'error') =>
     tone === 'error'
       ? 'bg-destructive/15 text-destructive'
@@ -252,20 +274,11 @@ export function DashboardPage() {
           <CardHeader className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
               <ShieldCheck className="h-4 w-4 text-accent" />
-              Salud de integrações (live)
+              Salud de integrações
             </CardTitle>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/70">
-                Auto-check 15s
-              </Badge>
-              <button
-                type="button"
-                onClick={() => healthQuery.refetch()}
-                className="flex items-center gap-1 rounded-lg border border-border/60 bg-background/60 px-3 py-1.5 text-[11px] text-foreground/80 transition hover:border-accent/60 hover:text-accent"
-              >
-                <RefreshCw size={14} className={healthQuery.isFetching ? 'animate-spin' : ''} /> Refrescar
-              </button>
-            </div>
+            <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/70">
+              Live · 15s
+            </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
             {healthQuery.isLoading ? (
@@ -273,10 +286,7 @@ export function DashboardPage() {
             ) : (
               <>
                 <div className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-r from-background/70 via-surface to-background/70 p-4">
-                  <div
-                    className="pointer-events-none absolute inset-0 opacity-20"
-                    style={{ backgroundImage: 'linear-gradient(120deg, rgba(52, 211, 153, 0.2), rgba(93, 163, 255, 0.2))', backgroundSize: '200% 200%' }}
-                  />
+                  <div className="pointer-events-none absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(120deg, rgba(52, 211, 153, 0.2), rgba(93, 163, 255, 0.2))', backgroundSize: '200% 200%' }} />
                   <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-center gap-3">
                       <div className="relative">
@@ -286,23 +296,20 @@ export function DashboardPage() {
                       </div>
                       <div>
                         <p className="text-[11px] uppercase tracking-[0.2em] text-foreground/60">Monitoramento vivo</p>
-                        <p className="text-lg font-semibold text-foreground">{overallHealth?.label || 'Aguardando sinais'}</p>
-                        <p className="text-xs text-foreground/60">{overallHealth?.helper || 'Checando latência e uptime'}</p>
+                        <p className="text-lg font-semibold text-foreground">{statusSummary.headline}</p>
+                        <p className="text-xs text-foreground/60">{statusSummary.body}</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <span className={`rounded-full px-2 py-1 ${overallHealth ? toneBadge(overallHealth.tone) : 'bg-foreground/10 text-foreground/70'}`}>
                         {overallHealth?.tone === 'error' ? 'Crítico' : overallHealth?.tone === 'warn' ? 'Vigilante' : 'OK ao vivo'}
                       </span>
-                      <Badge variant="outline" className="border-border/60 text-foreground/70">
+                      <span className="rounded-full border border-border/60 px-2 py-1 text-[11px] text-foreground/70">
                         Uptime {formatUptime(overallHealth?.uptime)}
-                      </Badge>
-                      <Badge variant="outline" className="border-border/60 text-foreground/70">
-                        {overallHealth?.metrics?.requests_per_minute ? `${overallHealth.metrics.requests_per_minute.toFixed(1)} req/min` : 'Ping a cada 15s'}
-                      </Badge>
-                      <Badge variant="outline" className="border-border/60 text-foreground/70">
-                        {overallHealth?.timestamp ? `Atualizado ${new Date(overallHealth.timestamp).toLocaleTimeString()}` : 'Relógio sincronizado'}
-                      </Badge>
+                      </span>
+                      <span className="rounded-full border border-border/60 px-2 py-1 text-[11px] text-foreground/70">
+                        {overallHealth?.timestamp ? `Atualizado ${new Date(overallHealth.timestamp).toLocaleTimeString()}` : 'Sincronizando'}
+                      </span>
                     </div>
                   </div>
                   <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
@@ -313,7 +320,7 @@ export function DashboardPage() {
                 <div className="grid gap-3 md:grid-cols-2">
                   {healthServices.length ? (
                     healthServices.map((service) => (
-                      <div key={service.name} className="rounded-lg border border-border/50 bg-background/60 p-3">
+                      <div key={service.name} className="rounded-lg border border-border/50 bg-background/70 p-3">
                         <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-2">
                             <span className="h-2 w-2 rounded-full bg-accent" />
@@ -322,43 +329,34 @@ export function DashboardPage() {
                           <span className={`rounded-full px-2 py-1 text-[11px] ${toneBadge(statusTone(service.status))}`}>{service.status || '—'}</span>
                         </div>
                         <div className="mt-2 flex items-center justify-between text-[11px] text-foreground/60">
-                          <span>{service.env || 'produção'}</span>
-                          <span>{service.type || formatMs(service.latency)}</span>
-                        </div>
-                        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
-                          <div
-                            className="h-full rounded-full bg-accent/80"
-                            style={{ width: service.latency ? `${Math.min(100, Math.max(10, 120 - service.latency))}%` : '45%' }}
-                          />
+                          <span>{formatMs(service.latency)}</span>
+                          <span className="text-foreground/50">uptime seguro</span>
                         </div>
                       </div>
                     ))
                   ) : (
                     <div className="col-span-full rounded-lg border border-border/50 bg-background/60 px-3 py-3 text-sm text-foreground/70">
-                      Sem sinais ainda. Aguardando heartbeat das integrações.
+                      Sem sinais ainda. Aguardando heartbeat OTP/Core.
                     </div>
                   )}
                 </div>
 
-                <div className="rounded-lg border border-border/50 bg-background/70 p-3 text-[11px] font-mono text-foreground/70">
-                  <p className="mb-1 text-foreground/60">Snapshot JSON</p>
-                  {(() => {
-                    const snapCarla = (healthQuery.data as any)?.carla || {};
-                    const snapOtp = (healthQuery.data as any)?.otp || {};
-                    return (
-                  <pre className="max-h-28 overflow-auto whitespace-pre-wrap leading-relaxed">
+                <div className="rounded-lg border border-border/60 bg-gradient-to-br from-background/80 via-surface to-background/80 p-3 text-[11px] font-mono text-foreground/80 shadow-inner">
+                  <div className="mb-2 flex items-center justify-between text-[11px] text-foreground/60">
+                    <span>Snapshot vivo</span>
+                    <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] text-foreground/60">tema adaptativo</span>
+                  </div>
+                  <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-background/70 px-3 py-2 leading-relaxed">
                     {JSON.stringify(
                       {
-                        otp: snapOtp?.status,
-                        core: snapCarla?.status,
-                        services: Object.keys((snapCarla?.services as Record<string, unknown>) || {}),
+                        core: healthQuery.data?.carla?.status || '—',
+                        otp: healthQuery.data?.otp?.status || '—',
+                        services: statusSummary.servicesCount,
                       },
                       null,
                       2,
                     )}
                   </pre>
-                    );
-                  })()}
                 </div>
               </>
             )}
