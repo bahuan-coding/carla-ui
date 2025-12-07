@@ -26,6 +26,7 @@ type Endpoint = {
   method: 'GET' | 'POST' | 'PATCH';
   path: string;
   description: string;
+  displayTitle?: string;
   fields?: Field[];
   tags?: string[];
   danger?: boolean;
@@ -68,7 +69,13 @@ const endpointGroups: Group[] = [
     accent: 'text-emerald-300',
     icon: ShieldCheck,
     endpoints: [
-      { id: 'ver-stats', method: 'GET', path: '/admin/verifications/stats', description: 'Visión general de verificaciones: cuenta aprobadas, pendientes o con error para detectar cuellos de botella.' },
+      {
+        id: 'ver-stats',
+        method: 'GET',
+        path: '/admin/verifications/stats',
+        displayTitle: 'Banking Bridge Status',
+        description: 'Visión general de verificaciones: cuenta aprobadas, pendientes o con error para detectar cuellos de botella.',
+      },
       {
         id: 'ver-stuck',
         method: 'GET',
@@ -471,7 +478,14 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
             )}
             <span className="rounded-md bg-foreground/5 px-2 py-1 font-medium text-foreground/70">{endpoint.path}</span>
           </div>
-          <p className="text-[15px] font-semibold leading-snug text-foreground">{endpoint.description}</p>
+          {endpoint.displayTitle ? (
+            <div className="space-y-1">
+              <p className="text-[15px] font-semibold leading-snug text-foreground">{endpoint.displayTitle}</p>
+              <p className="text-sm leading-relaxed text-foreground/80">{endpoint.description}</p>
+            </div>
+          ) : (
+            <p className="text-[15px] font-semibold leading-snug text-foreground">{endpoint.description}</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant={endpoint.danger && !confirmDanger ? 'destructive' : 'default'} className="shadow-sm" onClick={handleSubmit} disabled={loading}>
