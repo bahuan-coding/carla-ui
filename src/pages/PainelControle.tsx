@@ -3,7 +3,6 @@ import { Database, Gauge, Layers, Link2, Radar, RefreshCw, Rocket, Server, Shiel
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { API_URL } from '@/lib/api';
 
@@ -36,6 +35,7 @@ type Group = {
   label: string;
   accent: string;
   icon: any;
+  summary: string;
   endpoints: Endpoint[];
 };
 
@@ -67,6 +67,7 @@ const endpointGroups: Group[] = [
     label: 'Verificaciones',
     accent: 'text-emerald-300',
     icon: ShieldCheck,
+    summary: 'Identidad, OTP y validaciones críticas. Úsalo para destrabar onboarding rápido cuando QIC/RENAP fallan o revisar timeline.',
     endpoints: [
       {
         id: 'ver-stats',
@@ -176,6 +177,7 @@ const endpointGroups: Group[] = [
     label: 'Banca y Onboarding',
     accent: 'text-sky-300',
     icon: Database,
+    summary: 'Estado bancario de las aperturas, reintentos y payloads. Útil para seguir casos con el banco y limpiar errores.',
     endpoints: [
       { id: 'bank-poller', method: 'GET', path: '/admin/banking/client-poller', description: 'Ejecuta la cola bancaria (client-poller) y muestra detalle por cliente para seguimiento.', fields: [{ name: 'limit', label: 'Límite', type: 'number', placeholder: '50', inQuery: true }, boolField('include_events', 'Ver timeline', true)] },
       { id: 'bank-ready', method: 'GET', path: '/account-openings/ready-for-bank', description: 'Lista aperturas listas para enviar al banco (ready-for-bank) para priorizar backlog.', fields: [{ name: 'limit', label: 'Límite', type: 'number', placeholder: '50', inQuery: true }] },
@@ -211,6 +213,7 @@ const endpointGroups: Group[] = [
     label: 'Workers y Cron',
     accent: 'text-amber-300',
     icon: Server,
+    summary: 'Forzar corridas o pausar colas críticas (cron/workers) cuando hay backlog o incidentes.',
     endpoints: [
       { id: 'cron-account-openings', method: 'GET', path: '/cron/account-openings', description: 'Ejecuta el cron de aperturas; útil en pruebas para forzar corrida.', fields: [] },
       { id: 'cron-phone-campaign', method: 'GET', path: '/cron/phone-verification-campaign', description: 'Lanza cron de campaña OTP de forma inmediata.', fields: [] },
@@ -227,6 +230,7 @@ const endpointGroups: Group[] = [
     label: 'Aperturas de cuenta',
     accent: 'text-purple-300',
     icon: Layers,
+    summary: 'Consultas y acciones sobre cuentas y aperturas: buscar por teléfono/documento, notas internas y owners.',
     endpoints: [
       { id: 'ao-by-id', method: 'GET', path: '/account-openings/{id}', description: 'Consulta una apertura por ID para ver su estado completo.', fields: [{ name: 'id', label: 'ID de apertura', placeholder: 'uuid' }] },
       { id: 'ao-by-phone', method: 'GET', path: '/account-openings/by-phone', description: 'Busca apertura por teléfono (by-phone), útil para soporte rápido.', fields: [{ name: 'phone', label: 'Teléfono (+502)', placeholder: '+502...', inQuery: true }] },
@@ -245,6 +249,7 @@ const endpointGroups: Group[] = [
     label: 'Datos · Limpieza/Seed',
     accent: 'text-teal-200',
     icon: Database,
+    summary: 'Reset demo, seeds y limpieza de datos de prueba. Incluye QA banking para validar integraciones.',
     endpoints: [
       { id: 'cleanup-test', method: 'GET', path: '/admin/verifications/cleanup-test-data', description: 'Limpia datos de prueba (cleanup-test-data); opcionalmente borra todo.', fields: [boolField('delete_all', '¿Borrar todo?', false)] },
       { id: 'seed-webhook', method: 'GET', path: '/admin/verifications/seed-webhook-test-user', description: 'Genera usuario fijo de webhook (seed-webhook-test-user) para pruebas.' },
@@ -258,6 +263,7 @@ const endpointGroups: Group[] = [
     label: 'Conversaciones y Mensajes',
     accent: 'text-indigo-200',
     icon: Link2,
+    summary: 'Flujos de mensajería y conversaciones para soporte/chat. Útil para inspeccionar mensajería y estados.',
     endpoints: [
       { id: 'conv-list', method: 'GET', path: '/api/v1/conversations', description: 'Lista conversaciones con paginación (conversations).', fields: [{ name: 'page', label: 'Página', type: 'number', inQuery: true }, { name: 'size', label: 'Tamaño', type: 'number', inQuery: true }] },
       { id: 'conv-detail', method: 'GET', path: '/api/v1/conversations/{conversation_id}', description: 'Trae detalle y mensajes de una conversación específica.', fields: [{ name: 'conversation_id', label: 'ID da conversa', placeholder: 'id' }] },
@@ -270,6 +276,7 @@ const endpointGroups: Group[] = [
     label: 'KPIs y Tableros',
     accent: 'text-rose-200',
     icon: Gauge,
+    summary: 'Indicadores y dashboards operativos para monitorear salud y performance.',
     endpoints: [
       { id: 'kpis', method: 'GET', path: '/api/v1/dashboard/kpis', description: 'KPIs principales para monitoreo ejecutivo (dashboard kpis).' },
       { id: 'weekly', method: 'GET', path: '/api/v1/dashboard/weekly-activity', description: 'Actividad semanal con cortes por semana (weekly-activity).' },
@@ -283,6 +290,7 @@ const endpointGroups: Group[] = [
     label: 'Procesos',
     accent: 'text-cyan-200',
     icon: Workflow,
+    summary: 'Procesos transversales y pipelines internos. Punto de entrada a acciones batch y orquestaciones.',
     endpoints: [
       { id: 'proc-list', method: 'GET', path: '/api/v1/processes', description: 'Lista procesos y permite buscar por nombre (processes).', fields: [{ name: 'q', label: 'Buscar', placeholder: 'nombre', inQuery: true }] },
       { id: 'proc-create', method: 'POST', path: '/api/v1/processes', description: 'Crea proceso con nombre y configuración JSON (processes create).', fields: [{ name: 'name', label: 'Nombre', placeholder: 'Onboarding GT' }, { name: 'config', label: 'Config (JSON)', type: 'textarea', placeholder: '{...}' }] },
@@ -295,6 +303,7 @@ const endpointGroups: Group[] = [
     label: 'Dev y QA',
     accent: 'text-orange-200',
     icon: Wrench,
+    summary: 'Herramientas para QA/Dev: toggles, rutas de prueba y fixtures controlados.',
     endpoints: [
       { id: 'dev-renap', method: 'GET', path: '/dev/renap/test', description: 'Prueba RENAP (renap/test) con teléfono para debug.', fields: [{ name: 'phone', label: 'phone', placeholder: '+502...' , inQuery: true}] },
       { id: 'dev-health', method: 'GET', path: '/dev/health', description: 'Health de entorno dev (health).' },
@@ -307,6 +316,7 @@ const endpointGroups: Group[] = [
     label: 'Runner',
     accent: 'text-lime-200',
     icon: Rocket,
+    summary: 'Ejecuciones ad-hoc y tareas rápidas para demos o validaciones puntuales.',
     endpoints: [
       { id: 'runner-presets', method: 'GET', path: '/admin/runner/presets', description: 'Lista presets disponibles (runner/presets).', fields: [] },
       { id: 'runner-execute', method: 'POST', path: '/admin/runner/execute', description: 'Ejecuta preset (simulate/execute) con filtros opcionales.', fields: [{ name: 'preset', label: 'Preset', placeholder: 'banking_full' }, { name: 'account_opening_id', label: 'ID de apertura (UUID)', placeholder: 'uuid' }, { name: 'steps', label: 'Pasos (csv)', placeholder: 'step1,step2' }, { name: 'limit', label: 'Límite', type: 'number', placeholder: '5' }, { name: 'mode', label: 'Modo', type: 'select', options: ['simulate', 'execute'].map((v) => ({ label: v, value: v })) }, boolField('stop_on_error', 'Detener en error', true), boolField('continue_on_error', 'Continuar en error', false) ] },
@@ -319,6 +329,7 @@ const endpointGroups: Group[] = [
     label: 'Salud y Flujo',
     accent: 'text-emerald-200',
     icon: Radar,
+    summary: 'Visión de salud y flujos principales. Usa estos endpoints para revisar integridad y telemetría.',
     endpoints: [
       { id: 'flow-health', method: 'GET', path: '/flow/health', description: 'Chequea salud del flujo RSA (flow/health).' },
       { id: 'health', method: 'GET', path: '/health', description: 'Health general del servicio (health).' },
@@ -507,6 +518,9 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
 }
 
 export function PainelControlePage() {
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const activeGroup = endpointGroups.find((group) => group.id === selectedGroupId) ?? null;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/40 bg-surface px-4 py-4">
@@ -520,27 +534,60 @@ export function PainelControlePage() {
         </Button>
       </div>
 
-      <Tabs defaultValue={endpointGroups[0].id} className="space-y-4">
-        <TabsList className="flex flex-wrap gap-2 bg-background/40">
-          {endpointGroups.map((group) => (
-            <TabsTrigger key={group.id} value={group.id} className="flex items-center gap-2">
-              <group.icon className={`h-4 w-4 ${group.accent}`} />
-              {group.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {endpointGroups.map((group) => (
-          <TabsContent key={group.id} value={group.id} className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {group.endpoints.map((endpoint) => (
-                <EndpointCard key={endpoint.id} endpoint={endpoint} />
-              ))}
+      {!activeGroup ? (
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">Elige el tipo de proceso</p>
+            <p className="text-sm text-foreground/70">Selecciona el dominio que quieres revisar; luego verás sus acciones.</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {endpointGroups.map((group) => (
+              <Card
+                key={group.id}
+                className="group cursor-pointer border border-border/60 bg-surface/80 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all hover:-translate-y-[3px] hover:border-accent/50 hover:shadow-[0_0_0_1px_rgba(94,234,212,0.35),0_18px_45px_rgba(0,0,0,0.55)]"
+                onClick={() => setSelectedGroupId(group.id)}
+              >
+                <CardHeader className="flex flex-row items-start gap-3 pb-2">
+                  <div className="flex items-center gap-3">
+                    <group.icon className={`h-5 w-5 ${group.accent}`} />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{group.label}</p>
+                      <p className="text-[11px] text-foreground/60">{group.endpoints.length} acciones guiadas</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <p className="text-sm leading-relaxed text-foreground/70">{group.summary}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/50 bg-surface/70 px-4 py-3">
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-foreground/60">Grupo seleccionado</p>
+              <div className="flex items-center gap-2">
+                <activeGroup.icon className={`h-5 w-5 ${activeGroup.accent}`} />
+                <h3 className="text-lg font-semibold text-foreground">{activeGroup.label}</h3>
+              </div>
+              <p className="text-sm text-foreground/70 max-w-3xl">{activeGroup.summary}</p>
             </div>
-          </TabsContent>
-        ))}
-      </Tabs>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" size="sm" className="text-xs" onClick={() => setSelectedGroupId(null)}>
+                Elegir otro grupo
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {activeGroup.endpoints.map((endpoint) => (
+              <EndpointCard key={endpoint.id} endpoint={endpoint} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
