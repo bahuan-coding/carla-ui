@@ -54,3 +54,46 @@ export const shortId = (id?: string) => {
   if (id.length <= 8) return id
   return `${id.slice(0, 4)}…${id.slice(-4)}`
 }
+
+export const formatCurrency = (value?: number | null, currency?: string) => {
+  if (value === null || value === undefined) return '—'
+  try {
+    return new Intl.NumberFormat('es-GT', {
+      style: 'currency',
+      currency: currency || 'USD',
+      minimumFractionDigits: 2,
+    }).format(value)
+  } catch (e) {
+    return `${currency || ''} ${value.toLocaleString()}`
+  }
+}
+
+export const formatDate = (value?: string | null) => {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return `${date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`
+}
+
+type RenapName = {
+  primer_nombre?: string
+  segundo_nombre?: string | null
+  tercer_nombre?: string | null
+  primer_apellido?: string
+  segundo_apellido?: string
+  apellido_casada?: string | null
+}
+
+export const buildFullNameFromRenap = (entry?: RenapName) => {
+  if (!entry) return ''
+  return [
+    entry.primer_nombre,
+    entry.segundo_nombre,
+    entry.tercer_nombre,
+    entry.primer_apellido,
+    entry.segundo_apellido,
+    entry.apellido_casada,
+  ]
+    .filter(Boolean)
+    .join(' ')
+}

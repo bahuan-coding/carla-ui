@@ -1,37 +1,36 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, ArrowRight, BadgeCheck, Check, Clock4, Database, FileInput, Link2, Phone, RefreshCw, Repeat2, Send, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  BadgeCheck,
+  Building2,
+  ClipboardCopy,
+  Clock4,
+  Database,
+  FileJson,
+  Home,
+  Info,
+  Link2,
+  Phone,
+  RefreshCw,
+  Repeat2,
+  ShieldCheck,
+  Sparkles,
+  User,
+  Wallet,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import {
-  useBankingRetry,
-  useBankingStatus,
-  useBridgeBlacklistQuery,
-  useBridgeComplementaryDataCreate,
-  useBridgeCreateMicoopeIndividual,
-  useBridgeCreateStandardAccount,
-  useBridgeMicoopeClient,
-  useBridgeQueryComplementClient,
-  useBridgeUpdateComplementaryData,
-  useBridgeUpdateOnboarding,
-  useDiditOverride,
-  useDiditRegenerate,
-  useOtpMarkVerified,
-  useOtpResend,
-  useProcessDetail,
-  useProcessEvents,
-  useProcessRetry,
-  useProcessRerun,
-  useProcessStatus,
-  useProcessesAdmin,
-  useVerificationApproveManual,
-  useVerificationRejectManual,
-} from '@/hooks/use-carla-data';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useProcessDetail, useProcessRetry, useProcessRerun, useProcessStatus, useProcessesAdmin } from '@/hooks/use-carla-data';
 import { useToast } from '@/hooks/use-toast';
-import { mapStatusDisplay, maskPhone, shortId, toneBadge, toneDot } from '@/lib/utils';
+import { buildFullNameFromRenap, formatCurrency, formatDate, mapStatusDisplay, maskPhone, shortId, toneBadge } from '@/lib/utils';
+import type { Account, RenapCitizenEntry } from '@/types/account';
 
 const confirmDanger = (message: string) => window.confirm(message || '¿Continuar?');
 
@@ -41,54 +40,16 @@ export function ProcesosPage() {
   const [status, setStatus] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
-  const [auditReason, setAuditReason] = useState('');
+  const auditReason = '';
   const auditOperator = 'operador.demo@carla';
-  const [diditStatus, setDiditStatus] = useState<'approved' | 'rejected' | 'pending' | 'error'>('approved');
-  const [diditNote, setDiditNote] = useState('');
-  const [bridgeBlacklist, setBridgeBlacklist] = useState({ tipoDocumento: 'dpi', numeroDocumento: '' });
-  const [bridgeBlacklistResult, setBridgeBlacklistResult] = useState<unknown>(null);
-  const [activeClientId, setActiveClientId] = useState('');
-  const [bridgeClientResult, setBridgeClientResult] = useState<unknown>(null);
-  const [bridgeCreateForm, setBridgeCreateForm] = useState({
-    nombre: '',
-    documento: '',
-    nacimiento: '',
-    correo: '',
-  });
-  const [bridgeComplementaryForm, setBridgeComplementaryForm] = useState({ ingresos: '', direccion: '' });
-  const [bridgeAccountForm, setBridgeAccountForm] = useState({ producto: 'cuenta_estandar', moneda: 'GTQ' });
-  const [bridgeOnboardingForm, setBridgeOnboardingForm] = useState({ estado: 'started' });
-  const [bridgeMaintenanceForm, setBridgeMaintenanceForm] = useState({ direccion: '', pep: 'no' });
-  const [bridgeMaintenanceResult, setBridgeMaintenanceResult] = useState<unknown>(null);
 
   const filters = useMemo(() => ({ q: search, status, phone, limit: 30 }), [phone, search, status]);
   const listQuery = useProcessesAdmin(filters);
   const detailQuery = useProcessDetail(selectedId);
-  const eventsQuery = useProcessEvents(selectedId);
 
   const statusMutation = useProcessStatus(selectedId);
   const retryMutation = useProcessRetry(selectedId);
   const rerunMutation = useProcessRerun(selectedId);
-  const processId = detailQuery.data?.id || selectedId;
-  const verificationId = detailQuery.data?.account_opening_id || processId;
-  const phoneForActions = detailQuery.data?.phone;
-
-  const approveVerification = useVerificationApproveManual(verificationId, processId);
-  const rejectVerification = useVerificationRejectManual(verificationId, processId);
-  const otpResend = useOtpResend(processId);
-  const otpMarkVerified = useOtpMarkVerified(processId);
-  const diditRegenerate = useDiditRegenerate(verificationId, processId);
-  const diditOverride = useDiditOverride(verificationId, processId);
-  const bankingStatus = useBankingStatus(processId, processId);
-  const bankingRetry = useBankingRetry(processId, processId);
-  const bridgeBlacklistMutation = useBridgeBlacklistQuery(processId);
-  const bridgeClientQuery = useBridgeMicoopeClient(processId);
-  const bridgeCreateClient = useBridgeCreateMicoopeIndividual(processId);
-  const bridgeComplementaryCreate = useBridgeComplementaryDataCreate(processId);
-  const bridgeCreateAccount = useBridgeCreateStandardAccount(processId);
-  const bridgeUpdateOnboarding = useBridgeUpdateOnboarding(processId);
-  const bridgeUpdateComplementary = useBridgeUpdateComplementaryData(processId);
-  const bridgeQueryComplement = useBridgeQueryComplementClient(processId);
 
   const processes = listQuery.data || [];
 
@@ -106,23 +67,6 @@ export function ProcesosPage() {
       title: message,
       description: error instanceof Error ? error.message : 'Tente novamente em instantes.',
     });
-
-  const bridgeFriendlyError = (error: unknown) => {
-    const message = error instanceof Error ? error.message : '';
-    if (/401|expirad/i.test(message)) return 'La sesión con el servicio bancario ha expirado. Intenta nuevamente.';
-    if (/403|credencial/i.test(message)) return 'No fue posible autenticar la operación con el banco. Contacta al soporte técnico.';
-    if (/502/.test(message)) return 'El servicio bancario está temporalmente no disponible. Intenta nuevamente en unos minutos.';
-    if (/500/.test(message)) return 'Ocurrió un error interno al procesar la solicitud bancaria. Intenta más tarde o contacta al soporte.';
-    return 'No se pudo completar la operación bancaria. Intenta de nuevo.';
-  };
-
-  const ensureTarget = (id?: string, message?: string) => {
-    if (!id) {
-      onActionError(message || 'Seleccione un proceso');
-      return false;
-    }
-    return true;
-  };
 
   const cards = processes.map((p) => {
     const displayName =
@@ -149,36 +93,7 @@ export function ProcesosPage() {
     };
   });
 
-  const eventList = eventsQuery.data || detailQuery.data?.events || [];
-  const timeline = detailQuery.data?.timeline || detailQuery.data?.banking_events || [];
   const auditFields = useMemo(() => ({ operator: auditOperator || undefined, reason: auditReason || undefined }), [auditOperator, auditReason]);
-  const actionToast = (title: string, description: string) => toast({ title, description });
-  const currentClient = useMemo(() => {
-    const meta = (detailQuery.data?.meta || {}) as Record<string, unknown>;
-    const docNumber = (meta?.document as string) || (meta?.dpi as string) || detailQuery.data?.phone || '';
-    const docType = (meta?.document_type as string) || 'dpi';
-    const clientId = (meta?.client_id as string) || (meta?.micoope_client_id as string) || detailQuery.data?.account_opening_id || detailQuery.data?.id || '';
-    const birthDate = (meta?.birth_date as string) || '';
-    const email = (meta?.email as string) || '';
-    const fullName = detailQuery.data?.displayName || detailQuery.data?.name || (meta?.full_name as string) || '';
-    return { clientId, documentNumber: docNumber, documentType: docType, fullName, birthDate, email };
-  }, [detailQuery.data]);
-
-  useEffect(() => {
-    setActiveClientId(currentClient.clientId);
-    setBridgeBlacklist((p) => ({
-      ...p,
-      tipoDocumento: currentClient.documentType || p.tipoDocumento,
-      numeroDocumento: currentClient.documentNumber || p.numeroDocumento,
-    }));
-    setBridgeCreateForm((p) => ({
-      ...p,
-      nombre: currentClient.fullName || p.nombre,
-      documento: currentClient.documentNumber || p.documento,
-      nacimiento: currentClient.birthDate || p.nacimiento,
-      correo: currentClient.email || p.correo,
-    }));
-  }, [currentClient]);
 
   const renderHeaderKpi = (label: string, value: number | string, tone: 'ok' | 'warn' | 'error' = 'ok', helper?: string) => {
     const style =
@@ -398,7 +313,7 @@ export function ProcesosPage() {
       </div>
 
       <Sheet open={Boolean(selectedId)} onOpenChange={(open) => setSelectedId(open ? selectedId : undefined)}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+        <SheetContent className="w-full overflow-y-auto sm:max-w-3xl">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2 text-sm">
               <ShieldCheck size={16} className="text-accent" /> Detalle del proceso
@@ -411,701 +326,235 @@ export function ProcesosPage() {
               <Skeleton className="h-32 w-full bg-foreground/10" />
             </div>
           ) : detailQuery.data ? (
-            <div className="space-y-4 py-4 text-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-foreground/60">{detailQuery.data.id}</p>
-                  <p className="text-base font-semibold text-foreground">
-                    {detailQuery.data.displayName || detailQuery.data.name || detailQuery.data.phone || 'Proceso'}
-                  </p>
+            (() => {
+              const account = (detailQuery.data?.account || {}) as Account;
+              const extra = account.extra_data || {};
+              const renap = account.renap_citizen_data?.[0];
+              const renapEntry = renap?.citizen_data?.[0] as RenapCitizenEntry | undefined;
+              const fullName = account.full_name || buildFullNameFromRenap(renapEntry) || '—';
+              const mainPhone = account.phone_main || account.whatsapp_phone_e164 || detailQuery.data?.phone || '—';
+              const email = account.email || extra.contact_screen?.correo_electronico || '—';
+              const complianceSource =
+                (account.compliance_checks_raw && account.compliance_checks_raw.length ? account.compliance_checks_raw : []) ||
+                (extra.compliance_screen?.compliance_checks ? [extra.compliance_screen.compliance_checks] : []);
+              const risk = (account.is_pep || account.is_pep_related || account.has_us_tax_obligations || complianceSource.some((c) => c && c !== 'noneApply')) ?? false;
+              const valueOrDash = (v?: string | number | null) => (v === undefined || v === null || v === '' ? '—' : v);
+              const badgeTone = (v?: boolean) => (v ? 'bg-destructive/15 text-destructive' : 'bg-emerald-500/10 text-emerald-200');
+              const renderField = (label: string, value?: string | number | null) => (
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">{label}</p>
+                  <p className="text-sm text-foreground">{valueOrDash(value)}</p>
                 </div>
-                <div className="flex flex-col items-end gap-1 text-right">
-                  <span className={`rounded-full px-2 py-1 text-[11px] ${toneBadge(detailQuery.data.statusDisplay?.tone || 'info')}`}>
-                    {detailQuery.data.statusDisplay?.label || '—'}
-                  </span>
-                  {detailQuery.data.correlation_id ? (
-                    <span className="rounded bg-foreground/10 px-2 py-1 text-[11px] text-foreground/70">corr: {detailQuery.data.correlation_id}</span>
-                  ) : null}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-[12px] text-foreground/70">
-                <div className="rounded-lg border border-border/50 bg-background/70 p-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Teléfono</p>
-                  <p>{detailQuery.data.phoneMasked || detailQuery.data.phone || '—'}</p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-background/70 p-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Intentos</p>
-                  <p>{detailQuery.data.attempts ?? '—'}</p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-background/70 p-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Banco</p>
-                  <p>{detailQuery.data.bankingDisplay?.label || '—'}</p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-background/70 p-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Verificación</p>
-                  <p>{detailQuery.data.verificationDisplay?.label || '—'}</p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-background/70 p-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Eventos</p>
-                  <p>{detailQuery.data.events_count ?? eventList.length ?? '—'}</p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-background/70 p-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Actualizado</p>
-                  <p>{detailQuery.data.timestampFmt || '—'}</p>
-                </div>
-              </div>
+              );
 
-              <div className="rounded-lg border border-border/50 bg-background/70 p-3 text-[12px] text-foreground/80">
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-foreground/60">
-                  <Database size={12} /> Datos del proceso
-                </div>
-                <div className="mt-2 grid gap-2">
-                  <p>ID de apertura: {detailQuery.data.account_opening_id || '—'}</p>
-                  <p>Producto: {detailQuery.data.product_type || '—'} · Moneda: {detailQuery.data.account_currency || '—'}</p>
-                  {detailQuery.data.last_error ? (
-                    <span className="rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-destructive">{detailQuery.data.last_error}</span>
-                  ) : null}
-                  {detailQuery.data.meta ? (
-                    <pre className="rounded bg-foreground/5 p-2 text-[11px] leading-relaxed text-foreground/70">
-                      {JSON.stringify(detailQuery.data.meta, null, 2)}
-                    </pre>
-                  ) : null}
-                </div>
-              </div>
+              const statusChips = [
+                { label: 'DIDIT', value: account.didit_status },
+                { label: 'QIC', value: account.qic_status },
+                { label: 'RENAP', value: account.renap_status },
+                { label: 'Teléfono', value: account.phone_verification_status },
+              ];
 
-              <div className="space-y-3 rounded-lg border border-border/50 bg-background/70 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Controles del cliente</p>
-                  <Badge variant="outline" className="text-[11px]">Audit + Dry run seguro</Badge>
-                </div>
-                <p className="text-[12px] text-foreground/70">
-                  Utilice este bloque cuando el flujo automático no haya concluido o la decisión provenga de un análisis offline. Registre quién decidió y el motivo.
-                </p>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Input value={auditOperator || 'operador.demo@carla'} disabled className="h-8 text-xs" />
-                  <Input placeholder="Motivo de la decisión y falla observada" value={auditReason} onChange={(e) => setAuditReason(e.target.value)} className="h-8 text-xs" />
-                </div>
-
-                <div className="space-y-2 rounded-lg border border-border/40 bg-background/60 p-2">
-                  <div className="flex items-center justify-between text-[11px] text-foreground/60">
-                    <span>Decisión del proceso</span>
-                    <span className="text-foreground/50">Aprobar o rechazar manualmente</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      size="sm"
-                      className="text-xs"
-                      title="Aprueba tras validación manual; envía al banco."
-                      disabled={!verificationId || approveVerification.isPending}
-                      onClick={() => {
-                        if (!ensureTarget(verificationId, 'Necesita account_opening_id')) return;
-                        approveVerification.mutate(
-                          auditFields,
-                          { onError: (e) => onActionError('Aprobar manual', e), onSuccess: () => actionToast('Aprobado', 'QIC marcado aprobado') },
-                        );
-                      }}
-                    >
-                      <Check size={14} className="mr-1" /> Aprobar manualmente
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="text-xs"
-                      title="Rechaza tras revisión manual; cierra el caso."
-                      disabled={!verificationId || rejectVerification.isPending}
-                      onClick={() => {
-                        if (!ensureTarget(verificationId, 'Necesita account_opening_id')) return;
-                        rejectVerification.mutate(
-                          auditFields,
-                          { onError: (e) => onActionError('Rechazar manual', e), onSuccess: () => actionToast('Rechazado', 'QIC marcado rechazado') },
-                        );
-                      }}
-                    >
-                      <X size={14} className="mr-1" /> Rechazar manualmente
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Prueba de vida: separado em reenvío vs ajuste manual */}
-                <div className="space-y-3 rounded-lg border border-border/40 bg-background/60 p-3">
-                  <div className="flex items-center justify-between text-[11px] text-foreground/60">
-                    <span>Prueba de vida</span>
-                    <span className="text-foreground/50">Reenvío de enlace y ajuste manual</span>
-                  </div>
-
-                  <div className="space-y-1">
-                    <p className="text-[11px] uppercase tracking-[0.08em] text-foreground/60">Reenvío de enlace</p>
-                    <p className="text-[12px] text-foreground/60">Envía nuevamente el enlace de prueba de vida al cliente.</p>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="text-xs"
-                      title="Genera y envía un nuevo enlace de prueba de vida."
-                      disabled={!verificationId || diditRegenerate.isPending}
-                      onClick={() => {
-                        if (!ensureTarget(verificationId, 'Necesita verification id')) return;
-                        diditRegenerate.mutate(
-                          auditFields,
-                          { onError: (e) => onActionError('Reenviar prueba de vida', e), onSuccess: () => actionToast('Prueba de vida', 'Nuevo enlace enviado') },
-                        );
-                      }}
-                    >
-                      <RefreshCw size={14} className="mr-1" /> Reenviar enlace de prueba de vida
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-[11px] uppercase tracking-[0.08em] text-foreground/60">Ajustar estado manualmente</p>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-                      <div className="space-y-1">
-                        <label className="text-[11px] text-foreground/60">Nuevo estado de la prueba de vida</label>
-                        <select
-                          className="h-9 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
-                          value={diditStatus}
-                          onChange={(e) => setDiditStatus(e.target.value as typeof diditStatus)}
-                          title="Seleccione el nuevo estado manual"
-                        >
-                          <option value="" disabled>
-                            Seleccione el nuevo estado
-                          </option>
-                          {['approved', 'rejected', 'pending', 'error'].map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-1 sm:w-48">
-                        <label className="text-[11px] text-foreground/60">Nota (opcional)</label>
-                        <Input placeholder="Nota breve" value={diditNote} onChange={(e) => setDiditNote(e.target.value)} className="h-9 text-xs" />
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs"
-                      title="Aplica el estado manual seleccionado."
-                      disabled={!verificationId || diditOverride.isPending}
-                      onClick={() => {
-                        if (!ensureTarget(verificationId, 'Necesita verification id')) return;
-                        diditOverride.mutate(
-                          { ...auditFields, status: diditStatus, note: diditNote || undefined },
-                          { onError: (e) => onActionError('Override DIDIT', e), onSuccess: () => actionToast('DIDIT override', diditStatus) },
-                        );
-                      }}
-                    >
-                      <FileInput size={14} className="mr-1" /> Aplicar cambio de estado
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-2 rounded-lg border border-border/40 bg-background/60 p-2">
-                  <div className="flex items-center justify-between text-[11px] text-foreground/60">
-                    <span>OTP / Contacto</span>
-                    <span className="text-foreground/50">Confirmar canal telefónico</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="text-xs"
-                      title="Reenvía el código OTP al teléfono."
-                      disabled={!phoneForActions || otpResend.isPending}
-                      onClick={() => {
-                        if (!phoneForActions) return onActionError('Teléfono no encontrado');
-                        otpResend.mutate(
-                          { ...auditFields, phone: phoneForActions, account_opening_id: verificationId },
-                          { onError: (e) => onActionError('Reenviar OTP', e), onSuccess: () => actionToast('OTP reenviado', phoneForActions) },
-                        );
-                      }}
-                    >
-                      <Send size={14} className="mr-1" /> Reenviar código OTP
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs"
-                      title="Marca OTP como verificado tras comprobación manual."
-                      disabled={!phoneForActions || otpMarkVerified.isPending}
-                      onClick={() => {
-                        if (!phoneForActions) return onActionError('Teléfono no encontrado');
-                        otpMarkVerified.mutate(
-                          { ...auditFields, phone: phoneForActions, account_opening_id: verificationId },
-                          { onError: (e) => onActionError('Marcar verificado', e), onSuccess: () => actionToast('OTP marcado como verificado', phoneForActions) },
-                        );
-                      }}
-                    >
-                      <ShieldCheck size={14} className="mr-1" /> Marcar OTP como verificado
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-2 rounded-lg border border-border/40 bg-background/60 p-2">
-                  <div className="flex items-center justify-between text-[11px] text-foreground/60">
-                    <span>Integración bancaria</span>
-                    <span className="text-foreground/50">Reenviar o ajustar estado</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="text-xs"
-                      title="Reenvía el caso a la fila del banco limpiando el último error."
-                      disabled={!processId || bankingRetry.isPending}
-                      onClick={() => {
-                        if (!ensureTarget(processId, 'Seleccione un proceso')) return;
-                        bankingRetry.mutate(
-                          auditFields,
-                          { onError: (e) => onActionError('Reintento bancario', e), onSuccess: () => actionToast('Reintento bancario', 'bank_retry enviado') },
-                        );
-                      }}
-                    >
-                      <Repeat2 size={14} className="mr-1" /> Intentar de nuevo en el banco
-                    </Button>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { key: 'ready_for_bank', label: 'Listo para enviar' },
-                        { key: 'bank_processing', label: 'Procesando en el banco' },
-                        { key: 'bank_retry', label: 'Esperando nuevo envío' },
-                        { key: 'bank_rejected', label: 'Rechazado por el banco' },
-                        { key: 'account_created', label: 'Cuenta creada' },
-                      ].map(({ key, label }) => (
-                        <Button
-                          key={key}
-                          size="sm"
-                          variant="ghost"
-                          className="text-[11px]"
-                          title={`Estado técnico: ${key}`}
-                          disabled={!processId || bankingStatus.isPending}
-                          onClick={() => {
-                            if (!ensureTarget(processId, 'Seleccione un proceso')) return;
-                            bankingStatus.mutate(
-                              { ...auditFields, status: key },
-                              { onError: (e) => onActionError('Estado bancario', e), onSuccess: () => actionToast('Estado bancario', key) },
-                            );
-                          }}
-                        >
-                          {label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3 rounded-lg border border-border/50 bg-background/70 p-3">
-                <div className="flex items-center justify-between text-[11px] text-foreground/60">
-                  <span className="flex items-center gap-2">
-                    <Database size={12} /> Puentes bancarias
-                  </span>
-                  <Badge variant="outline" className="text-[11px]">Bridge API</Badge>
-                </div>
-                <p className="text-[12px] text-foreground/70">
-                  Acciones relacionadas con la integración bancaria y la creación de clientes y cuentas. Usando datos del cliente de este proceso.
-                </p>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="space-y-2 rounded-lg border border-border/40 bg-background/80 p-3">
-                    <div className="flex items-center justify-between text-[11px] text-foreground/60">
-                      <span>Listas restrictivas</span>
-                      <Badge variant="outline" className="text-[11px]">Consulta</Badge>
-                    </div>
-                    <p className="text-[12px] text-foreground/65">
-                      Se utiliza automáticamente el documento del cliente de este proceso para consultar en listas restrictivas.
-                    </p>
-                    <div className="space-y-2">
-                      <div className="space-y-1">
-                        <label className="text-[11px] text-foreground/60">Tipo de documento</label>
-                        <select
-                          className="h-9 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
-                          value={bridgeBlacklist.tipoDocumento}
-                          disabled
-                          onChange={(e) => setBridgeBlacklist((p) => ({ ...p, tipoDocumento: e.target.value }))}
-                        >
-                          {['dpi', 'cui', 'pasaporte'].map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt.toUpperCase()}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[11px] text-foreground/60">Número de documento</label>
-                        <Input
-                          value={bridgeBlacklist.numeroDocumento}
-                          disabled
-                          onChange={(e) => setBridgeBlacklist((p) => ({ ...p, numeroDocumento: e.target.value }))}
-                          placeholder="0000000"
-                          className="h-9 text-xs"
-                        />
-                      </div>
-                      <Button
-                        size="sm"
-                        className="text-xs"
-                        disabled={bridgeBlacklistMutation.isPending}
-                        onClick={() => {
-                          if (!bridgeBlacklist.numeroDocumento.trim()) return onActionError('Documento no disponible en el proceso');
-                          bridgeBlacklistMutation.mutate(
-                            { tipoDocumento: bridgeBlacklist.tipoDocumento, numeroDocumento: bridgeBlacklist.numeroDocumento },
-                            {
-                              onSuccess: (res) => {
-                                setBridgeBlacklistResult(res);
-                                toast({ title: 'Consulta enviada', description: 'Listas restrictivas consultadas.' });
-                              },
-                              onError: (e) => onActionError(bridgeFriendlyError(e), e),
-                            },
-                          );
-                        }}
-                      >
-                        {bridgeBlacklistMutation.isPending ? 'Consultando...' : 'Consultar listas'}
-                      </Button>
-                      {bridgeBlacklistResult ? (
-                        <pre className="rounded bg-foreground/5 p-2 text-[11px] leading-relaxed text-foreground/70">
-                          {JSON.stringify(bridgeBlacklistResult, null, 2)}
-                        </pre>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 rounded-lg border border-border/40 bg-background/80 p-3">
-                    <div className="flex items-center justify-between text-[11px] text-foreground/60">
-                      <span>Gestión de cliente Micoope</span>
-                      <Badge variant="outline" className="text-[11px]">Cliente</Badge>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
-                        <p className="text-[12px] text-foreground/70">Consulta de cliente</p>
-                        <p className="text-[11px] text-foreground/60">ID de cliente cargado automáticamente: <span className="font-semibold text-foreground">{activeClientId || '—'}</span></p>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs"
-                          disabled={bridgeClientQuery.isPending || !activeClientId}
-                          onClick={() => {
-                            if (!activeClientId) return onActionError('ID de cliente no disponible en el proceso');
-                            bridgeClientQuery.mutate(activeClientId, {
-                              onSuccess: (res) => {
-                                setBridgeClientResult(res);
-                                toast({ title: 'Cliente encontrado', description: 'Se usó el ID del proceso.' });
-                              },
-                              onError: (e) => onActionError(bridgeFriendlyError(e), e),
-                            });
-                          }}
-                        >
-                          {bridgeClientQuery.isPending ? 'Buscando...' : 'Buscar cliente'}
-                        </Button>
-                        {bridgeClientResult ? (
-                          <div className="rounded border border-border/50 bg-background/80 p-2 text-[11px] text-foreground/80">
-                            <p className="font-semibold text-foreground">{(bridgeClientResult as { nombre?: string })?.nombre || 'Cliente'}</p>
-                            <p>{(bridgeClientResult as { documento?: string })?.documento || 'Documento no informado'}</p>
-                            <p>{(bridgeClientResult as { estado?: string })?.estado || 'Estado no disponible'}</p>
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
-                        <p className="text-[12px] text-foreground/70">Crear cliente Micoope</p>
-                        <div className="grid gap-2">
-                          <Input
-                            value={bridgeCreateForm.nombre}
-                            onChange={(e) => setBridgeCreateForm((p) => ({ ...p, nombre: e.target.value }))}
-                            placeholder="Nombre completo"
-                            className="h-8 text-xs"
-                          />
-                          <Input
-                            value={bridgeCreateForm.documento}
-                            onChange={(e) => setBridgeCreateForm((p) => ({ ...p, documento: e.target.value }))}
-                            placeholder="Documento"
-                            className="h-8 text-xs"
-                          />
-                          <Input
-                            type="date"
-                            value={bridgeCreateForm.nacimiento}
-                            onChange={(e) => setBridgeCreateForm((p) => ({ ...p, nacimiento: e.target.value }))}
-                            className="h-8 text-xs"
-                          />
-                          <Input
-                            type="email"
-                            value={bridgeCreateForm.correo}
-                            onChange={(e) => setBridgeCreateForm((p) => ({ ...p, correo: e.target.value }))}
-                            placeholder="Correo electrónico"
-                            className="h-8 text-xs"
-                          />
+              return (
+                <div className="space-y-4 py-4 text-sm">
+                  <div className="rounded-2xl border border-border/50 bg-background/80 p-4 shadow-lg">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-foreground/60">
+                          {detailQuery.data.id}
                           <Button
-                            size="sm"
-                            className="text-xs"
-                            disabled={bridgeCreateClient.isPending}
-                            onClick={() => {
-                              if (!bridgeCreateForm.nombre.trim() || !bridgeCreateForm.documento.trim()) {
-                                return onActionError('Completa nombre y documento');
-                              }
-                              bridgeCreateClient.mutate(bridgeCreateForm, {
-                                onSuccess: (res) => {
-                                  const newId =
-                                    (res as { client_id?: string; id?: string })?.client_id ||
-                                    (res as { id?: string })?.id ||
-                                    activeClientId;
-                                  if (newId) {
-                                    setActiveClientId(newId);
-                                  }
-                                  toast({ title: 'Cliente creado correctamente', description: newId || 'Cliente listo para onboarding.' });
-                                },
-                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
-                              });
-                            }}
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-foreground/70"
+                            onClick={() => navigator.clipboard.writeText(detailQuery.data.id)}
+                            title="Copiar ID"
                           >
-                            {bridgeCreateClient.isPending ? 'Creando...' : 'Crear cliente'}
+                            <ClipboardCopy size={14} />
                           </Button>
                         </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-base font-semibold text-foreground">{fullName}</h3>
+                          {account.is_demo ? <Badge variant="outline">DEMO</Badge> : null}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-[12px] text-foreground/70">
+                          <Phone size={14} /> {mainPhone}
+                          {email && email !== '—' ? (
+                            <>
+                              <span className="h-4 w-px bg-border/60" />
+                              {email}
+                            </>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="space-y-2 rounded-lg border border-border/40 bg-background/80 p-3">
-                    <div className="flex items-center justify-between text-[11px] text-foreground/60">
-                      <span>Onboarding de cuenta</span>
-                      <Badge variant="outline" className="text-[11px]">Pasos</Badge>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
-                        <p className="text-[12px] text-foreground/70">Paso 1 – Datos complementarios</p>
-                        <p className="text-[11px] text-foreground/60">ID de cliente cargado automáticamente: <span className="font-semibold text-foreground">{activeClientId || '—'}</span></p>
-                        <Input
-                          value={bridgeComplementaryForm.ingresos}
-                          onChange={(e) => setBridgeComplementaryForm((p) => ({ ...p, ingresos: e.target.value }))}
-                          placeholder="Ingresos declarados"
-                          className="h-8 text-xs"
-                        />
-                        <Input
-                          value={bridgeComplementaryForm.direccion}
-                          onChange={(e) => setBridgeComplementaryForm((p) => ({ ...p, direccion: e.target.value }))}
-                          placeholder="Dirección"
-                          className="h-8 text-xs"
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs"
-                          disabled={bridgeComplementaryCreate.isPending || !activeClientId}
-                          onClick={() => {
-                            if (!activeClientId) return onActionError('ID de cliente no disponible en el proceso');
-                            bridgeComplementaryCreate.mutate(
-                              { clientId: activeClientId, body: bridgeComplementaryForm },
-                              {
-                                onSuccess: () => toast({ title: 'Datos complementarios guardados', description: 'Paso 1 completado.' }),
-                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
-                              },
-                            );
-                          }}
-                        >
-                          {bridgeComplementaryCreate.isPending ? 'Guardando...' : 'Guardar datos complementarios'}
-                        </Button>
-                      </div>
-
-                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
-                        <p className="text-[12px] text-foreground/70">Paso 2 – Crear cuenta estándar</p>
-                        <p className="text-[11px] text-foreground/60">ID de cliente cargado automáticamente: <span className="font-semibold text-foreground">{activeClientId || '—'}</span></p>
-                        <Input
-                          value={bridgeAccountForm.producto}
-                          onChange={(e) => setBridgeAccountForm((p) => ({ ...p, producto: e.target.value }))}
-                          placeholder="Producto"
-                          className="h-8 text-xs"
-                        />
-                        <Input
-                          value={bridgeAccountForm.moneda}
-                          onChange={(e) => setBridgeAccountForm((p) => ({ ...p, moneda: e.target.value }))}
-                          placeholder="Moneda"
-                          className="h-8 text-xs"
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs"
-                          disabled={bridgeCreateAccount.isPending || !activeClientId}
-                          onClick={() => {
-                            if (!activeClientId) return onActionError('ID de cliente no disponible en el proceso');
-                            bridgeCreateAccount.mutate(
-                              { clientId: activeClientId, body: bridgeAccountForm },
-                              {
-                                onSuccess: () => toast({ title: 'Cuenta creada', description: 'Paso 2 completado.' }),
-                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
-                              },
-                            );
-                          }}
-                        >
-                          {bridgeCreateAccount.isPending ? 'Creando...' : 'Crear cuenta'}
-                        </Button>
-                      </div>
-
-                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
-                        <p className="text-[12px] text-foreground/70">Paso 3 – Actualizar estado de onboarding</p>
-                        <p className="text-[11px] text-foreground/60">ID de cliente cargado automáticamente: <span className="font-semibold text-foreground">{activeClientId || '—'}</span></p>
-                        <select
-                          className="h-9 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
-                          value={bridgeOnboardingForm.estado}
-                          onChange={(e) => setBridgeOnboardingForm((p) => ({ ...p, estado: e.target.value }))}
-                        >
-                          {['started', 'in_progress', 'completed', 'error'].map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt.replace(/_/g, ' ')}
-                            </option>
+                      <div className="flex flex-col items-end gap-2 text-right">
+                        <Badge className="rounded-full px-3 py-1 text-[11px]">{account.status || detailQuery.data.statusDisplay?.label || '—'}</Badge>
+                        <div className="flex flex-wrap justify-end gap-2">
+                          {statusChips.map((chip) => (
+                            <Badge key={chip.label} variant="outline" className="text-[11px]">
+                              {chip.label}: {valueOrDash(chip.value)}
+                            </Badge>
                           ))}
-                        </select>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs"
-                          disabled={bridgeUpdateOnboarding.isPending || !activeClientId}
-                          onClick={() => {
-                            if (!activeClientId) return onActionError('ID de cliente no disponible en el proceso');
-                            bridgeUpdateOnboarding.mutate(
-                              { clientId: activeClientId, body: { estado: bridgeOnboardingForm.estado } },
-                              {
-                                onSuccess: () => toast({ title: 'Onboarding actualizado', description: 'Paso 3 completado.' }),
-                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
-                              },
-                            );
-                          }}
-                        >
-                          {bridgeUpdateOnboarding.isPending ? 'Actualizando...' : 'Actualizar estado'}
-                        </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-2 rounded-lg border border-border/40 bg-background/80 p-3">
-                    <div className="flex items-center justify-between text-[11px] text-foreground/60">
-                      <span>Datos complementarios (mantenimiento)</span>
-                      <Badge variant="outline" className="text-[11px]">Mantenimiento</Badge>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
-                        <p className="text-[12px] text-foreground/70">Actualizar datos complementarios</p>
-                        <p className="text-[11px] text-foreground/60">ID de cliente cargado automáticamente: <span className="font-semibold text-foreground">{activeClientId || '—'}</span></p>
-                        <Input
-                          value={bridgeMaintenanceForm.direccion}
-                          onChange={(e) => setBridgeMaintenanceForm((p) => ({ ...p, direccion: e.target.value }))}
-                          placeholder="Dirección"
-                          className="h-8 text-xs"
-                        />
-                        <select
-                          className="h-9 w-full rounded-md border border-border/60 bg-background/60 px-2 text-xs"
-                          value={bridgeMaintenanceForm.pep}
-                          onChange={(e) => setBridgeMaintenanceForm((p) => ({ ...p, pep: e.target.value }))}
-                        >
-                          {['no', 'si'].map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt.toUpperCase()}
-                            </option>
-                          ))}
-                        </select>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs"
-                          disabled={bridgeUpdateComplementary.isPending || !activeClientId}
-                          onClick={() => {
-                            if (!activeClientId) return onActionError('ID de cliente no disponible en el proceso');
-                            bridgeUpdateComplementary.mutate(
-                              { clientId: activeClientId, body: bridgeMaintenanceForm },
-                              {
-                                onSuccess: (res) => {
-                                  setBridgeMaintenanceResult(res);
-                                  toast({ title: 'Datos actualizados', description: 'Datos complementarios guardados.' });
-                                },
-                                onError: (e) => onActionError(bridgeFriendlyError(e), e),
-                              },
-                            );
-                          }}
-                        >
-                          {bridgeUpdateComplementary.isPending ? 'Actualizando...' : 'Actualizar datos'}
-                        </Button>
-                      </div>
+                  <Tabs defaultValue="resumen" className="w-full">
+                    <TabsList className="flex w-full flex-wrap gap-2 bg-background/70">
+                      <TabsTrigger value="resumen" className="flex items-center gap-1">
+                        <Info size={14} /> Resumen
+                      </TabsTrigger>
+                      <TabsTrigger value="personales" className="flex items-center gap-1">
+                        <User size={14} /> Datos personales
+                      </TabsTrigger>
+                      <TabsTrigger value="contacto" className="flex items-center gap-1">
+                        <Home size={14} /> Contacto & Dirección
+                      </TabsTrigger>
+                      <TabsTrigger value="ingresos" className="flex items-center gap-1">
+                        <Wallet size={14} /> Trabajo & ingresos
+                      </TabsTrigger>
+                      <TabsTrigger value="verificaciones" className="flex items-center gap-1">
+                        <ShieldCheck size={14} /> Verificaciones
+                      </TabsTrigger>
+                      <TabsTrigger value="banco" className="flex items-center gap-1">
+                        <Building2 size={14} /> Banco / Integraciones
+                      </TabsTrigger>
+                      <TabsTrigger value="raw" className="flex items-center gap-1">
+                        <FileJson size={14} /> Raw / Debug
+                      </TabsTrigger>
+                    </TabsList>
 
-                      <div className="space-y-2 rounded-md border border-border/40 bg-background/70 p-2">
-                        <p className="text-[12px] text-foreground/70">Consultar datos complementarios</p>
-                        <p className="text-[11px] text-foreground/60">Se usa el ID del cliente de este proceso.</p>
-                        <Button
-                          size="sm"
-                          className="text-xs"
-                          disabled={bridgeQueryComplement.isPending || !activeClientId}
-                          onClick={() => {
-                            if (!activeClientId) return onActionError('ID de cliente no disponible en el proceso');
-                            bridgeQueryComplement.mutate(activeClientId, {
-                              onSuccess: (res) => {
-                                setBridgeMaintenanceResult(res);
-                                toast({ title: 'Consulta completada', description: 'Datos complementarios listos.' });
-                              },
-                              onError: (e) => onActionError(bridgeFriendlyError(e), e),
-                            });
-                          }}
-                        >
-                          {bridgeQueryComplement.isPending ? 'Consultando...' : 'Consultar'}
-                        </Button>
-                        {bridgeMaintenanceResult ? (
-                          <pre className="rounded bg-foreground/5 p-2 text-[11px] leading-relaxed text-foreground/70">
-                            {JSON.stringify(bridgeMaintenanceResult, null, 2)}
-                          </pre>
+                    <TabsContent value="resumen" className="pt-3">
+                      <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
+                        {renderField('Canal', account.channel)}
+                        {renderField('Producto', account.product_type)}
+                        {renderField('Moneda', account.account_currency)}
+                        {renderField('Institución', `${valueOrDash(account.institution_name)} (${valueOrDash(account.institution_code)})`)}
+                        {renderField('Creado', formatDate(account.created_at))}
+                        {renderField('Verificación iniciada', formatDate(account.verification_started_at))}
+                        {renderField('Verificación completada', formatDate(account.verification_completed_at))}
+                        {renderField('Estado', account.status)}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="personales" className="pt-3">
+                      <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
+                        {renderField('Nombre completo', fullName)}
+                        {renderField('CUI (RENAP)', renapEntry?.cui)}
+                        {renderField('Documento', `${valueOrDash(account.document_type)} · ${valueOrDash(account.document_number)} · ${valueOrDash(account.document_country)}`)}
+                        {renderField('Fecha de nacimiento', formatDate(renapEntry?.fecha_nacimiento))}
+                        {renderField('Nacionalidad', account.nationality || renapEntry?.nacionalidad)}
+                        {renderField('Estado civil', account.marital_status || renapEntry?.estado_civil)}
+                        <div className="space-y-1 md:col-span-2">
+                          <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Flags de riesgo</p>
+                          <div className="flex flex-wrap gap-2">
+                            <Badge className={badgeTone(account.is_pep)}>PEP: {account.is_pep ? 'Sí' : 'No'}</Badge>
+                            <Badge className={badgeTone(account.is_pep_related)}>Relacionado PEP: {account.is_pep_related ? 'Sí' : 'No'}</Badge>
+                            <Badge className={badgeTone(account.has_us_tax_obligations)}>Obligación fiscal US: {account.has_us_tax_obligations ? 'Sí' : 'No'}</Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="contacto" className="pt-3">
+                      <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
+                        {renderField('Email', email)}
+                        {renderField('Teléfono principal', mainPhone)}
+                        {renderField('Teléfono secundario', account.phone_secondary)}
+                        {renderField('WhatsApp', account.whatsapp_phone_e164)}
+                        {renderField('Dirección', account.address_full || extra.address_screen?.direccion_completa)}
+                        {renderField('Ciudad', account.address_city)}
+                        {renderField('Estado/Depto', account.address_state)}
+                        {renderField('País', account.address_country)}
+                        {renderField('Tipo vivienda', account.address_housing_type || extra.address_screen?.tipo_vivienda)}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="ingresos" className="pt-3">
+                      <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
+                        {renderField('Situación laboral', account.employment_status || extra.employment_screen?.relacion_laboral)}
+                        {renderField('Empresa', account.employer_name || extra.employment_screen?.nombre_empresa)}
+                        {renderField('Ingresos mensuales', formatCurrency(account.monthly_income ?? Number(extra.employment_screen?.ingresos_mensuales), account.account_currency))}
+                        {renderField('Egresos mensuales', formatCurrency(account.monthly_expenses ?? Number(extra.employment_screen?.egresos_mensuales), account.account_currency))}
+                        {renderField('Otras fuentes', account.other_income_sources || extra.employment_screen?.otra_fuente_ingresos)}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="verificaciones" className="pt-3">
+                      <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
+                        {renderField('DIDIT', account.didit_status)}
+                        {renderField('Último check DIDIT', formatDate(account.didit_last_check))}
+                        {renderField('Decisión DIDIT', account.didit_metadata?.decision?.status)}
+                        {renderField('Motivo DIDIT', account.didit_metadata?.decision?.reason)}
+                        {renderField('RENAP', account.renap_status)}
+                        {renderField('Último check RENAP', formatDate(account.renap_last_check))}
+                        {renderField('Vecindad (RENAP)', renapEntry?.vecindad)}
+                        {renderField('Ocupación (RENAP)', renapEntry?.ocupacion)}
+                        {renderField('Vencimiento DPI', formatDate(renapEntry?.fecha_vencimiento))}
+                        {renderField('Teléfono verificación', account.phone_verification_status)}
+                        {renderField('OTP verificado', formatDate(account.phone_verification_metadata?.verified_at))}
+                        {renderField('Compliance', complianceSource.join(', '))}
+                        {risk ? (
+                          <div className="md:col-span-2 rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-2 text-amber-200">
+                            Riesgo identificado (PEP/Compliance). Revisar manualmente.
+                          </div>
+                        ) : null}
+                        {account.didit_verification_link ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="md:col-span-2"
+                            onClick={() => window.open(account.didit_verification_link || '#', '_blank')}
+                          >
+                            <Link2 size={14} className="mr-2" /> Abrir verificación DIDIT
+                          </Button>
                         ) : null}
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                    </TabsContent>
 
-              <div className="space-y-2">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Línea de tiempo</p>
-                {eventsQuery.isLoading ? (
-                  <Skeleton className="h-24 w-full bg-foreground/10" />
-                ) : eventList.length ? (
-                  <div className="space-y-2 rounded-lg border border-border/50 bg-background/70 p-2">
-                    {eventList.map((ev) => (
-                      <div key={`${ev.id}-${ev.created_at}-${ev.correlation_id}`} className="flex items-start gap-2 rounded-md border border-border/40 bg-background/80 px-2 py-2">
-                        <span className={`mt-1 h-2 w-2 rounded-full ${toneDot(mapStatusDisplay(ev.status).tone)}`} />
-                        <div className="space-y-1 text-[12px]">
-                          <div className="flex flex-wrap items-center gap-2 text-foreground">
-                            <span className="font-semibold">{ev.type || ev.step || 'evento'}</span>
-                            <Badge variant="outline" className="text-[11px]">
-                              {ev.status || '—'}
-                            </Badge>
-                            {ev.correlation_id ? <span className="rounded bg-foreground/10 px-2 py-0.5 text-[11px] text-foreground/70">{ev.correlation_id}</span> : null}
-                          </div>
-                          <p className="text-foreground/70">{ev.message || ev.created_at || '—'}</p>
-                        </div>
+                    <TabsContent value="banco" className="pt-3">
+                      <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
+                        {renderField('External account id', account.external_account_id)}
+                        {renderField('External customer id', account.external_customer_id)}
+                        {renderField('Última integración', formatDate(account.last_integration_at))}
+                        {renderField('Blacklist terminado', formatDate(account.bank_blacklist_finished_at))}
+                        {renderField('Onboarding terminado', formatDate(account.bank_onboarding_finished_at))}
+                        {renderField('Cuenta terminada', formatDate(account.bank_account_finished_at))}
+                        {renderField('Complementario terminado', formatDate(account.bank_complementary_finished_at))}
+                        {renderField('Complement query', formatDate(account.bank_complement_query_finished_at))}
+                        {renderField('Complement update', formatDate(account.bank_complementary_update_finished_at))}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-[12px] text-foreground/60">Sin eventos todavía.</div>
-                )}
-              </div>
+                    </TabsContent>
 
-              {timeline.length ? (
-                <div className="space-y-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Línea de tiempo bancaria/verificación</p>
-                  <div className="space-y-2 rounded-lg border border-border/50 bg-background/70 p-2">
-                    {timeline.map((ev) => (
-                      <div key={`${ev.id}-${ev.created_at}-${ev.correlation_id}-timeline`} className="flex items-start gap-2 rounded-md border border-border/40 bg-background/80 px-2 py-2">
-                        <span className={`mt-1 h-2 w-2 rounded-full ${toneDot(mapStatusDisplay(ev.status).tone)}`} />
-                        <div className="space-y-1 text-[12px]">
-                          <div className="flex flex-wrap items-center gap-2 text-foreground">
-                            <span className="font-semibold">{ev.step || ev.type || 'evento'}</span>
-                            <Badge variant="outline" className="text-[11px]">
-                              {ev.status || '—'}
-                            </Badge>
-                            {ev.correlation_id ? <span className="rounded bg-foreground/10 px-2 py-0.5 text-[11px] text-foreground/70">{ev.correlation_id}</span> : null}
-                          </div>
-                          <p className="text-foreground/70">{ev.message || ev.created_at || '—'}</p>
-                        </div>
+                    <TabsContent value="raw" className="pt-3">
+                      <div className="space-y-3 rounded-2xl border border-border/50 bg-background/70 p-4 text-[12px]">
+                        <details className="rounded border border-border/60 bg-background/80 p-3" open={false}>
+                          <summary className="cursor-pointer text-foreground">Account</summary>
+                          <pre className="mt-2 max-h-64 overflow-auto rounded bg-foreground/5 p-2 text-[11px] leading-relaxed text-foreground/80">
+                            {JSON.stringify(account, null, 2)}
+                          </pre>
+                        </details>
+                        {account.renap_citizen_data ? (
+                          <details className="rounded border border-border/60 bg-background/80 p-3" open={false}>
+                            <summary className="cursor-pointer text-foreground">RENAP</summary>
+                            <pre className="mt-2 max-h-64 overflow-auto rounded bg-foreground/5 p-2 text-[11px] leading-relaxed text-foreground/80">
+                              {JSON.stringify(account.renap_citizen_data, null, 2)}
+                            </pre>
+                          </details>
+                        ) : null}
+                        {account.extra_data ? (
+                          <details className="rounded border border-border/60 bg-background/80 p-3" open={false}>
+                            <summary className="cursor-pointer text-foreground">Extra data</summary>
+                            <pre className="mt-2 max-h-64 overflow-auto rounded bg-foreground/5 p-2 text-[11px] leading-relaxed text-foreground/80">
+                              {JSON.stringify(account.extra_data, null, 2)}
+                            </pre>
+                          </details>
+                        ) : null}
                       </div>
-                    ))}
-                  </div>
+                    </TabsContent>
+                  </Tabs>
                 </div>
-              ) : null}
-            </div>
+              );
+            })()
           ) : (
             <div className="py-6 text-sm text-foreground/60">Seleccione una tarjeta para ver detalles.</div>
           )}
