@@ -165,6 +165,14 @@ export const useHealthServices = () =>
         fetchJson<CarlaHealth | null>('https://x.carla.money/health', carlaHealthSchema, null),
       ]);
 
+      const normalizeOtp = (raw: OtpHealth | null): (CarlaHealthData & { timestamp?: string }) | null => {
+        if (!raw) return null;
+        const data = 'data' in raw ? raw.data : raw;
+        const timestamp = 'meta' in raw ? raw.meta?.timestamp : (data as { timestamp?: string }).timestamp;
+        const service = (raw as { service?: string }).service || (data as { service?: string }).service;
+        return { ...data, service, timestamp };
+      };
+
       const normalizeCarla = (raw: CarlaHealth | null): (CarlaHealthData & { timestamp?: string }) | null => {
         if (!raw) return null;
         const data = 'data' in raw ? raw.data : raw;
@@ -172,9 +180,10 @@ export const useHealthServices = () =>
         return { ...data, timestamp };
       };
 
+      const normalizedOtp = normalizeOtp(otp);
       const normalizedCarla = normalizeCarla(carla);
 
-      return { otp, carla: normalizedCarla };
+      return { otp: normalizedOtp, carla: normalizedCarla };
     },
     refetchInterval: 15000,
     staleTime: 10000,
