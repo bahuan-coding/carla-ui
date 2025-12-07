@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, ArrowRight, BadgeCheck, Clock4, Database, Link2, Loader, MoreHorizontal, Phone, RefreshCw, Repeat2, Send, ShieldCheck, Sparkles, TriangleAlert } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowRight, BadgeCheck, Clock4, Database, Link2, MoreHorizontal, Phone, RefreshCw, Repeat2, ShieldCheck, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -309,8 +309,8 @@ export function ProcesosPage() {
                     {detailQuery.data.displayName || detailQuery.data.name || detailQuery.data.phone || 'Proceso'}
                   </p>
                 </div>
-                <span className={`rounded-full px-2 py-1 text-[11px] ${toneBadge(detailQuery.data.statusDisplay.tone)}`}>
-                  {detailQuery.data.statusDisplay.label}
+                <span className={`rounded-full px-2 py-1 text-[11px] ${toneBadge(detailQuery.data.statusDisplay?.tone || 'info')}`}>
+                  {detailQuery.data.statusDisplay?.label || '—'}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[12px] text-foreground/70">
@@ -344,7 +344,7 @@ export function ProcesosPage() {
                   <div className="space-y-2 rounded-lg border border-border/50 bg-background/70 p-2">
                     {(eventsQuery.data || detailQuery.data.events || []).map((ev) => (
                         <div key={`${ev.id}-${ev.created_at}-${ev.correlation_id}`} className="flex items-start gap-2 rounded-md border border-border/40 bg-background/80 px-2 py-2">
-                          <span className={`mt-1 h-2 w-2 rounded-full ${toneDot(ev.status)}`} />
+                          <span className={`mt-1 h-2 w-2 rounded-full ${toneDot(mapStatusDisplay(ev.status).tone)}`} />
                           <div className="space-y-1 text-[12px]">
                             <div className="flex flex-wrap items-center gap-2 text-foreground">
                               <span className="font-semibold">{ev.type || ev.step || 'evento'}</span>
