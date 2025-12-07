@@ -109,7 +109,7 @@ const carlaServiceSchema = z.object({
   rate_limit_remaining: z.number().nullable().optional(),
 });
 
-const carlaHealthDataSchema = z.object({
+export const carlaHealthDataSchema = z.object({
   status: z.string(),
   version: z.string().optional(),
   environment: z.string().optional(),
@@ -131,17 +131,16 @@ const carlaHealthDataSchema = z.object({
     .optional(),
 });
 
-export const carlaHealthSchema = z.union([
-  carlaHealthDataSchema,
-  z.object({
-    data: carlaHealthDataSchema,
-    meta: z
-      .object({
-        timestamp: z.string().optional(),
-      })
-      .optional(),
-  }),
-]);
+export const carlaHealthEnvelopeSchema = z.object({
+  data: carlaHealthDataSchema,
+  meta: z
+    .object({
+      timestamp: z.string().optional(),
+    })
+    .optional(),
+});
+
+export const carlaHealthSchema = z.union([carlaHealthDataSchema, carlaHealthEnvelopeSchema]);
 
 export const otpHealthSchema = z.object({
   status: z.string(),

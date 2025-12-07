@@ -42,17 +42,17 @@ export function DashboardPage() {
 
   const healthServices = useMemo(() => {
     const services: { name: string; status?: string; env?: string; latency?: number | null; pool?: { active?: number | null; max?: number | null }; type?: string | null }[] = [];
-    const carlaData = (healthQuery.data as any)?.carla || (healthQuery.data as any)?.data || {};
-    const otpData = (healthQuery.data as any)?.otp;
-    const carlaServices = (carlaData?.services || {}) as Record<string, any>;
+    const carlaData = healthQuery.data?.carla;
+    const otpData = healthQuery.data?.otp;
+    const carlaServices = carlaData?.services || {};
     Object.entries(carlaServices).forEach(([name, svc]) => {
       services.push({
         name,
-        status: svc?.status,
+        status: svc?.status as string | undefined,
         env: carlaData?.environment,
-        latency: svc?.latency_ms ?? null,
-        pool: svc?.connection_pool ?? undefined,
-        type: svc?.type ?? null,
+        latency: (svc as { latency_ms?: number | null })?.latency_ms ?? null,
+        pool: (svc as { connection_pool?: { active?: number | null; max?: number | null } })?.connection_pool ?? undefined,
+        type: (svc as { type?: string | null })?.type ?? null,
       });
     });
     if (otpData) {
@@ -71,8 +71,8 @@ export function DashboardPage() {
       return { tone: 'error' as const, label: 'Erro ao consultar health', helper: 'Retente em instantes.' };
     }
     if (!healthQuery.data) return null;
-    const carlaData = (healthQuery.data as any)?.carla || (healthQuery.data as any)?.data || {};
-    const otpData = (healthQuery.data as any)?.otp;
+    const carlaData = healthQuery.data?.carla;
+    const otpData = healthQuery.data?.otp;
     const statuses = healthServices.map((s) => s.status?.toLowerCase?.() || '');
     const hasError = statuses.some((s) => /error|down|fail|degrad/.test(s));
     const hasWarn = !hasError && statuses.some((s) => !/healthy|operational|connected|ok/.test(s));
@@ -83,7 +83,7 @@ export function DashboardPage() {
       label,
       helper: hasError ? 'Priorizar mitigação agora' : hasWarn ? 'Monitorando latência e fila' : 'Monitorando uptime e latência',
       uptime: carlaData?.uptime_seconds,
-      timestamp: (healthQuery.data as any)?.carlaTimestamp || otpData?.timestamp,
+      timestamp: carlaData?.timestamp || otpData?.timestamp,
       metrics: carlaData?.metrics,
     };
   }, [healthQuery.data, healthQuery.isError, healthServices]);

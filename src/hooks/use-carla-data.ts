@@ -14,6 +14,7 @@ import {
   transactionsSchema,
   weeklyActivitySchema,
   carlaHealthSchema,
+  carlaHealthDataSchema,
   otpHealthSchema,
 } from '@/lib/schemas';
 
@@ -139,6 +140,7 @@ export const useCreateProcess = () => {
 
 type OtpHealth = z.infer<typeof otpHealthSchema>;
 type CarlaHealth = z.infer<typeof carlaHealthSchema>;
+type CarlaHealthData = z.infer<typeof carlaHealthDataSchema>;
 
 const fetchJson = async <T>(url: string, schema: z.ZodType<T>, fallback: T): Promise<T> => {
   try {
@@ -163,10 +165,16 @@ export const useHealthServices = () =>
         fetchJson<CarlaHealth | null>('https://x.carla.money/health', carlaHealthSchema, null),
       ]);
 
-      const normalizedCarla = carla && 'data' in carla ? (carla as { data: CarlaHealth }).data : carla;
-      const carlaTimestamp = carla && 'meta' in carla ? (carla as { meta?: { timestamp?: string } }).meta?.timestamp : undefined;
+      const normalizeCarla = (raw: CarlaHealth | null): (CarlaHealthData & { timestamp?: string }) | null => {
+        if (!raw) return null;
+        const data = 'data' in raw ? raw.data : raw;
+        const timestamp = 'meta' in raw ? raw.meta?.timestamp : undefined;
+        return { ...data, timestamp };
+      };
 
-      return { otp, carla: normalizedCarla as CarlaHealth | null, carlaTimestamp };
+      const normalizedCarla = normalizeCarla(carla);
+
+      return { otp, carla: normalizedCarla };
     },
     refetchInterval: 15000,
     staleTime: 10000,
