@@ -25,6 +25,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { mapStatusDisplay, maskPhone, shortId, toneBadge, toneDot } from '@/lib/utils';
 
+const confirmDanger = (message: string) => window.confirm(message || '¿Continuar?');
+
 export function ProcesosPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState('');
