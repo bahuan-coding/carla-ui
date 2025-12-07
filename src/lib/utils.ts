@@ -113,6 +113,13 @@ const asNumber = (value?: string | number | null): number | undefined => {
   return Number.isNaN(num) ? undefined : num
 }
 
+const asStringOrNull = (value: unknown): string | null => {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  return null
+}
+
 export const normalizeAccountForUi = (
   account?: Account,
   processFallback?: { id?: string; phone?: string; name?: string },
@@ -167,7 +174,11 @@ export const normalizeAccountForUi = (
   const employer = acc.employer_name || extra.employment_screen?.nombre_empresa || flow.nombre_empresa || null
   const monthlyIncome = acc.monthly_income ?? asNumber(extra.employment_screen?.ingresos_mensuales) ?? asNumber(flow.ingresos_mensuales) ?? null
   const monthlyExpenses = acc.monthly_expenses ?? asNumber(extra.employment_screen?.egresos_mensuales) ?? asNumber(flow.egresos_mensuales) ?? null
-  const otherIncomeSources = acc.other_income_sources || extra.employment_screen?.otra_fuente_ingresos || flow.otra_fuente_ingresos || null
+  const otherIncomeSources =
+    asStringOrNull(acc.other_income_sources) ??
+    asStringOrNull(extra.employment_screen?.otra_fuente_ingresos) ??
+    asStringOrNull(flow.otra_fuente_ingresos) ??
+    null
 
   const complianceSource =
     (acc.compliance_checks_raw && acc.compliance_checks_raw.length ? acc.compliance_checks_raw : []) ||

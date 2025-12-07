@@ -325,7 +325,6 @@ export function ProcesosPage() {
           ) : detailQuery.data ? (
             (() => {
               const account = (detailQuery.data?.account || {}) as Account;
-              const extra = account.extra_data || {};
               const normalized = normalizeAccountForUi(account, { id: detailQuery.data.id, phone: detailQuery.data.phone, name: detailQuery.data.name });
               const renapEntry = normalized.renapEntry as RenapCitizenEntry | undefined;
               const fullName = normalized.fullName || normalized.displayName || '—';
