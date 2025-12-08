@@ -269,6 +269,7 @@ export const useProcessesAdmin = (filters: Partial<{ q: string; status: string; 
     },
     staleTime: 1000 * 30,
     refetchInterval: 30000,
+    retry: false,
   });
 };
 
@@ -293,9 +294,9 @@ export const useProcessDetail = (id?: string) =>
         ...(((base as { account?: Account })?.account || base.account) as Account),
       };
       const account = mergedAccount;
-    if (IS_DEV && (!account || !Object.keys(account).length)) {
-      console.warn('[process-detail] account missing after unwrap; check payload shape', { raw });
-    }
+      if (IS_DEV && (!account || !Object.keys(account).length)) {
+        console.warn('[process-detail] account missing after unwrap; check payload shape', { raw });
+      }
       const normalized = normalizeAccountForUi(account, { id: base.id, phone: base.phone ?? undefined, name: base.name ?? undefined });
       const phoneMasked = maskPhone(normalized.mainPhone || (base.phone ?? undefined));
       const displayName = normalized.displayName || base.name || phoneMasked || shortId(base.id);
@@ -316,6 +317,7 @@ export const useProcessDetail = (id?: string) =>
       };
     },
     staleTime: 1000 * 20,
+    retry: false,
   });
 
 export const useProcessEvents = (id?: string) =>
@@ -333,6 +335,7 @@ export const useProcessEvents = (id?: string) =>
     },
     staleTime: 1000 * 20,
     refetchInterval: 20000,
+    retry: false,
   });
 
 type AuditPayload = { reason?: string; operator?: string; increment_attempts?: boolean };

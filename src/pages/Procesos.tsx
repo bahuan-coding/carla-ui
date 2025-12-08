@@ -414,6 +414,22 @@ export function ProcesosPage() {
               <Skeleton className="h-4 w-full rounded-lg" />
               <Skeleton className="h-32 w-full rounded-xl" />
             </div>
+          ) : detailQuery.isError ? (
+            <div className="py-6 space-y-4">
+              <div className="rounded-2xl bg-red-500/10 border border-red-500/30 p-4">
+                <p className="font-semibold text-red-700 dark:text-red-300">Error al cargar proceso</p>
+                <p className="text-sm text-red-600/80 dark:text-red-300/70 mt-1">
+                  API retornó error. Verifique credenciales o intente más tarde.
+                </p>
+                <code className="block mt-2 text-xs font-mono text-red-600/70 dark:text-red-400/60 truncate">
+                  {selectedId}
+                </code>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => detailQuery.refetch()} disabled={detailQuery.isFetching}>
+                <RefreshCw size={14} className={detailQuery.isFetching ? 'animate-spin mr-2' : 'mr-2'} />
+                Reintentar
+              </Button>
+            </div>
           ) : detailQuery.data ? (
             (() => {
               const account = (detailQuery.data?.account || {}) as Account;
