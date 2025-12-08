@@ -281,7 +281,7 @@ export const useProcessDetail = (id?: string) =>
       console.warn('[process-detail] account missing after unwrap; check payload shape', { raw });
     }
       const normalized = normalizeAccountForUi(account, { id: base.id, phone: base.phone ?? undefined, name: base.name ?? undefined });
-      const phoneMasked = maskPhone(normalized.mainPhone || base.phone ?? undefined);
+      const phoneMasked = maskPhone(normalized.mainPhone || (base.phone ?? undefined));
       const displayName = normalized.displayName || base.name || phoneMasked || shortId(base.id);
       const statusDisplay = mapStatusDisplay(base.status ?? base.banking_status ?? undefined);
       const verificationDisplay = mapStatusDisplay(base.verification_status ?? undefined);
