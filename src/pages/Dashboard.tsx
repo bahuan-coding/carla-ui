@@ -1,34 +1,22 @@
 import { useMemo, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Activity, AlertCircle, BarChart3, Gauge, MessagesSquare, TriangleAlert, Wifi } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Activity, Cpu, Database, MessageSquare, Radio, Zap } from 'lucide-react';
 import { useHealthServices, useKpis, useProcessDistribution, useWeeklyActivity } from '@/hooks/use-carla-data';
 import { useUiStore } from '@/stores/ui';
 
-const toneBadge = (tone: 'ok' | 'warn' | 'error') =>
-  tone === 'error'
-    ? 'bg-destructive/15 text-destructive'
-    : tone === 'warn'
-      ? 'bg-amber-500/15 text-amber-200'
-      : 'bg-emerald-500/15 text-emerald-200';
-
-const statusTone = (status?: string) => {
+const statusClass = (status?: string) => {
   const text = status?.toLowerCase?.() || '';
-  if (/error|down|fail|degrad|blocked/.test(text)) return 'error';
-  if (!text || /warn|slow|pending|queued/.test(text)) return 'warn';
-  return 'ok';
+  if (/error|down|fail|degrad|blocked/.test(text)) return 'status-dot-error';
+  if (!text || /warn|slow|pending|queued/.test(text)) return 'status-dot-warn';
+  return 'status-dot-ok';
 };
 
 const formatMs = (ms?: number | null) => {
   if (ms === null || ms === undefined) return '—';
-  return `${Math.max(ms, 0).toFixed(0)} ms`;
+  return `${Math.max(ms, 0).toFixed(0)}ms`;
 };
 
 export function DashboardPage() {
-  const { toast } = useToast();
   const { period } = useUiStore();
   const [showSnapshot, setShowSnapshot] = useState(true);
   const kpisQuery = useKpis(period);
@@ -37,484 +25,277 @@ export function DashboardPage() {
   const healthQuery = useHealthServices();
 
   const weeklyData = useMemo(
-    () =>
-      (weeklyQuery.data || []).map((point) => ({
-        label: point.label,
-        ...point.breakdown,
-      })),
+    () => (weeklyQuery.data || []).map((point) => ({ label: point.label, ...point.breakdown })),
     [weeklyQuery.data],
   );
 
   const barKeys = useMemo(() => {
     if (!weeklyData.length) return [];
     const keys = new Set<string>();
-    weeklyData.forEach((d) => {
-      Object.keys(d).forEach((k) => {
-        if (k !== 'label') keys.add(k);
-      });
-    });
+    weeklyData.forEach((d) => Object.keys(d).forEach((k) => k !== 'label' && keys.add(k)));
     return Array.from(keys);
   }, [weeklyData]);
 
   const distribution = distributionQuery.data || [];
-  const palette = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+  const palette = ['hsl(185 100% 50%)', 'hsl(158 64% 55%)', 'hsl(35 90% 62%)', 'hsl(280 60% 62%)', 'hsl(340 70% 60%)'];
 
   const healthServices = useMemo(() => {
-    const services: { name: string; status?: string; env?: string; latency?: number | null; pool?: { active?: number | null; max?: number | null }; type?: string | null }[] = [];
+    const services: { name: string; status?: string; latency?: number | null; icon: typeof Database }[] = [];
     const carlaData = healthQuery.data?.carla;
     const otpData = healthQuery.data?.otp;
     const carlaServices = carlaData?.services || {};
+    
+    const iconMap: Record<string, typeof Database> = {
+      database: Database,
+      cache: Zap,
+      whatsapp_api: MessageSquare,
+      default: Cpu,
+    };
+    
     Object.entries(carlaServices).forEach(([name, svc]) => {
       services.push({
         name,
         status: svc?.status as string | undefined,
-        env: carlaData?.environment,
         latency: (svc as { latency_ms?: number | null })?.latency_ms ?? null,
-        pool: (svc as { connection_pool?: { active?: number | null; max?: number | null } })?.connection_pool ?? undefined,
-        type: (svc as { type?: string | null })?.type ?? null,
+        icon: iconMap[name] || iconMap.default,
       });
     });
     if (otpData) {
-      services.push({
-        name: otpData.service || 'OTP',
-        status: otpData.status,
-        env: otpData.environment,
-        latency: null,
-      });
+      services.push({ name: 'OTP', status: otpData.status, latency: null, icon: Radio });
     }
     return services;
   }, [healthQuery.data]);
 
   const overallHealth = useMemo(() => {
-    if (healthQuery.isError) {
-      return { tone: 'error' as const, label: 'Erro ao consultar health', helper: 'Retente em instantes.' };
-    }
+    if (healthQuery.isError) return { tone: 'error' as const, label: 'Offline' };
     if (!healthQuery.data) return null;
-    const carlaData = healthQuery.data?.carla;
-    const otpData = healthQuery.data?.otp;
     const statuses = healthServices.map((s) => s.status?.toLowerCase?.() || '');
     const hasError = statuses.some((s) => /error|down|fail|degrad/.test(s));
     const hasWarn = !hasError && statuses.some((s) => !/healthy|operational|connected|ok/.test(s));
-    const tone = hasError ? ('error' as const) : hasWarn ? ('warn' as const) : ('ok' as const);
-    const label = hasError ? 'Alerta crítico' : hasWarn ? 'Atenção aos serviços' : 'Tudo verde';
     return {
-      tone,
-      label,
-      helper: hasError ? 'Priorizar mitigação agora' : hasWarn ? 'Monitorando latência e fila' : 'Monitorando uptime e latência',
-      uptime: carlaData?.uptime_seconds,
-      timestamp: carlaData?.timestamp || otpData?.timestamp,
-      metrics: carlaData?.metrics,
+      tone: hasError ? ('error' as const) : hasWarn ? ('warn' as const) : ('ok' as const),
+      label: hasError ? 'Critical' : hasWarn ? 'Degraded' : 'Operational',
+      metrics: healthQuery.data?.carla?.metrics,
+      timestamp: healthQuery.data?.carla?.timestamp || healthQuery.data?.otp?.timestamp,
     };
   }, [healthQuery.data, healthQuery.isError, healthServices]);
 
-  const statusSummary = useMemo(() => {
-    const coreStatus = healthQuery.data?.carla?.status;
-    const otpStatus = healthQuery.data?.otp?.status;
-    const coreServicesCount = Object.keys(healthQuery.data?.carla?.services || {}).length;
-    const servicesCount = coreServicesCount + (otpStatus ? 1 : 0);
-    const hasHeartbeat = Boolean(coreStatus || otpStatus || servicesCount);
-
-    const headline =
-      !hasHeartbeat
-        ? 'Aguardando heartbeat'
-        : overallHealth?.tone === 'error'
-          ? 'Intervenção imediata'
-          : overallHealth?.tone === 'warn'
-            ? 'Monitorando sinais'
-            : 'Infra em alta';
-
-    const body = hasHeartbeat
-      ? `${servicesCount} serviços · Core ${coreStatus || '—'} · OTP ${otpStatus || '—'}`
-      : 'Sem heartbeat ainda. Aguardando OTP/Core.';
-
-    return { headline, body, coreStatus, otpStatus, servicesCount, hasHeartbeat };
-  }, [healthQuery.data, overallHealth?.tone]);
-
-  const onError = (label: string, error?: unknown) =>
-    toast({
-      title: `Erro ao cargar ${label}`,
-      description: error instanceof Error ? error.message : 'Reintente en unos segundos.',
-      variant: 'destructive',
-    });
-
-  const alerts = useMemo(() => {
-    const list: { label: string; helper?: string; severity: 'high' | 'medium' | 'ok' }[] = [];
-    if (kpisQuery.isError || weeklyQuery.isError || distributionQuery.isError) {
-      list.push({ label: 'Falha ao sincronizar dados de operação', helper: 'Verificar integrações core/WhatsApp', severity: 'high' });
-    }
-    (kpisQuery.data || []).forEach((kpi) => {
-      const deltaValue =
-        typeof kpi.delta === 'number'
-          ? kpi.delta
-          : Number.parseFloat((kpi.delta || '').toString().replace('%', ''));
-      if (!Number.isNaN(deltaValue) && deltaValue < 0) {
-        list.push({ label: `${kpi.label}: tendência negativa`, helper: kpi.helper, severity: 'medium' });
-      }
-    });
-    if (!weeklyData.length) {
-      list.push({ label: 'Sem atividade recente', helper: 'Monitorar filas e bots', severity: 'medium' });
-    }
-    if (!distribution.length) {
-      list.push({ label: 'Distribuição de processos vazia', helper: 'Mapear fluxos ativos por WhatsApp/core', severity: 'medium' });
-    }
-    if (!list.length) {
-      list.push({ label: 'Sem alertas críticos', helper: 'Monitorando fluxos, AML/KYC e assinaturas', severity: 'ok' });
-    }
-    return list.slice(0, 4);
-  }, [distribution.length, distributionQuery.isError, kpisQuery.data, kpisQuery.isError, weeklyData.length, weeklyQuery.isError]);
-
-  const recentEvents = useMemo(
-    () =>
-      weeklyData.slice(-4).map((point) => ({
-        label: point.label,
-        total: Object.entries(point)
-          .filter(([k]) => k !== 'label')
-          .reduce((acc, [, val]) => acc + Number(val || 0), 0),
-      })),
-    [weeklyData],
-  );
+  const kpis = kpisQuery.data || [];
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="space-y-3">
-        <div className="flex items-center gap-3">
+    <div className="space-y-6">
+      {/* Hero Section */}
+      <header className="relative overflow-hidden rounded-3xl bento-card bg-gradient-to-br from-card via-card to-accent/5 p-8">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(0,240,255,0.1),transparent_60%)]" />
+        <div className="relative flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">KPIs críticos</h3>
-            <p className="text-xs text-foreground/60">Saúde da infra (core + WhatsApp + compliance)</p>
+            <p className="text-xs font-mono uppercase tracking-[0.2em] text-accent mb-2">Mission Control</p>
+            <h1 className="font-display text-4xl md:text-5xl text-foreground tracking-tight">
+              Carla<span className="text-accent glow-text">.</span>
+            </h1>
+            <p className="mt-3 text-sm text-muted-foreground max-w-md">
+              Real-time infrastructure monitoring · Core + WhatsApp + Compliance
+            </p>
+          </div>
+          <div className="hidden md:flex items-center gap-4">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20">
+              <span className={`status-dot ${overallHealth?.tone === 'ok' ? 'status-dot-ok' : overallHealth?.tone === 'warn' ? 'status-dot-warn' : 'status-dot-error'}`} />
+              <span className="text-sm font-medium text-foreground">{overallHealth?.label || 'Loading'}</span>
+            </div>
+            {overallHealth?.metrics?.requests_per_minute && (
+              <div className="px-4 py-2 rounded-full bg-card border border-border">
+                <span className="font-mono text-sm text-accent">{overallHealth.metrics.requests_per_minute}</span>
+                <span className="text-xs text-muted-foreground ml-1">rpm</span>
+              </div>
+            )}
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
-          {kpisQuery.isLoading
-            ? Array.from({ length: 5 }).map((_, idx) => (
-                <Skeleton key={idx} className="h-32 w-full rounded-xl border border-border/50 bg-foreground/5" />
-              ))
-            : (kpisQuery.data || []).map((kpi) => {
-                const delta =
-                  typeof kpi.delta === 'number' ? `${kpi.delta > 0 ? '+' : ''}${kpi.delta}%` : kpi.delta || '—';
-                const isNegative = delta.startsWith('-');
-                const deltaTone = isNegative
-                  ? 'bg-destructive/10 border-destructive/30 text-destructive'
-                  : delta === '—' || delta === '0%' || delta === '+0%'
-                    ? 'bg-background/60 border-border/50 text-foreground/60'
-                    : 'bg-emerald-500/10 border-emerald-300/40 text-emerald-200';
+      </header>
+
+      {/* Bento Grid - KPIs */}
+      <section className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
+        {kpisQuery.isLoading
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="bento-card animate-pulse">
+                <div className="h-4 bg-muted rounded w-2/3 mb-3" />
+                <div className="h-8 bg-muted rounded w-1/2" />
+              </div>
+            ))
+          : kpis.map((kpi) => {
+              const delta = typeof kpi.delta === 'number' ? `${kpi.delta > 0 ? '+' : ''}${kpi.delta}%` : kpi.delta || '—';
+              const isPositive = delta.startsWith('+') && delta !== '+0%';
+              const isNegative = delta.startsWith('-');
+              return (
+                <div key={kpi.id || kpi.label} className="bento-card glass-hover group">
+                  <div className="flex items-start justify-between mb-3">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{kpi.label}</span>
+                    <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${
+                      isNegative ? 'bg-red-500/10 text-red-400' : isPositive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {delta}
+                    </span>
+                  </div>
+                  <p className="font-display text-3xl text-foreground group-hover:text-accent transition-colors">{kpi.value}</p>
+                  {kpi.helper && <p className="text-xs text-muted-foreground mt-2 line-clamp-1">{kpi.helper}</p>}
+                </div>
+              );
+            })}
+      </section>
+
+      {/* Bento Grid - Main Content */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Services Health - Span 2 */}
+        <div className="lg:col-span-2 bento-card">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                <Activity className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <h2 className="font-display text-lg text-foreground">Services</h2>
+                <p className="text-xs text-muted-foreground">{healthServices.length} monitored</p>
+              </div>
+            </div>
+            {overallHealth?.timestamp && (
+              <span className="text-xs font-mono text-muted-foreground">
+                {new Date(overallHealth.timestamp).toLocaleTimeString()}
+              </span>
+            )}
+          </div>
+
+          {healthQuery.isLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {[1, 2, 3].map((i) => <div key={i} className="h-20 bg-muted/50 rounded-xl animate-pulse" />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {healthServices.map((svc) => {
+                const Icon = svc.icon;
                 return (
-                  <Card
-                    key={kpi.id || kpi.label}
-                    className="group glass h-full overflow-hidden border-border/70 bg-gradient-to-br from-surface/95 via-background/90 to-surface/95 text-foreground shadow-lg"
-                  >
-                    <CardHeader className="relative overflow-hidden rounded-t-lg border-b border-border/50 pb-2">
-                      <div className="absolute inset-0 bg-gradient-to-r from-accent/15 via-surface/40 to-transparent" />
-                      <div className="relative flex items-center justify-between gap-2">
-                        <CardTitle className="text-[13px] font-semibold leading-tight text-foreground/80">{kpi.label}</CardTitle>
-                        <Badge
-                          variant="outline"
-                          className={`flex items-center gap-1 rounded-full border ${deltaTone} px-2 py-0.5 text-[11px]`}
-                        >
-                          {isNegative ? '↓' : delta === '—' ? '•' : '↑'} {delta}
-                        </Badge>
+                  <div key={svc.name} className="group relative p-4 rounded-xl bg-card/50 border border-border/50 hover:border-accent/30 transition-all">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Icon className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors" />
+                      <span className="text-sm font-medium text-foreground">{svc.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`status-dot ${statusClass(svc.status)}`} />
+                        <span className="text-xs text-muted-foreground">{svc.status || '—'}</span>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-2 px-4 pb-4 pt-3">
-                      <div className="flex items-baseline gap-2 text-3xl font-semibold tracking-tight">
-                        <span className="text-accent drop-shadow-sm">{kpi.value}</span>
-                        <span className="text-xs font-medium uppercase text-foreground/50">últimos {period || '7d'}</span>
-                      </div>
-                      <p className="text-[12px] leading-relaxed text-foreground/65">
-                        {kpi.helper || 'Operação em tempo real'}
-                      </p>
-                    </CardContent>
-                  </Card>
+                      {svc.latency !== null && (
+                        <span className="text-xs font-mono text-accent">{formatMs(svc.latency)}</span>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
-          {kpisQuery.isError ? (
-            <div className="col-span-full flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <TriangleAlert size={16} /> Falha ao carregar KPIs.
             </div>
-          ) : null}
+          )}
+
+          {/* JSON Snapshot */}
+          {showSnapshot && healthQuery.data && (
+            <div className="mt-4 p-4 rounded-xl bg-black/30 border border-border/30">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-mono text-muted-foreground">live snapshot</span>
+                <button onClick={() => setShowSnapshot(false)} className="text-xs text-muted-foreground hover:text-accent transition-colors">
+                  hide
+                </button>
+              </div>
+              <pre className="text-xs font-mono overflow-auto max-h-32 text-muted-foreground">
+                <code dangerouslySetInnerHTML={{
+                  __html: JSON.stringify({
+                    core: healthQuery.data?.carla?.status || '—',
+                    otp: healthQuery.data?.otp?.status || '—',
+                    services: healthServices.length,
+                    rpm: overallHealth?.metrics?.requests_per_minute,
+                  }, null, 2)
+                    .replace(/(".*?")(?=:)/g, '<span class="text-accent">$1</span>')
+                    .replace(/: "(.*?)"/g, ': <span class="text-cyan-200">$1</span>')
+                    .replace(/: ([0-9.\-]+)/g, ': <span class="text-amber-300">$1</span>')
+                }} />
+              </pre>
+            </div>
+          )}
+          {!showSnapshot && (
+            <button onClick={() => setShowSnapshot(true)} className="mt-4 text-xs text-muted-foreground hover:text-accent transition-colors">
+              show snapshot →
+            </button>
+          )}
+        </div>
+
+        {/* Distribution Pie */}
+        <div className="bento-card">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+              <Cpu className="w-5 h-5 text-accent" />
+            </div>
+            <div>
+              <h2 className="font-display text-lg text-foreground">Processes</h2>
+              <p className="text-xs text-muted-foreground">Distribution</p>
+            </div>
+          </div>
+          {distributionQuery.isLoading ? (
+            <div className="h-48 bg-muted/50 rounded-xl animate-pulse" />
+          ) : distribution.length ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={distribution} dataKey="value" nameKey="name" innerRadius={50} outerRadius={75} paddingAngle={3} strokeWidth={0}>
+                  {distribution.map((_, i) => <Cell key={i} fill={palette[i % palette.length]} />)}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ background: 'hsl(228 18% 9%)', border: '1px solid hsl(228 14% 18%)', borderRadius: 12 }}
+                  labelStyle={{ color: '#fff' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No data</div>
+          )}
+          <div className="flex flex-wrap gap-2 mt-2">
+            {distribution.slice(0, 4).map((d, i) => (
+              <span key={d.name} className="text-xs px-2 py-1 rounded-full bg-card border border-border" style={{ borderColor: palette[i % palette.length] + '40' }}>
+                {d.name}
+              </span>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
-        <Card className="glass border-border/60 bg-surface text-foreground">
-          <CardHeader className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold">Saúde dos serviços</CardTitle>
-            <span className="text-[11px] text-foreground/60">{statusSummary.servicesCount || 0} serviços monitorados</span>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {healthQuery.isLoading ? (
-              <Skeleton className="h-48 w-full bg-foreground/10" />
-            ) : (
-              <>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {healthServices.length ? (
-                    healthServices.map((service) => {
-                      const showLatency = service.latency !== null && service.latency !== undefined;
-                      return (
-                        <div key={service.name} className="rounded-lg border border-border/50 bg-background/70 p-3">
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2">
-                              <span className="h-2 w-2 rounded-full bg-accent" />
-                              <span className="text-foreground/80">{service.name}</span>
-                            </div>
-                            <span className={`rounded-full px-2 py-1 text-[11px] ${toneBadge(statusTone(service.status))}`}>{service.status || '—'}</span>
-                          </div>
-                          {showLatency ? (
-                            <div className="mt-2 flex items-center justify-between text-[11px] text-foreground/60">
-                              <span>Latência {formatMs(service.latency)}</span>
-                              {service.pool?.max ? <span>Pool: {service.pool.active ?? 0}/{service.pool.max}</span> : null}
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="col-span-full rounded-lg border border-border/50 bg-background/60 px-3 py-3 text-sm text-foreground/70">
-                      Nenhum serviço reportando ainda. Aguardando heartbeat OTP/Core.
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-lg border border-border/60 bg-gradient-to-br from-background/85 via-surface to-background/85 p-3 text-[11px] font-mono text-foreground/80 shadow-inner">
-                  <div className="mb-2 flex items-center justify-between text-[11px] text-foreground/60">
-                    <span>Snapshot vivo</span>
-                    <div className="flex items-center gap-2 text-[11px] text-foreground/60">
-                      {overallHealth?.metrics?.requests_per_minute ? (
-                        <span>RPM {overallHealth.metrics.requests_per_minute}</span>
-                      ) : null}
-                      {overallHealth?.metrics?.average_response_time_ms ? (
-                        <span>Avg {formatMs(overallHealth.metrics.average_response_time_ms)}</span>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={() => setShowSnapshot((prev) => !prev)}
-                        className="rounded-md border border-border/60 px-2 py-0.5 text-[10px] text-foreground/70 transition hover:border-accent/50 hover:text-accent"
-                      >
-                        {showSnapshot ? 'Ocultar' : 'Mostrar'}
-                      </button>
-                    </div>
-                  </div>
-                  {showSnapshot ? (
-                    <pre className="max-h-44 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-[radial-gradient(circle_at_20%_20%,rgba(52,211,153,0.06),transparent),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.06),transparent)] px-3 py-2 leading-relaxed text-[11px] text-foreground">
-                      <code
-                        className="[color-scheme:dark] block text-[11px] leading-relaxed"
-                        dangerouslySetInnerHTML={{
-                          __html: JSON.stringify(
-                            {
-                              core: healthQuery.data?.carla?.status || '—',
-                              otp: healthQuery.data?.otp?.status || '—',
-                              services: statusSummary.servicesCount,
-                              timestamp: overallHealth?.timestamp || '—',
-                              rpm: overallHealth?.metrics?.requests_per_minute,
-                              avg_ms: overallHealth?.metrics?.average_response_time_ms,
-                            },
-                            null,
-                            2,
-                          )
-                            .replace(/(&)/g, '&amp;')
-                            .replace(/</g, '&lt;')
-                            .replace(/(".*?")(?=:)/g, '<span class="text-accent">$1</span>')
-                            .replace(/: "(.*?)"/g, ': <span class="text-sky-200">$1</span>')
-                            .replace(/: ([0-9.\-]+)/g, ': <span class="text-amber-200">$1</span>')
-                            .replace(/null/g, '<span class="text-foreground/60">null</span>'),
-                        }}
-                      />
-                    </pre>
-                  ) : (
-                    <div className="rounded-md border border-dashed border-border/50 bg-background/70 px-3 py-2 text-[11px] text-foreground/70">
-                      Telemetria em buffer. Clique para rearmar o snapshot vivo.
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-            {healthQuery.isError ? (
-              <div className="col-span-full flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                <TriangleAlert size={16} /> Falha ao consultar health. Tente novamente.
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        <Card className="glass border-border/60 bg-surface text-foreground">
-          <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <MessagesSquare className="h-4 w-4 text-accent" />
-              Canal WhatsApp
-            </CardTitle>
-            <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/70">
-              Fluxos ativos e estabilidade
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="rounded-lg border border-border/50 bg-background/60 px-3 py-3 text-sm text-foreground/80">
-              <div className="flex items-center justify-between">
-                <span>Distribuição por fluxo</span>
-                <span className="text-[11px] text-foreground/60">{distribution.length ? `${distribution.length} fluxos` : 'Sem dados'}</span>
-              </div>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
-                <div
-                  className="h-full bg-accent transition-all"
-                  style={{ width: `${Math.min(distribution.length * 12, 100)}%` }}
-                />
-              </div>
+      {/* Activity Chart */}
+      <section className="bento-card">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+              <Zap className="w-5 h-5 text-accent" />
             </div>
-            <div className="flex items-center gap-2 text-xs text-foreground/70">
-              <Wifi size={14} className="text-accent" /> Entregabilidade e tempo de resposta dos bots monitorados por período.
+            <div>
+              <h2 className="font-display text-lg text-foreground">Activity Trend</h2>
+              <p className="text-xs text-muted-foreground">Operations over time</p>
             </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
-        <Card className="glass border-border/60 bg-surface text-foreground">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <BarChart3 className="h-4 w-4 text-accent" />
-              Tendência de operações
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {weeklyQuery.isLoading ? (
-              <Skeleton className="h-52 w-full bg-foreground/10" />
-            ) : weeklyQuery.isError ? (
-              <button
-                type="button"
-                onClick={() => {
-                  weeklyQuery.refetch();
-                  onError('atividade semanal');
-                }}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-border/50 bg-background/60 px-3 py-4 text-sm text-foreground/80"
-              >
-                Recarregar tendência
-              </button>
-            ) : weeklyData.length ? (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={weeklyData}>
-                  <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 12 }} />
-                  <YAxis tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 12 }} />
-                  <Tooltip
-                    contentStyle={{ background: '#0c1428', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}
-                    labelStyle={{ color: '#fff' }}
-                  />
-                  <Legend />
-                  {barKeys.map((key, idx) => (
-                    <Bar key={key} dataKey={key} stackId="activity" fill={palette[idx % palette.length]} radius={[6, 6, 0, 0]} />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-xs text-foreground/60">Sem dados para o período selecionado.</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card className="glass border-border/60 bg-surface text-foreground">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <Gauge className="h-4 w-4 text-accent" />
-              Distribuição de processos
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {distributionQuery.isLoading ? (
-              <Skeleton className="h-52 w-full bg-foreground/10" />
-            ) : distributionQuery.isError ? (
-              <button
-                type="button"
-                onClick={() => {
-                  distributionQuery.refetch();
-                  onError('distribuição de processos');
-                }}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-border/50 bg-background/60 px-3 py-4 text-sm text-foreground/80"
-              >
-                Recarregar distribuição
-              </button>
-            ) : distribution.length ? (
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie data={distribution} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90} paddingAngle={2}>
-                    {distribution.map((_, idx) => (
-                      <Cell key={idx} fill={palette[idx % palette.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ background: '#0c1428', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}
-                    labelStyle={{ color: '#fff' }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-xs text-foreground/60">Sem processos para este período.</p>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
-        <Card className="glass border-border/60 bg-surface text-foreground">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <AlertCircle className="h-4 w-4 text-amber-300" />
-              Alertas & Insights
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              {alerts.map((alert, idx) => (
-                <div
-                  key={`${alert.label}-${idx}`}
-                  className="flex items-start justify-between gap-2 rounded-lg border border-border/50 bg-background/60 px-3 py-2"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{alert.label}</p>
-                    {alert.helper ? <p className="text-[11px] text-foreground/60">{alert.helper}</p> : null}
-                  </div>
-                  <span
-                    className={`rounded-full px-2 py-1 text-[11px] ${
-                      alert.severity === 'high'
-                        ? 'bg-destructive/15 text-destructive'
-                        : alert.severity === 'medium'
-                          ? 'bg-amber-500/15 text-amber-200'
-                          : 'bg-emerald-500/15 text-emerald-200'
-                    }`}
-                  >
-                    {alert.severity === 'high' ? 'Crítico' : alert.severity === 'medium' ? 'Atenção' : 'OK'}
-                  </span>
-                </div>
+          </div>
+        </div>
+        {weeklyQuery.isLoading ? (
+          <div className="h-64 bg-muted/50 rounded-xl animate-pulse" />
+        ) : weeklyData.length ? (
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={weeklyData}>
+              <CartesianGrid stroke="hsl(228 14% 18%)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: 'hsl(220 12% 60%)', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: 'hsl(220 12% 60%)', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ background: 'hsl(228 18% 9%)', border: '1px solid hsl(228 14% 18%)', borderRadius: 12 }}
+                labelStyle={{ color: '#fff' }}
+                cursor={{ fill: 'rgba(0, 240, 255, 0.05)' }}
+              />
+              {barKeys.map((key, i) => (
+                <Bar key={key} dataKey={key} stackId="a" fill={palette[i % palette.length]} radius={i === barKeys.length - 1 ? [6, 6, 0, 0] : 0} />
               ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="glass border-border/60 bg-surface text-foreground">
-          <CardHeader className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <Activity className="h-4 w-4 text-accent" />
-              Eventos recentes
-            </CardTitle>
-            <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/70">
-              Drill-down para detalhes
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {recentEvents.length ? (
-              recentEvents.map((event) => (
-                <div key={event.label} className="flex items-center justify-between rounded-lg border border-border/50 bg-background/60 px-3 py-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-accent" />
-                    <span className="font-semibold">{event.label}</span>
-                  </div>
-                  <span className="text-xs text-foreground/70">{event.total} eventos</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-foreground/60">Sem eventos recentes para este período.</p>
-            )}
-          </CardContent>
-        </Card>
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No activity data</div>
+        )}
       </section>
     </div>
   );
 }
-

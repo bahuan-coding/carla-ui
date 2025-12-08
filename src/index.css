@@ -4,7 +4,10 @@
 
 @layer base {
   :root {
-    font-family: 'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif;
+    --font-display: 'Syne', system-ui, sans-serif;
+    --font-body: 'DM Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    font-family: var(--font-body);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -20,45 +23,48 @@
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 230 90% 60%;
+    --accent: 185 100% 50%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 210 40% 86%;
     --input: 210 40% 86%;
-    --ring: 230 90% 60%;
-    --chart-1: 220 70% 50%;
+    --ring: 185 100% 50%;
+    --chart-1: 185 100% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --radius: 12px;
+    --radius: 16px;
+    --glow-cyan: 0 0 30px rgba(0, 240, 255, 0.3);
+    --glow-cyan-intense: 0 0 50px rgba(0, 240, 255, 0.5);
   }
   .dark {
-    --background: 220 18% 7%;
+    --background: 228 20% 6%;
     --foreground: 220 14% 94%;
-    --card: 220 16% 10%;
+    --card: 228 18% 9%;
     --card-foreground: 220 14% 94%;
-    --popover: 220 16% 10%;
+    --popover: 228 18% 9%;
     --popover-foreground: 220 14% 94%;
-    --primary: 214 90% 65%;
-    --primary-foreground: 220 14% 12%;
-    --secondary: 220 16% 14%;
+    --primary: 185 100% 50%;
+    --primary-foreground: 220 14% 6%;
+    --secondary: 228 16% 12%;
     --secondary-foreground: 220 14% 94%;
-    --muted: 220 12% 18%;
-    --muted-foreground: 220 12% 68%;
-    --accent: 196 86% 62%;
-    --accent-foreground: 216 20% 12%;
+    --muted: 228 14% 15%;
+    --muted-foreground: 220 12% 60%;
+    --accent: 185 100% 50%;
+    --accent-foreground: 228 20% 6%;
     --destructive: 0 72% 58%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 16% 22%;
-    --input: 220 16% 22%;
-    --ring: 214 90% 65%;
-    --chart-1: 199 89% 55%;
+    --border: 228 14% 18%;
+    --input: 228 14% 18%;
+    --ring: 185 100% 50%;
+    --chart-1: 185 100% 50%;
     --chart-2: 158 64% 55%;
     --chart-3: 35 90% 62%;
-    --chart-4: 260 60% 62%;
+    --chart-4: 280 60% 62%;
     --chart-5: 340 70% 60%;
+    --surface: 228 16% 11%;
   }
 }
 
@@ -72,18 +78,71 @@
     min-height: 100vh;
     background-color: hsl(var(--background));
     background-image:
-      radial-gradient(circle at 18% 20%, rgba(90, 120, 200, 0.12), transparent 42%),
-      radial-gradient(circle at 82% 6%, rgba(110, 170, 255, 0.08), transparent 38%),
-      linear-gradient(140deg, rgba(12, 16, 27, 0.9) 0%, rgba(12, 16, 27, 0.94) 40%, rgba(10, 13, 22, 0.9) 100%);
+      radial-gradient(ellipse 80% 60% at 10% 10%, rgba(0, 240, 255, 0.08), transparent 50%),
+      radial-gradient(ellipse 60% 40% at 90% 20%, rgba(0, 180, 255, 0.06), transparent 45%),
+      radial-gradient(ellipse 50% 50% at 50% 90%, rgba(100, 0, 255, 0.04), transparent 50%);
     background-attachment: fixed;
+  }
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
   }
 }
 
 @layer components {
   .glass {
-    background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+  .glass-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .glass-hover:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(0, 240, 255, 0.2);
+    box-shadow: var(--glow-cyan), 0 8px 32px rgba(0, 0, 0, 0.4);
+    transform: translateY(-2px);
+  }
+  .glow-text {
+    text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+  }
+  .glow-box {
+    box-shadow: var(--glow-cyan);
+  }
+  .glow-box-intense {
+    box-shadow: var(--glow-cyan-intense);
+  }
+  .bento-card {
+    @apply glass rounded-2xl p-5 transition-all duration-300;
+  }
+  .bento-card:hover {
+    @apply border-accent/30;
+    box-shadow: 0 0 40px rgba(0, 240, 255, 0.15), 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  .status-dot-ok {
+    @apply bg-emerald-400;
+    box-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
+  }
+  .status-dot-warn {
+    @apply bg-amber-400;
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+  }
+  .status-dot-error {
+    @apply bg-red-400;
+    box-shadow: 0 0 8px rgba(248, 113, 113, 0.6);
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
   }
 }
