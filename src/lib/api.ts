@@ -68,10 +68,12 @@ async function request<T>({
   init?: RequestInitLite;
 }): Promise<T> {
   const token = getToken();
+  const isBridge = path.startsWith('/bridge');
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(token && isBridge ? { 'X-Bridge-Token': token } : {}),
     ...(init?.headers as Record<string, string> | undefined),
   };
 
