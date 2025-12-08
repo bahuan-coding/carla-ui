@@ -194,14 +194,14 @@ export function DashboardPage() {
 
           {/* JSON Snapshot */}
           {showSnapshot && healthQuery.data && (
-            <div className="mt-4 p-4 rounded-xl bg-black/30 border border-border/30">
+            <div className="mt-4 p-4 rounded-xl bg-muted/50 dark:bg-black/30 border border-border/50">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-mono text-muted-foreground">live snapshot</span>
                 <button onClick={() => setShowSnapshot(false)} className="text-xs text-muted-foreground hover:text-accent transition-colors">
                   hide
                 </button>
               </div>
-              <pre className="text-xs font-mono overflow-auto max-h-32 text-muted-foreground">
+              <pre className="text-xs font-mono overflow-auto max-h-32 text-foreground/80">
                 <code dangerouslySetInnerHTML={{
                   __html: JSON.stringify({
                     core: healthQuery.data?.carla?.status || '—',
@@ -209,9 +209,9 @@ export function DashboardPage() {
                     services: healthServices.length,
                     rpm: overallHealth?.metrics?.requests_per_minute,
                   }, null, 2)
-                    .replace(/(".*?")(?=:)/g, '<span class="text-accent">$1</span>')
-                    .replace(/: "(.*?)"/g, ': <span class="text-cyan-200">$1</span>')
-                    .replace(/: ([0-9.\-]+)/g, ': <span class="text-amber-300">$1</span>')
+                    .replace(/(".*?")(?=:)/g, '<span class="text-accent dark:text-cyan-400">$1</span>')
+                    .replace(/: "(.*?)"/g, ': <span class="text-sky-600 dark:text-cyan-200">$1</span>')
+                    .replace(/: ([0-9.\-]+)/g, ': <span class="text-amber-600 dark:text-amber-300">$1</span>')
                 }} />
               </pre>
             </div>
