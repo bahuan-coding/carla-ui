@@ -611,8 +611,7 @@ export function ProcesosPage() {
                                 const cooldownKey = `${selectedId}_${ep.key}`;
                                 const cooldownRemaining = getCooldownRemaining(cooldownKey);
                                 const isOnCooldown = cooldownRemaining > 0;
-                                const canForceRetry = ep.key === 'blacklist' && st.done;
-                                const disabled = (st.done && !canForceRetry) || ep.pending || isOnCooldown || (ep.needsClient && !bankClientId);
+                                const disabled = st.done || ep.pending || isOnCooldown || (ep.needsClient && !bankClientId);
                                 return (
                                   <div key={ep.key} className={`flex items-center justify-between gap-3 rounded-xl bg-background/50 border px-3 py-3 ${isOnCooldown ? 'border-amber-500/40' : st.done ? 'border-emerald-500/30' : 'border-border/50'}`}>
                                     <div className="space-y-1">
@@ -624,8 +623,8 @@ export function ProcesosPage() {
                                         {st.label}
                                       </span>
                                     </div>
-                                    <Button size="sm" variant={isOnCooldown ? 'secondary' : canForceRetry ? 'default' : 'outline'} disabled={disabled} className={`min-w-[80px] ${canForceRetry ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''}`} onClick={() => { triggerCooldown(cooldownKey); ep.action(); }}>
-                                      {canForceRetry ? <><Repeat2 size={12} className="mr-1" /> Retry</> : st.done ? 'OK' : ep.pending ? <RefreshCw size={12} className="animate-spin" /> : isOnCooldown ? <span className="font-mono">{formatCooldown(cooldownRemaining)}</span> : 'Disparar'}
+                                    <Button size="sm" variant={isOnCooldown ? 'secondary' : 'outline'} disabled={disabled} className="min-w-[80px]" onClick={() => { triggerCooldown(cooldownKey); ep.action(); }}>
+                                      {st.done ? 'OK' : ep.pending ? <RefreshCw size={12} className="animate-spin" /> : isOnCooldown ? <span className="font-mono">{formatCooldown(cooldownRemaining)}</span> : 'Disparar'}
                                     </Button>
                                   </div>
                                 );
