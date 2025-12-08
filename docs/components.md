@@ -34,3 +34,4 @@ A biblioteca de componentes é o coração da implementação do Design System "
 3. **Customização:** Ajustar classes Tailwind para seguir nossa paleta.
 4. **Uso:** Importar de `/components/ui/date-picker`.
 
+

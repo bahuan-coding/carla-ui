@@ -30,3 +30,4 @@ O Design System Aura é estruturado usando a metodologia de **Design Atômico**:
 - **shadcn/ui:** Para a biblioteca de componentes, permitindo customização total.
 - **React:** Como a biblioteca de UI para construir a interface.
 
+
