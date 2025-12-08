@@ -26,8 +26,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProcessDetail, useProcessRetry, useProcessRerun, useProcessStatus, useProcessesAdmin } from '@/hooks/use-carla-data';
 import { useToast } from '@/hooks/use-toast';
-import { formatCurrency, formatDate, formatRelative, mapStatusDisplay, maskPhone, normalizeAccountForUi, shortId, toneBadge } from '@/lib/utils';
-import type { Account, RenapCitizenEntry } from '@/types/account';
+import { formatDate, formatRelative, mapStatusDisplay, maskPhone, normalizeAccountForUi, shortId, toneBadge } from '@/lib/utils';
+import type { Account } from '@/types/account';
 
 const confirmDanger = (message: string) => window.confirm(message || '¿Continuar?');
 
@@ -352,7 +352,6 @@ export function ProcesosPage() {
             (() => {
               const account = (detailQuery.data?.account || {}) as Account;
               const normalized = normalizeAccountForUi(account, { id: detailQuery.data.id, phone: detailQuery.data.phone ?? undefined, name: detailQuery.data.name ?? undefined });
-              const renapEntry = normalized.renapEntry as RenapCitizenEntry | undefined;
               const fullName = normalized.fullName || normalized.displayName || '—';
               const mainPhone = normalized.mainPhone || '—';
               const email = normalized.email || '—';
