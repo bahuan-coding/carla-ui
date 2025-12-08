@@ -80,7 +80,7 @@
     
     # Política de Segurança de Conteúdo (CSP). Esta é uma política inicial e
     # deve ser refinada para ser o mais restritiva possível.
-    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.carla.money https://staging-api.carla.money;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.carla.money https://staging-api.carla.money https://carla-otp.vercel.app https://x.carla.money wss://api.carla.money wss://staging-api.carla.money wss://carla-otp.vercel.app wss://x.carla.money;"
 
 # Cabeçalhos de cache para assets imutáveis.
 # O Vite gera arquivos com hash no nome (ex: main.a1b2c3d4.js), então eles

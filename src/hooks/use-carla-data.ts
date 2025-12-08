@@ -172,9 +172,27 @@ const unwrapProcessDetail = (raw: unknown, fallback: ProcessDetail, id?: string)
     }
   };
 
+  const pushAugmented = (value: unknown) => {
+    if (!value || typeof value !== 'object') return;
+    const fromAccount =
+      (value as { account?: unknown })?.account ||
+      (value as { data?: { account?: unknown } })?.data?.account;
+    if (fromAccount && typeof fromAccount === 'object') {
+      const merged = {
+        ...(value as Record<string, unknown>),
+        ...(fromAccount as Record<string, unknown>),
+      } as Record<string, unknown>;
+      merged.id = merged.id ?? (fromAccount as { id?: unknown })?.id ?? (value as { id?: unknown })?.id ?? id ?? fallback.id;
+      candidates.push(merged);
+    }
+  };
+
   push(raw);
   push((raw as { data?: unknown })?.data);
   push((raw as { data?: { data?: unknown } })?.data?.data);
+  pushAugmented(raw);
+  pushAugmented((raw as { data?: unknown })?.data);
+  pushAugmented((raw as { data?: { data?: unknown } })?.data?.data);
 
   const matchesId = (candidateId?: unknown) =>
     !id || (candidateId !== undefined && String(candidateId) === String(id));
@@ -456,6 +474,11 @@ type OtpHealth = z.infer<typeof otpHealthSchema>;
 type CarlaHealth = z.infer<typeof carlaHealthSchema>;
 type CarlaHealthData = z.infer<typeof carlaHealthDataSchema>;
 
+const HEALTH_OTP_URL = (import.meta.env.VITE_HEALTH_OTP_URL as string | undefined)?.trim() || 'https://carla-otp.vercel.app/health';
+const HEALTH_CORE_URL =
+  (import.meta.env.VITE_HEALTH_CORE_URL as string | undefined)?.trim() ||
+  (API_URL ? `${API_URL}/health` : 'https://x.carla.money/health');
+
 const fetchJson = async <T>(url: string, schema: z.ZodType<T>, fallback: T): Promise<T> => {
   try {
     const res = await fetch(url, { headers: { Accept: 'application/json' } });
@@ -475,8 +498,8 @@ export const useHealthServices = () =>
     queryKey: ['health-services'],
     queryFn: async () => {
       const [otp, carla] = await Promise.all([
-        fetchJson<OtpHealth | null>('https://carla-otp.vercel.app/health', otpHealthSchema, null),
-        fetchJson<CarlaHealth | null>('https://x.carla.money/health', carlaHealthSchema, null),
+      fetchJson<OtpHealth | null>(HEALTH_OTP_URL, otpHealthSchema, null),
+      fetchJson<CarlaHealth | null>(HEALTH_CORE_URL, carlaHealthSchema, null),
       ]);
 
       const normalizeOtp = (raw: OtpHealth | null): (CarlaHealthData & { timestamp?: string }) | null => {
