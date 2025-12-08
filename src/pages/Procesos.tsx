@@ -17,7 +17,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { API_URL } from '@/lib/api';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -516,24 +515,27 @@ export function ProcesosPage() {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="verificaciones" className="pt-3">
-                      <div className="grid gap-3 rounded-2xl bg-muted/30 dark:bg-card/50 border border-border/50 p-4 md:grid-cols-2">
-                        {renderField('DIDIT', account.didit_status)}
-                        {renderField('Último check DIDIT', formatDate(account.didit_last_check))}
-                        {renderField('Decisión DIDIT', account.didit_metadata?.decision?.status)}
-                        {renderField('Motivo DIDIT', account.didit_metadata?.decision?.reason)}
-                        {renderField('RENAP', account.renap_status)}
-                        {renderField('Último check RENAP', formatDate(account.renap_last_check))}
-                        {renderField('Teléfono verificación', account.phone_verification_status)}
-                        {renderField('OTP verificado', formatDate(account.phone_verification_metadata?.verified_at))}
-                        {renderField('Compliance', complianceSource.join(', '))}
+                    <TabsContent value="verificaciones" className="pt-4">
+                      <div className="rounded-2xl bg-muted/30 dark:bg-card/50 border border-border/50 p-4">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          {renderField('DIDIT', account.didit_status)}
+                          {renderField('Último check DIDIT', formatDate(account.didit_last_check))}
+                          {renderField('Decisión DIDIT', account.didit_metadata?.decision?.status)}
+                          {renderField('Motivo DIDIT', account.didit_metadata?.decision?.reason)}
+                          {renderField('RENAP', account.renap_status)}
+                          {renderField('Último check RENAP', formatDate(account.renap_last_check))}
+                          {renderField('Teléfono verificación', account.phone_verification_status)}
+                          {renderField('OTP verificado', formatDate(account.phone_verification_metadata?.verified_at))}
+                          {renderField('Compliance', complianceSource.join(', '))}
+                        </div>
                         {risk && (
-                          <div className="md:col-span-2 rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-amber-700 dark:text-amber-200">
+                          <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-3 text-sm text-amber-700 dark:text-amber-200 flex items-center gap-2">
+                            <span className="status-dot status-dot-warn shrink-0" />
                             Riesgo identificado (PEP/Compliance). Revisar manualmente.
                           </div>
                         )}
                         {account.didit_verification_link && (
-                          <Button variant="secondary" size="sm" className="md:col-span-2" onClick={() => window.open(account.didit_verification_link || '#', '_blank')}>
+                          <Button variant="secondary" size="sm" className="mt-4 w-full sm:w-auto" onClick={() => window.open(account.didit_verification_link || '#', '_blank')}>
                             <Link2 size={14} className="mr-2" /> Abrir verificación DIDIT
                           </Button>
                         )}
@@ -618,19 +620,37 @@ export function ProcesosPage() {
                       })()}
                     </TabsContent>
 
-                    <TabsContent value="raw" className="pt-3">
+                    <TabsContent value="raw" className="pt-4">
                       <div className="space-y-3 rounded-2xl bg-muted/30 dark:bg-card/50 border border-border/50 p-4">
-                        <details className="rounded-xl border border-border/50 bg-background/50 p-3">
-                          <summary className="cursor-pointer text-sm font-medium text-foreground">Account</summary>
-                          <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-muted/50 dark:bg-black/30 p-3 text-[11px] font-mono text-foreground/80">
-                            {JSON.stringify(account, null, 2)}
+                        <details className="group rounded-xl border border-border/50 bg-background/50 overflow-hidden" open>
+                          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/30 transition-colors flex items-center gap-2">
+                            <Database size={14} className="text-accent" />
+                            Account
+                          </summary>
+                          <pre className="max-h-64 overflow-auto px-4 py-3 border-t border-border/30 text-[11px] font-mono bg-muted/30 dark:bg-black/30">
+                            <code dangerouslySetInnerHTML={{
+                              __html: JSON.stringify(account, null, 2)
+                                .replace(/(".*?")(?=:)/g, '<span class="text-accent dark:text-cyan-400">$1</span>')
+                                .replace(/: "(.*?)"/g, ': <span class="text-sky-600 dark:text-cyan-200">"$1"</span>')
+                                .replace(/: ([0-9.\-]+)/g, ': <span class="text-amber-600 dark:text-amber-300">$1</span>')
+                                .replace(/: (true|false|null)/g, ': <span class="text-purple-600 dark:text-purple-400">$1</span>')
+                            }} />
                           </pre>
                         </details>
                         {account.extra_data && (
-                          <details className="rounded-xl border border-border/50 bg-background/50 p-3">
-                            <summary className="cursor-pointer text-sm font-medium text-foreground">Extra data</summary>
-                            <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-muted/50 dark:bg-black/30 p-3 text-[11px] font-mono text-foreground/80">
-                              {JSON.stringify(account.extra_data, null, 2)}
+                          <details className="group rounded-xl border border-border/50 bg-background/50 overflow-hidden">
+                            <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/30 transition-colors flex items-center gap-2">
+                              <FileJson size={14} className="text-accent" />
+                              Extra data
+                            </summary>
+                            <pre className="max-h-64 overflow-auto px-4 py-3 border-t border-border/30 text-[11px] font-mono bg-muted/30 dark:bg-black/30">
+                              <code dangerouslySetInnerHTML={{
+                                __html: JSON.stringify(account.extra_data, null, 2)
+                                  .replace(/(".*?")(?=:)/g, '<span class="text-accent dark:text-cyan-400">$1</span>')
+                                  .replace(/: "(.*?)"/g, ': <span class="text-sky-600 dark:text-cyan-200">"$1"</span>')
+                                  .replace(/: ([0-9.\-]+)/g, ': <span class="text-amber-600 dark:text-amber-300">$1</span>')
+                                  .replace(/: (true|false|null)/g, ': <span class="text-purple-600 dark:text-purple-400">$1</span>')
+                              }} />
                             </pre>
                           </details>
                         )}
