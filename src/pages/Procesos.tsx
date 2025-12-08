@@ -78,8 +78,9 @@ export function ProcesosPage() {
 
   const cards = processes.map((p) => {
     const account = (p as { account?: Account })?.account;
-    const normalized = normalizeAccountForUi(account, { id: p.id, phone: p.phone, name: p.name });
-    const displayName = normalized.displayName || maskPhone(p.phone) || shortId(p.id);
+    const rootPhone = (p as { whatsapp_phone_e164?: string }).whatsapp_phone_e164;
+    const normalized = normalizeAccountForUi(account, { id: p.id, phone: rootPhone || p.phone, name: p.name });
+    const displayName = normalized.displayName || maskPhone(rootPhone || p.phone) || shortId(p.id);
     const statusDisplay = mapStatusDisplay(p.status || p.banking_status);
     const verificationDisplay = mapStatusDisplay(p.verification_status);
     const bankingDisplay = mapStatusDisplay(p.banking_status);
@@ -88,7 +89,7 @@ export function ProcesosPage() {
       title: displayName,
       rawId: p.id,
       statusDisplay,
-      phone: normalized.mainPhone || p.phone,
+      phone: normalized.mainPhone || rootPhone || p.phone,
       attempts: p.attempts,
       events: p.events_count,
       lastError: p.last_error,

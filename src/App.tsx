@@ -103,6 +103,8 @@ export default function App() {
               value={period}
               onChange={(e) => setPeriod(e.target.value as typeof period)}
               className="rounded-lg border border-border/50 bg-foreground/5 px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+              id="period-select"
+              name="period"
             >
               <option value="7d">Últimos 7 días</option>
               <option value="30d">30 días</option>

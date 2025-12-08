@@ -116,6 +116,7 @@ export const processAdminSchema = z
     id: idAsString,
     account_opening_id: idAsString.optional(),
     phone: z.string().nullable().optional(),
+    whatsapp_phone_e164: z.string().nullable().optional(),
     name: z.string().nullable().optional(),
     status: z.string().nullable().optional(),
     banking_status: z.string().nullable().optional(),

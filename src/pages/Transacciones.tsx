@@ -39,11 +39,20 @@ export function TransaccionesPage() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <Input placeholder="Buscar cliente/proceso" value={search} onChange={(e) => setSearch(e.target.value)} className="text-sm" />
+        <Input
+          placeholder="Buscar cliente/proceso"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="text-sm"
+          id="transactions-search"
+          name="transactions-search"
+        />
         <select
           value={prioridad}
           onChange={(e) => setPrioridad(e.target.value)}
           className="rounded-lg border border-border/50 bg-background/60 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+          id="transactions-priority"
+          name="transactions-priority"
         >
           <option value="">Prioridad</option>
           <option value="Alta">Alta</option>
