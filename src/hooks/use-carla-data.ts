@@ -23,6 +23,8 @@ import {
   processEventsSchema,
 } from '@/lib/schemas';
 
+const IS_DEV = import.meta.env.DEV;
+
 export const useKpis = (period?: string) =>
   useQuery({
     queryKey: ['kpis', period],
@@ -251,6 +253,9 @@ export const useProcessDetail = (id?: string) =>
         ...(((base as { account?: Account })?.account || base.account) as Account),
       };
       const account = mergedAccount;
+    if (IS_DEV && (!account || !Object.keys(account).length)) {
+      console.warn('[process-detail] account missing after unwrap; check payload shape', { raw });
+    }
       const normalized = normalizeAccountForUi(account, { id: base.id, phone: base.phone, name: base.name });
       const phoneMasked = maskPhone(normalized.mainPhone || base.phone);
       const displayName = normalized.displayName || base.name || phoneMasked || shortId(base.id);

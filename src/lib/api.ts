@@ -19,6 +19,7 @@ const resolveStaticToken = () =>
 
 const API_URL = resolveBaseUrl();
 const STATIC_TOKEN = resolveStaticToken();
+const IS_DEV = import.meta.env.DEV;
 
 const getToken = () => {
   if (STATIC_TOKEN) return STATIC_TOKEN;
@@ -40,6 +41,15 @@ const parsePayload = <T>(schema: z.ZodType<T>, payload: unknown, fallback: T): T
 
   const statusWrapped = z.object({ status: z.string().optional(), data: schema, error: z.any().optional() }).safeParse(payload);
   if (statusWrapped.success) return statusWrapped.data.data;
+
+  if (IS_DEV) {
+    const sampleKeys = payload && typeof payload === 'object' ? Object.keys(payload as Record<string, unknown>).slice(0, 6) : [];
+    const topIssues = direct.success ? [] : direct.error.issues.slice(0, 3);
+    console.warn('[api] schema mismatch, falling back', {
+      keys: sampleKeys,
+      issues: topIssues,
+    });
+  }
 
   return fallback;
 };

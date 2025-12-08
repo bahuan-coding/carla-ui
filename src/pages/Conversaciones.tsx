@@ -81,6 +81,8 @@ export function ConversacionesPage() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             className="text-sm"
+            id="conversation-filter"
+            name="conversation-filter"
           />
         </div>
         <div className="divide-y divide-border/40">
@@ -162,6 +164,8 @@ export function ConversacionesPage() {
                 {...form.register('message', { required: true })}
                 placeholder="Escribe un mensaje"
                 className="border-0 bg-transparent text-sm focus-visible:ring-0"
+                id="conversation-message"
+                name="conversation-message"
               />
               <Button type="submit" size="sm" disabled={sendMessage.isPending}>
                 Enviar

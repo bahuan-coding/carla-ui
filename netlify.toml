@@ -23,7 +23,10 @@
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
-    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://x.carla.money https://carla-otp.vercel.app wss://x.carla.money wss://carla-otp.vercel.app;"
+    # CSP hardened: keep scripts limited to self, no unsafe-eval; allow APIs defined in env; block object/frame; keep inline styles only for Tailwind resets.
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://x.carla.money https://carla-otp.vercel.app wss://x.carla.money wss://carla-otp.vercel.app;"
+    # Report-only to surface violations (keeps blocking inline/eval). Remove once clean.
+    Content-Security-Policy-Report-Only = "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://x.carla.money https://carla-otp.vercel.app wss://x.carla.money wss://carla-otp.vercel.app;"
 
 [[headers]]
   for = "/assets/*"
