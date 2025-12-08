@@ -124,7 +124,7 @@ export const processAdminSchema = z
     ready_for_bank: z.boolean().optional(),
     attempts: z.number().optional(),
     events_count: z.number().optional(),
-    last_error: z.string().optional(),
+    last_error: z.string().nullable().optional(),
     last_error_at: z.string().optional(),
     steps: z.number().optional(),
     usage: z.number().optional(),
