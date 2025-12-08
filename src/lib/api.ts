@@ -32,15 +32,16 @@ const withBase = (path: string) => {
   return `${API_URL}${normalized}`;
 };
 
+const BRIDGE_API_KEY = (import.meta.env.VITE_CARLA_SERVICIOS_API_KEY || '').trim();
+
 const fetchBridgeAccessToken = async (): Promise<string | null> => {
-  const token = getToken();
-  if (!token) return null;
+  if (!BRIDGE_API_KEY) return null;
   try {
     const res = await fetch(withBase('/bridge/auth'), {
       method: 'POST',
       headers: {
         Accept: 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${BRIDGE_API_KEY}`,
       },
     });
     if (!res.ok) return null;
