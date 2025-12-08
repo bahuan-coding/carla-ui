@@ -32,6 +32,26 @@ const withBase = (path: string) => {
   return `${API_URL}${normalized}`;
 };
 
+const fetchBridgeAccessToken = async (): Promise<string | null> => {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(withBase('/bridge/auth/token'), {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.access_token || json?.token || null;
+  } catch {
+    return null;
+  }
+};
+
 const parsePayload = <T>(schema: z.ZodType<T>, payload: unknown, fallback: T): T => {
   const direct = schema.safeParse(payload);
   if (direct.success) return direct.data;
@@ -68,12 +88,13 @@ async function request<T>({
   init?: RequestInitLite;
 }): Promise<T> {
   const token = getToken();
-  const isBridge = path.startsWith('/bridge');
+  const isBridge = path.startsWith('/bridge') && !path.startsWith('/bridge/auth');
+  const bridgeToken = isBridge ? await fetchBridgeAccessToken() : null;
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(token && isBridge ? { 'X-Bridge-Token': token } : {}),
+    ...(bridgeToken ? { 'X-Bridge-Token': bridgeToken } : {}),
     ...(init?.headers as Record<string, string> | undefined),
   };
 
