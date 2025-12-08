@@ -159,7 +159,11 @@ export function ConversacionesPage() {
             </div>
           )}
           {selectedId ? (
-            <form onSubmit={submit} className="sticky bottom-0 mt-2 flex items-center gap-2 rounded-xl border border-border/50 bg-background/60 px-3 py-2">
+            <form
+              name="conversation-form"
+              onSubmit={submit}
+              className="sticky bottom-0 mt-2 flex items-center gap-2 rounded-xl border border-border/50 bg-background/60 px-3 py-2"
+            >
               <Input
                 {...form.register('message', { required: true })}
                 placeholder="Escribe un mensaje"

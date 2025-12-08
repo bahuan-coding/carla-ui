@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, apiPut, apiWsUrl, API_URL } from '@/lib/api';
 import type { Account } from '@/types/account';
 import { mapStatusDisplay, maskPhone, normalizeAccountForUi, shortId } from '@/lib/utils';
+import { sampleProcessDetailById, sampleProcessEventsById, sampleProcessesAdmin } from '@/lib/samples';
 import {
   conversationDetailSchema,
   conversationListSchema,
@@ -24,6 +25,14 @@ import {
 } from '@/lib/schemas';
 
 const IS_DEV = import.meta.env.DEV;
+const withSampleFallback = async <T>(label: string, runner: () => Promise<T>, fallback: T): Promise<T> => {
+  try {
+    return await runner();
+  } catch (error) {
+    if (IS_DEV) console.warn(`[fallback:${label}]`, error);
+    return fallback;
+  }
+};
 
 export const useKpis = (period?: string) =>
   useQuery({
@@ -234,7 +243,14 @@ export const useProcessesAdmin = (filters: Partial<{ q: string; status: string; 
 
   return useQuery({
     queryKey: ['admin-processes', queryString],
-    queryFn: () => apiGet(`/admin/processes${queryString}`, processesAdminSchema, []),
+    queryFn: () => {
+      if (!API_URL) return Promise.resolve(sampleProcessesAdmin);
+      return withSampleFallback(
+        'admin-processes',
+        () => apiGet(`/admin/processes${queryString}`, processesAdminSchema, sampleProcessesAdmin),
+        sampleProcessesAdmin,
+      );
+    },
     staleTime: 1000 * 30,
     refetchInterval: 30000,
   });
@@ -245,8 +261,16 @@ export const useProcessDetail = (id?: string) =>
     queryKey: ['admin-process', id],
     enabled: Boolean(id),
     queryFn: async () => {
-      const raw = await apiGet<unknown>(`/admin/processes/${id}`, z.any(), defaultProcess(id) as unknown as ProcessDetail);
-      const base = unwrapProcessDetail(raw, defaultProcess(id), id);
+      const sampleDetail = sampleProcessDetailById(id) as ProcessDetail;
+      const fallbackDetail = sampleDetail || defaultProcess(id);
+      const raw = API_URL
+        ? await withSampleFallback(
+            'admin-process',
+            () => apiGet<unknown>(`/admin/processes/${id}`, z.any(), fallbackDetail as ProcessDetail),
+            fallbackDetail,
+          )
+        : fallbackDetail;
+      const base = unwrapProcessDetail(raw, fallbackDetail, id);
 
       const mergedAccount = {
         ...(base as Account),
@@ -281,7 +305,15 @@ export const useProcessEvents = (id?: string) =>
   useQuery({
     queryKey: ['admin-process-events', id],
     enabled: Boolean(id),
-    queryFn: () => apiGet(`/admin/processes/${id}/events`, processEventsSchema, []),
+    queryFn: () => {
+      const sampleEvents = sampleProcessEventsById(id);
+      if (!API_URL) return Promise.resolve(sampleEvents);
+      return withSampleFallback(
+        'admin-process-events',
+        () => apiGet(`/admin/processes/${id}/events`, processEventsSchema, sampleEvents),
+        sampleEvents,
+      );
+    },
     staleTime: 1000 * 20,
     refetchInterval: 20000,
   });
