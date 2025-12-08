@@ -1,73 +1,63 @@
-# React + TypeScript + Vite
+# Carla Channels Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Dashboard fintech WhatsApp-first para cooperativas de crédito. Interface moderna com estética dark crystal, data visualization avançada e CRM integrado.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 19** + **TypeScript** + **Vite 7**
+- **Tailwind CSS** + **shadcn/ui** + **Radix UI**
+- **TanStack Query** + **Zustand** + **React Hook Form** + **Zod**
+- **Recharts** para visualização de dados
+- **Lucide Icons** para iconografia
 
-## React Compiler
+## Telas
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Rota | Descrição |
+|------|-----------|
+| `/` | Dashboard com KPIs, atividade semanal e distribuição de processos |
+| `/conversations` | CRM de conversas WhatsApp com chat em tempo real |
+| `/transactions` | Tabela de transações com filtros e paginação |
+| `/processes` | Gestão de fluxos de automação WhatsApp |
 
-## Expanding the ESLint configuration
+## Desenvolvimento
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+# Instalar dependências
+pnpm install
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Servidor de desenvolvimento
+pnpm dev
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+# Build de produção
+pnpm build
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Lint
+pnpm lint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Deploy
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Deploy automatizado via Netlify:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- **main** → Produção
+- **Pull Requests** → Deploy Preview
+
+Configuração em `netlify.toml`.
+
+## Documentação
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| `docs/design-system.md` | Design System "Aura" |
+| `docs/components.md` | Biblioteca de componentes |
+| `docs/screens.md` | Especificação das telas |
+| `docs/tech-stack.md` | Stack tecnológico |
+| `docs/deployment.md` | Guia de deploy Netlify |
+| `docs/api-integration.md` | Integração com APIs |
+| `docs/admin-api.md` | Especificação Admin API |
+
+## Variáveis de Ambiente
+
+```env
+VITE_API_URL=https://x.carla.money
 ```
