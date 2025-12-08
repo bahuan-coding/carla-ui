@@ -532,6 +532,11 @@ export function ProcesosPage() {
                           if (resp) return { tone: 'error', label: 'Falha ou incompleto', done: false };
                           return { tone: 'warn', label: 'Pendente', done: false };
                         };
+                        const formatBirthDate = (date?: string | null) => {
+                          if (!date) return '';
+                          const digits = date.replace(/\D/g, '').slice(0, 8);
+                          return digits.length === 8 ? digits : '';
+                        };
                         const endpointRows = [
                           {
                             key: 'blacklist',
@@ -540,9 +545,13 @@ export function ProcesosPage() {
                             resp: account.bank_blacklist_response,
                             action: () =>
                               bridgeBlacklist.mutate({
-                                document: account.document_number || account.id,
-                                clientId: bankClientId,
-                                phone: mainPhone,
+                                C75000: account.document_type || '11',
+                                C75016: `D${(account.document_number || '').replace(/^D/i, '')}`,
+                                C75804: '',
+                                C75020: '',
+                                C75503: account.document_country || 'GT',
+                                C75043: account.document_country || 'GT',
+                                C75084: formatBirthDate(account.birth_date),
                               }),
                             pending: bridgeBlacklist.isPending,
                             needsClient: false,
