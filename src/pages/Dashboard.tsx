@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Activity, Cpu, Database, MessageSquare, Radio, Zap } from 'lucide-react';
-import { useHealthServices, useKpis, useProcessDistribution, useWeeklyActivity } from '@/hooks/use-carla-data';
+import { useHealthServices, useKpis, useProcessDistribution } from '@/hooks/use-carla-data';
 import { useUiStore } from '@/stores/ui';
 
 const statusClass = (status?: string) => {
@@ -20,21 +20,8 @@ export function DashboardPage() {
   const { period } = useUiStore();
   const [showSnapshot, setShowSnapshot] = useState(true);
   const kpisQuery = useKpis(period);
-  const weeklyQuery = useWeeklyActivity(period);
   const distributionQuery = useProcessDistribution(period);
   const healthQuery = useHealthServices();
-
-  const weeklyData = useMemo(
-    () => (weeklyQuery.data || []).map((point) => ({ label: point.label, ...point.breakdown })),
-    [weeklyQuery.data],
-  );
-
-  const barKeys = useMemo(() => {
-    if (!weeklyData.length) return [];
-    const keys = new Set<string>();
-    weeklyData.forEach((d) => Object.keys(d).forEach((k) => k !== 'label' && keys.add(k)));
-    return Array.from(keys);
-  }, [weeklyData]);
 
   const distribution = distributionQuery.data || [];
   const palette = ['hsl(185 100% 50%)', 'hsl(158 64% 55%)', 'hsl(35 90% 62%)', 'hsl(280 60% 62%)', 'hsl(340 70% 60%)'];
@@ -253,7 +240,7 @@ export function DashboardPage() {
           )}
           <div className="flex flex-wrap gap-2 mt-2">
             {distribution.slice(0, 4).map((d, i) => (
-              <span key={d.name} className="text-xs px-2 py-1 rounded-full bg-card border border-border" style={{ borderColor: palette[i % palette.length] + '40' }}>
+              <span key={d.name} className="text-xs text-foreground px-2 py-1 rounded-full bg-card border border-border" style={{ borderColor: palette[i % palette.length] + '40' }}>
                 {d.name}
               </span>
             ))}
@@ -261,41 +248,6 @@ export function DashboardPage() {
         </div>
       </section>
 
-      {/* Activity Chart */}
-      <section className="bento-card">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-accent" />
-            </div>
-            <div>
-              <h2 className="font-display text-lg text-foreground">Activity Trend</h2>
-              <p className="text-xs text-muted-foreground">Operations over time</p>
-            </div>
-          </div>
-        </div>
-        {weeklyQuery.isLoading ? (
-          <div className="h-64 bg-muted/50 rounded-xl animate-pulse" />
-        ) : weeklyData.length ? (
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={weeklyData}>
-              <CartesianGrid stroke="hsl(228 14% 18%)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fill: 'hsl(220 12% 60%)', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: 'hsl(220 12% 60%)', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: 'hsl(228 18% 9%)', border: '1px solid hsl(228 14% 18%)', borderRadius: 12 }}
-                labelStyle={{ color: '#fff' }}
-                cursor={{ fill: 'rgba(0, 240, 255, 0.05)' }}
-              />
-              {barKeys.map((key, i) => (
-                <Bar key={key} dataKey={key} stackId="a" fill={palette[i % palette.length]} radius={i === barKeys.length - 1 ? [6, 6, 0, 0] : 0} />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No activity data</div>
-        )}
-      </section>
     </div>
   );
 }

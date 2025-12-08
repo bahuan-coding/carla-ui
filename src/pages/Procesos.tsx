@@ -264,30 +264,29 @@ export function ProcesosPage() {
                   >
                     <header className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground truncate">{shortId(card.rawId)}</p>
-                        <h4 className="mt-1 text-base font-semibold text-foreground truncate">{card.title}</h4>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Phone size={14} className="text-accent shrink-0" />
+                          <span className="font-mono text-sm text-foreground truncate">{maskPhone(card.phone)}</span>
+                        </div>
+                        <h4 className="text-base font-semibold text-foreground truncate">{card.title}</h4>
                       </div>
                       <span className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${toneBadge(card.statusDisplay.tone)}`}>
                         {card.statusDisplay.label}
                       </span>
                     </header>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Phone size={14} className="text-accent/70" />
-                        <span className="font-mono truncate">{maskPhone(card.phone)}</span>
+                    <div className="flex flex-wrap items-center gap-3 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <BadgeCheck size={14} className="text-emerald-500" />
+                        <span className="text-muted-foreground">{card.verificationDisplay.label}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <BadgeCheck size={14} className="text-emerald-500/70" />
-                        <span className="truncate">{card.verificationDisplay.label}</span>
+                      <div className="flex items-center gap-1.5">
+                        <Database size={14} className="text-amber-500" />
+                        <span className="text-muted-foreground">{card.bankingDisplay.label}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Database size={14} className="text-amber-500/70" />
-                        <span className="truncate">{card.bankingDisplay.label}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Clock4 size={14} />
-                        <span className="truncate">{card.updated ? formatRelative(card.updated) : '—'}</span>
+                      <div className="flex items-center gap-1.5">
+                        <Clock4 size={14} className="text-muted-foreground" />
+                        <span className="text-muted-foreground">{card.updated ? formatRelative(card.updated) : '—'}</span>
                       </div>
                     </div>
 

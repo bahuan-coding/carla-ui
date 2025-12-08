@@ -47,7 +47,8 @@ export const maskPhone = (phone?: string) => {
   const digits = phone.replace(/\D/g, '')
   if (digits.length <= 4) return phone
   const last4 = digits.slice(-4)
-  return `•••• ${last4}`
+  const prefix = phone.startsWith('+') ? phone.slice(0, 4).replace(/[^+0-9]/g, '') : ''
+  return prefix ? `${prefix} *** ${last4}` : `*** ${last4}`
 }
 
 export const shortId = (id?: string) => {
