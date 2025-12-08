@@ -173,60 +173,61 @@ type ProcessDetailWithUi = ProcessDetail & {
 };
 
 const unwrapProcessDetail = (raw: unknown, fallback: ProcessDetail, id?: string): ProcessDetail => {
-  const candidates: unknown[] = [];
-  const push = (value: unknown) => {
-    if (!value) return;
-    if (Array.isArray(value)) {
-      candidates.push(...value);
-    } else {
-      candidates.push(value);
+  const matchesId = (candidateId?: unknown) => !id || (candidateId !== undefined && String(candidateId) === String(id));
+
+  const coerce = (source: unknown): ProcessDetail | null => {
+    if (!source || typeof source !== 'object') return null;
+
+    const payload = (source as { data?: unknown })?.data ?? source;
+    const account = (payload as { account?: unknown })?.account || payload;
+    const base: Record<string, unknown> = { ...(payload as Record<string, unknown>) };
+
+    // Preserve nested account
+    if ((payload as { account?: unknown })?.account) {
+      base.account = (payload as { account?: unknown })?.account;
     }
-  };
 
-  const pushAugmented = (value: unknown) => {
-    if (!value || typeof value !== 'object') return;
-    const fromAccount =
-      (value as { account?: unknown })?.account ||
-      (value as { data?: { account?: unknown } })?.data?.account;
-    if (fromAccount && typeof fromAccount === 'object') {
-      const merged = {
-        ...(value as Record<string, unknown>),
-        ...(fromAccount as Record<string, unknown>),
-      } as Record<string, unknown>;
-      merged.id = merged.id ?? (fromAccount as { id?: unknown })?.id ?? (value as { id?: unknown })?.id ?? id ?? fallback.id;
-      candidates.push(merged);
+    // Coerce essential identifiers from account when the top-level is missing them
+    if (account && typeof account === 'object') {
+      const acc = account as { [key: string]: unknown };
+      base.id = base.id ?? acc.id ?? id ?? fallback.id;
+      base.phone = base.phone ?? acc.phone_main ?? acc.whatsapp_phone_e164 ?? (payload as { phone?: unknown })?.phone;
+      base.whatsapp_phone_e164 = base.whatsapp_phone_e164 ?? acc.whatsapp_phone_e164;
+      base.name = base.name ?? acc.full_name ?? acc.document_number ?? (payload as { name?: unknown })?.name;
+      base.status = base.status ?? (payload as { status?: unknown })?.status ?? acc.status;
+      base.verification_status =
+        base.verification_status ??
+        (payload as { verification_status?: unknown })?.verification_status ??
+        acc.phone_verification_status ??
+        acc.qic_status ??
+        acc.didit_status;
+      base.banking_status = base.banking_status ?? (payload as { banking_status?: unknown })?.banking_status ?? acc.bank_status;
     }
-  };
 
-  push(raw);
-  push((raw as { data?: unknown })?.data);
-  push((raw as { data?: { data?: unknown } })?.data?.data);
-  pushAugmented(raw);
-  pushAugmented((raw as { data?: unknown })?.data);
-  pushAugmented((raw as { data?: { data?: unknown } })?.data?.data);
+    // Map common containers
+    base.beneficiaries = base.beneficiaries ?? (payload as { beneficiaries?: unknown })?.beneficiaries;
+    base.timeline = base.timeline ?? (payload as { timeline?: unknown })?.timeline ?? (payload as { events?: unknown })?.events;
+    base.banking_events =
+      base.banking_events ?? (payload as { banking_events?: unknown })?.banking_events ?? (payload as { events?: unknown })?.events;
 
-  const matchesId = (candidateId?: unknown) =>
-    !id || (candidateId !== undefined && String(candidateId) === String(id));
-
-  const tryParse = (candidate: unknown) => {
-    const parsed = processDetailSchema.safeParse(candidate);
+    const parsed = processDetailSchema.safeParse(base);
     return parsed.success ? parsed.data : null;
   };
 
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      for (const item of candidate) {
-        const parsed = tryParse(item);
-        if (parsed && matchesId(parsed.id)) return parsed;
-      }
-    } else {
-      const parsed = tryParse(candidate);
-      if (parsed && matchesId(parsed.id)) return parsed;
-    }
-  }
+  const candidates = [
+    raw,
+    (raw as { data?: unknown })?.data,
+    (raw as { data?: { data?: unknown } })?.data?.data,
+  ];
 
   for (const candidate of candidates) {
-    const parsed = tryParse(candidate);
+    const parsed = coerce(candidate);
+    if (parsed && matchesId(parsed.id)) return parsed;
+  }
+
+  // Fallback to first successful parse ignoring id match
+  for (const candidate of candidates) {
+    const parsed = coerce(candidate);
     if (parsed) return parsed;
   }
 
