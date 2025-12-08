@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
   Activity,
-  AlertTriangle,
   ArrowRight,
   BadgeCheck,
   Building2,
@@ -9,7 +8,6 @@ import {
   Clock4,
   Database,
   FileJson,
-  Home,
   Info,
   Link2,
   Phone,
@@ -17,8 +15,6 @@ import {
   Repeat2,
   ShieldCheck,
   Sparkles,
-  User,
-  Wallet,
 } from 'lucide-react';
 import { API_URL } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +26,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProcessDetail, useProcessRetry, useProcessRerun, useProcessStatus, useProcessesAdmin } from '@/hooks/use-carla-data';
 import { useToast } from '@/hooks/use-toast';
-import { formatCurrency, formatDate, mapStatusDisplay, maskPhone, normalizeAccountForUi, shortId, toneBadge } from '@/lib/utils';
+import { formatCurrency, formatDate, formatRelative, mapStatusDisplay, maskPhone, normalizeAccountForUi, shortId, toneBadge } from '@/lib/utils';
 import type { Account, RenapCitizenEntry } from '@/types/account';
 
 const confirmDanger = (message: string) => window.confirm(message || '¿Continuar?');
@@ -39,12 +35,11 @@ export function ProcesosPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<string>('');
-  const [phone, setPhone] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const auditReason = '';
   const auditOperator = 'operador.demo@carla';
 
-  const filters = useMemo(() => ({ q: search, status, phone, limit: 30 }), [phone, search, status]);
+  const filters = useMemo(() => ({ q: search, status, limit: 30 }), [search, status]);
   const listQuery = useProcessesAdmin(filters);
   const detailQuery = useProcessDetail(selectedId);
 
@@ -159,25 +154,29 @@ export function ProcesosPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <Input
-          placeholder="Buscar por teléfono, id, estado"
+          placeholder="Buscar por teléfono, id o estado"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-sm text-sm"
+          className="w-full max-w-md text-sm"
           id="process-search"
           name="process-search"
         />
-        <Input
-          placeholder="Filtro por phone"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="w-full max-w-xs text-sm"
-          id="process-phone"
-          name="process-phone"
-        />
         <div className="flex items-center gap-2">
-          {['', 'ready_for_bank', 'bank_processing', 'bank_retry', 'bank_rejected'].map((s) => (
-            <Button key={s || 'all'} variant={status === s ? 'default' : 'outline'} size="sm" onClick={() => setStatus(s)} className="text-xs">
-              {s === '' ? 'Todos' : s.replace(/_/g, ' ')}
+          {[
+            { value: '', label: 'Todos' },
+            { value: 'ready_for_bank', label: 'Listo para banco' },
+            { value: 'bank_processing', label: 'Proceso bancario' },
+            { value: 'bank_retry', label: 'Reintento banco' },
+            { value: 'bank_rejected', label: 'Rechazado banco' },
+          ].map((item) => (
+            <Button
+              key={item.value || 'all'}
+              variant={status === item.value ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatus(item.value)}
+              className="text-xs"
+            >
+              {item.label}
             </Button>
           ))}
         </div>
@@ -220,16 +219,20 @@ export function ProcesosPage() {
                         <Database size={12} /> Banco: {card.bankingDisplay.label}
                       </span>
                       <span className="flex items-center gap-2">
-                        <Clock4 size={12} /> {card.updated || '—'}
+                        <Clock4 size={12} /> {card.updated ? `${formatDate(card.updated)} · ${formatRelative(card.updated)}` : 'Sin datos'}
                       </span>
                     </section>
                     <section className="flex items-center gap-3 text-[11px] text-foreground/60">
-                      <span className="flex items-center gap-1 rounded-full bg-foreground/10 px-2 py-1">
-                        <ShieldCheck size={12} /> Intentos: {card.attempts ?? '—'}
-                      </span>
-                      <span className="flex items-center gap-1 rounded-full bg-foreground/10 px-2 py-1">
-                        <Activity size={12} /> Eventos: {card.events ?? '—'}
-                      </span>
+                      {card.attempts !== undefined ? (
+                        <span className="flex items-center gap-1 rounded-full bg-foreground/10 px-2 py-1">
+                          <ShieldCheck size={12} /> Intentos: {card.attempts}
+                        </span>
+                      ) : null}
+                      {card.events !== undefined ? (
+                        <span className="flex items-center gap-1 rounded-full bg-foreground/10 px-2 py-1">
+                          <Activity size={12} /> Eventos: {card.events}
+                        </span>
+                      ) : null}
                     </section>
                     {card.lastError ? (
                       <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
@@ -280,7 +283,7 @@ export function ProcesosPage() {
               <div className="col-span-full rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">Não foi possível carregar processos.</div>
             ) : null}
             {!listQuery.isLoading && !processes.length ? (
-              <div className="col-span-full rounded-lg border border-border/50 bg-background/70 px-3 py-3 text-sm text-foreground/70">Sem processos para esse filtro.</div>
+              <div className="col-span-full rounded-lg border border-border/50 bg-background/70 px-3 py-3 text-sm text-foreground/70">Sin procesos para este filtro.</div>
             ) : null}
           </CardContent>
         </Card>
@@ -299,40 +302,35 @@ export function ProcesosPage() {
               <p className="font-medium text-foreground">Forzar estado</p>
               <p className="text-xs text-foreground/60">Usar tras corregir manualmente; pide motivo y operador.</p>
               <div className="mt-2 flex flex-wrap gap-2">
-                {['ready_for_bank', 'bank_processing', 'bank_retry', 'bank_rejected', 'account_created'].map((s) => (
+                {[
+                  { value: 'ready_for_bank', label: 'Listo para banco' },
+                  { value: 'bank_processing', label: 'Proceso bancario' },
+                  { value: 'bank_retry', label: 'Reintento banco' },
+                  { value: 'bank_rejected', label: 'Rechazado banco' },
+                  { value: 'account_created', label: 'Cuenta creada' },
+                ].map((s) => (
                   <Button
-                    key={s}
+                    key={s.value}
                     variant="outline"
                     size="sm"
                     className="text-[11px]"
                     disabled={!selectedId || statusMutation.isPending}
                     onClick={() => {
-                      if (!confirmDanger(`Forzar estado "${s}"?`)) return;
+                      if (!confirmDanger(`Forzar estado "${s.label}"?`)) return;
                       statusMutation.mutate(
-                        { status: s, ...auditFields },
-                        { onError: (e) => onActionError('Fallo al forzar estado', e), onSuccess: () => toast({ title: 'Estado ajustado', description: s }) },
+                        { status: s.value, ...auditFields },
+                        { onError: (e) => onActionError('Fallo al forzar estado', e), onSuccess: () => toast({ title: 'Estado ajustado', description: s.label }) },
                       );
                     }}
                   >
-                    {s.replace(/_/g, ' ')}
+                    {s.label}
                   </Button>
                 ))}
               </div>
             </section>
-            <section className="rounded-lg border border-border/50 bg-background/70 p-3">
-              <p className="font-medium text-foreground">Tips de uso</p>
-              <ul className="mt-1 space-y-1 text-xs text-foreground/65">
-                <li className="flex items-center gap-2">
-                  <BadgeCheck size={12} className="text-emerald-300" /> Usa retry después de corregir payload.
-                </li>
-                <li className="flex items-center gap-2">
-                  <AlertTriangle size={12} className="text-amber-300" /> Rerun es más pesado: incluye eventos y worker completo.
-                </li>
-                <li className="flex items-center gap-2">
-                  <Activity size={12} className="text-accent" /> Timeline muestra correlation_id y pasos bancarios.
-                </li>
-              </ul>
-            </section>
+            <p className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-xs text-foreground/60">
+              Retry para reintentar el worker; Rerun para rehacer eventos completos. Usa con auditaría activa.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -360,7 +358,7 @@ export function ProcesosPage() {
               const email = normalized.email || '—';
               const complianceSource = normalized.complianceSource;
               const risk = normalized.riskFlags.risk;
-              const valueOrDash = (v?: string | number | null) => (v === undefined || v === null || v === '' ? '—' : v);
+              const valueOrDash = (v?: string | number | null) => (v === undefined || v === null || v === '' ? 'Sin datos' : v);
               const badgeTone = (v?: boolean) => (v ? 'bg-destructive/15 text-destructive' : 'bg-emerald-500/10 text-emerald-200');
               const renderField = (label: string, value?: string | number | null) => (
                 <div className="space-y-1">
@@ -425,15 +423,6 @@ export function ProcesosPage() {
                       <TabsTrigger value="resumen" className="flex items-center gap-1">
                         <Info size={14} /> Resumen
                       </TabsTrigger>
-                      <TabsTrigger value="personales" className="flex items-center gap-1">
-                        <User size={14} /> Datos personales
-                      </TabsTrigger>
-                      <TabsTrigger value="contacto" className="flex items-center gap-1">
-                        <Home size={14} /> Contacto & Dirección
-                      </TabsTrigger>
-                      <TabsTrigger value="ingresos" className="flex items-center gap-1">
-                        <Wallet size={14} /> Trabajo & ingresos
-                      </TabsTrigger>
                       <TabsTrigger value="verificaciones" className="flex items-center gap-1">
                         <ShieldCheck size={14} /> Verificaciones
                       </TabsTrigger>
@@ -441,31 +430,22 @@ export function ProcesosPage() {
                         <Building2 size={14} /> Banco / Integraciones
                       </TabsTrigger>
                       <TabsTrigger value="raw" className="flex items-center gap-1">
-                        <FileJson size={14} /> Raw / Debug
+                        <FileJson size={14} /> Debug
                       </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="resumen" className="pt-3">
                       <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
-                        {renderField('Canal', account.channel)}
+                        {renderField('Nombre completo', fullName)}
+                        {renderField('Teléfono', mainPhone)}
+                        {renderField('Email', email)}
+                        {renderField('Documento', normalized.documentLabel)}
                         {renderField('Producto', account.product_type)}
                         {renderField('Moneda', account.account_currency)}
-                        {renderField('Institución', `${valueOrDash(account.institution_name)} (${valueOrDash(account.institution_code)})`)}
-                        {renderField('Creado', formatDate(account.created_at))}
-                        {renderField('Verificación iniciada', formatDate(account.verification_started_at))}
-                        {renderField('Verificación completada', formatDate(account.verification_completed_at))}
+                        {renderField('Canal', account.channel)}
                         {renderField('Estado', account.status)}
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="personales" className="pt-3">
-                      <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
-                        {renderField('Nombre completo', fullName)}
-                        {renderField('CUI (RENAP)', renapEntry?.cui)}
-                        {renderField('Documento', normalized.documentLabel)}
-                        {renderField('Fecha de nacimiento', formatDate(renapEntry?.fecha_nacimiento || account.birth_date))}
-                        {renderField('Nacionalidad', normalized.nationality)}
-                        {renderField('Estado civil', normalized.maritalStatus)}
+                        {renderField('Creado', formatDate(account.created_at))}
+                        {renderField('Actualizado', formatDate(detailQuery.data.updated_at))}
                         <div className="space-y-1 md:col-span-2">
                           <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60">Flags de riesgo</p>
                           <div className="flex flex-wrap gap-2">
@@ -477,30 +457,6 @@ export function ProcesosPage() {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="contacto" className="pt-3">
-                      <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
-                        {renderField('Email', email)}
-                        {renderField('Teléfono principal', mainPhone)}
-                        {renderField('Teléfono secundario', account.phone_secondary)}
-                        {renderField('WhatsApp', account.whatsapp_phone_e164)}
-                        {renderField('Dirección', normalized.address)}
-                        {renderField('Ciudad', account.address_city)}
-                        {renderField('Estado/Depto', account.address_state)}
-                        {renderField('País', account.address_country)}
-                        {renderField('Tipo vivienda', normalized.housingType)}
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="ingresos" className="pt-3">
-                      <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
-                        {renderField('Situación laboral', normalized.employmentStatus)}
-                        {renderField('Empresa', normalized.employer)}
-                        {renderField('Ingresos mensuales', formatCurrency(normalized.monthlyIncome ?? undefined, account.account_currency))}
-                        {renderField('Egresos mensuales', formatCurrency(normalized.monthlyExpenses ?? undefined, account.account_currency))}
-                        {renderField('Otras fuentes', normalized.otherIncomeSources)}
-                      </div>
-                    </TabsContent>
-
                     <TabsContent value="verificaciones" className="pt-3">
                       <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
                         {renderField('DIDIT', account.didit_status)}
@@ -509,9 +465,6 @@ export function ProcesosPage() {
                         {renderField('Motivo DIDIT', account.didit_metadata?.decision?.reason)}
                         {renderField('RENAP', account.renap_status)}
                         {renderField('Último check RENAP', formatDate(account.renap_last_check))}
-                        {renderField('Vecindad (RENAP)', renapEntry?.vecindad)}
-                        {renderField('Ocupación (RENAP)', renapEntry?.ocupacion)}
-                        {renderField('Vencimiento DPI', formatDate(renapEntry?.fecha_vencimiento))}
                         {renderField('Teléfono verificación', account.phone_verification_status)}
                         {renderField('OTP verificado', formatDate(account.phone_verification_metadata?.verified_at))}
                         {renderField('Compliance', complianceSource.join(', '))}
@@ -535,9 +488,9 @@ export function ProcesosPage() {
 
                     <TabsContent value="banco" className="pt-3">
                       <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
+                        {renderField('Institución', `${valueOrDash(account.institution_name)} (${valueOrDash(account.institution_code)})`)}
                         {renderField('External account id', account.external_account_id)}
                         {renderField('External customer id', account.external_customer_id)}
-                        {renderField('Última integración', formatDate(account.last_integration_at))}
                         {renderField('Blacklist terminado', formatDate(account.bank_blacklist_finished_at))}
                         {renderField('Onboarding terminado', formatDate(account.bank_onboarding_finished_at))}
                         {renderField('Cuenta terminada', formatDate(account.bank_account_finished_at))}
@@ -555,14 +508,6 @@ export function ProcesosPage() {
                             {JSON.stringify(account, null, 2)}
                           </pre>
                         </details>
-                        {account.renap_citizen_data ? (
-                          <details className="rounded border border-border/60 bg-background/80 p-3" open={false}>
-                            <summary className="cursor-pointer text-foreground">RENAP</summary>
-                            <pre className="mt-2 max-h-64 overflow-auto rounded bg-foreground/5 p-2 text-[11px] leading-relaxed text-foreground/80">
-                              {JSON.stringify(account.renap_citizen_data, null, 2)}
-                            </pre>
-                          </details>
-                        ) : null}
                         {account.extra_data ? (
                           <details className="rounded border border-border/60 bg-background/80 p-3" open={false}>
                             <summary className="cursor-pointer text-foreground">Extra data</summary>

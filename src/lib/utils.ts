@@ -76,6 +76,23 @@ export const formatDate = (value?: string | null) => {
   return `${date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`
 }
 
+export const formatRelative = (value?: string | null) => {
+  if (!value) return 'Sin datos'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Sin datos'
+  const now = Date.now()
+  const diffMs = date.getTime() - now
+  const minutes = Math.round(diffMs / 60000)
+  const abs = Math.abs(minutes)
+  const rtf = new Intl.RelativeTimeFormat('es', { numeric: 'auto' })
+  if (abs < 1) return 'Ahora'
+  if (abs < 60) return rtf.format(minutes, 'minute')
+  const hours = Math.round(minutes / 60)
+  if (Math.abs(hours) < 24) return rtf.format(hours, 'hour')
+  const days = Math.round(hours / 24)
+  return rtf.format(days, 'day')
+}
+
 type RenapName = {
   primer_nombre?: string
   segundo_nombre?: string | null
