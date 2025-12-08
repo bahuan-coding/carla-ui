@@ -124,7 +124,7 @@ export function ProcesosPage() {
   }, [processes]);
 
   const onActionError = (message: string, error?: unknown) =>
-    toast({ variant: 'destructive', title: message, description: error instanceof Error ? error.message : 'Tente novamente.' });
+    toast({ variant: 'destructive', title: message, description: error instanceof Error ? error.message : 'Intente de nuevo.' });
 
   const cards = processes.map((p) => {
     const account = (p as { account?: Account })?.account;
@@ -182,8 +182,8 @@ export function ProcesosPage() {
       {/* KPIs Grid */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Ativos', value: kpis.active, tone: 'ok' as const },
-          { label: 'Erros', value: kpis.errors, tone: kpis.errors ? 'error' as const : 'ok' as const },
+          { label: 'Activos', value: kpis.active, tone: 'ok' as const },
+          { label: 'Errores', value: kpis.errors, tone: kpis.errors ? 'error' as const : 'ok' as const },
           { label: 'Retry', value: kpis.retry, tone: kpis.retry ? 'warn' as const : 'ok' as const },
           { label: 'Total', value: kpis.total, tone: 'ok' as const },
         ].map((kpi) => (
@@ -199,9 +199,9 @@ export function ProcesosPage() {
 
       {(!resolvedBaseUrl || !resolvedToken) && (
         <div className="bento-card border-amber-500/30 bg-amber-500/5 dark:bg-amber-500/10">
-          <p className="font-semibold text-amber-700 dark:text-amber-200">Configuração de ambiente faltando</p>
+          <p className="font-semibold text-amber-700 dark:text-amber-200">Configuración de entorno faltante</p>
           <p className="text-sm text-amber-600 dark:text-amber-300/80 mt-1">
-            Defina `VITE_API_URL` e um token API. Sem isso, Procesos não carrega.
+            Defina `VITE_API_URL` y un token API. Sin esto, Procesos no carga.
           </p>
         </div>
       )}
@@ -338,7 +338,7 @@ export function ProcesosPage() {
                 ))}
             {listQuery.isError && (
               <div className="col-span-full bento-card border-red-500/30 bg-red-500/5 text-red-700 dark:text-red-300">
-                Não foi possível carregar processos.
+                No se pudieron cargar procesos.
               </div>
             )}
             {!listQuery.isLoading && !processes.length && (
@@ -554,8 +554,8 @@ export function ProcesosPage() {
                         };
                         const resolveStatus = (finishedAt?: string | null, resp?: unknown) => {
                           if (isSuccessResponse(resp) || finishedAt) return { tone: 'ok', label: `OK${finishedAt ? ` · ${formatDate(finishedAt)}` : ''}`, done: true };
-                          if (resp) return { tone: 'error', label: 'Falha', done: false };
-                          return { tone: 'warn', label: 'Pendente', done: false };
+                          if (resp) return { tone: 'error', label: 'Fallo', done: false };
+                          return { tone: 'warn', label: 'Pendiente', done: false };
                         };
                         const formatBirthDate = (date?: string | null) => {
                           if (!date) return '';

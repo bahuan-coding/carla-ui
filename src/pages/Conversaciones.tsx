@@ -56,8 +56,8 @@ export function ConversacionesPage() {
       form.reset();
     } catch (err) {
       toast({
-        title: 'Erro ao enviar mensagem',
-        description: err instanceof Error ? err.message : 'Tente novamente',
+        title: 'Error al enviar mensaje',
+        description: err instanceof Error ? err.message : 'Intente de nuevo',
         variant: 'destructive',
       });
     }

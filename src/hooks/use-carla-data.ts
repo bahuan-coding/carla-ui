@@ -306,6 +306,7 @@ export const useProcessDetail = (id?: string) =>
 
       return {
         ...base,
+        account,
         displayName,
         phoneMasked,
         statusDisplay,

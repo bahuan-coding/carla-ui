@@ -3,7 +3,7 @@ import { NavLink, Route, Routes } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useUiStore } from '@/stores/ui';
-import { ChartPie, Command, MessageCircle, Settings, Sun, Moon, Workflow } from 'lucide-react';
+import { ChartPie, Command, MessageCircle, Sun, Moon, Workflow } from 'lucide-react';
 import { DashboardPage } from '@/pages/Dashboard';
 import { ConversacionesPage } from '@/pages/Conversaciones';
 import { ProcesosPage } from '@/pages/Procesos';
@@ -14,7 +14,6 @@ const nav = [
   { to: '/conversaciones', label: 'Conversaciones', icon: MessageCircle },
   { to: '/painel', label: 'Painel', icon: Command },
   { to: '/procesos', label: 'Procesos', icon: Workflow },
-  { to: '/config', label: 'Configuración', icon: Settings },
 ];
 
 export default function App() {
@@ -48,37 +47,19 @@ export default function App() {
         <nav className="flex flex-col gap-2">
           {nav.map((item) => {
             const Icon = item.icon;
-            const isConfig = item.to === '/config';
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-foreground/10 ${
+                  `flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-foreground/10 ${
                     isActive ? 'bg-foreground/10 text-accent' : 'text-foreground'
                   }`
                 }
                 onClick={() => setSidebarOpen(false)}
               >
-                <span className="flex items-center gap-2">
-                  <Icon size={16} />
-                  {item.label}
-                </span>
-                {isConfig ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Alternar tema"
-                    className="text-foreground/70"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setTheme(theme === 'dark' ? 'light' : 'dark');
-                    }}
-                  >
-                    {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-                  </Button>
-                ) : null}
+                <Icon size={16} />
+                {item.label}
               </NavLink>
             );
           })}
@@ -108,6 +89,15 @@ export default function App() {
               <option value="30d">30 días</option>
               <option value="90d">90 días</option>
             </select>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Cambiar tema"
+              className="text-foreground/70"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            </Button>
           </div>
         </header>
 
@@ -116,7 +106,6 @@ export default function App() {
           <Route path="/conversaciones" element={<ConversacionesPage />} />
           <Route path="/painel" element={<PainelControlePage />} />
           <Route path="/procesos" element={<ProcesosPage />} />
-          <Route path="/config" element={<DashboardPage />} />
         </Routes>
       </main>
       <Toaster />
