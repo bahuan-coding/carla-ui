@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -53,9 +53,59 @@ export function ProcesosPage() {
   const auditReason = '';
   const auditOperator = 'operador.demo@carla';
 
+  // Cooldown state - persisted to localStorage
+  const COOLDOWN_KEY = 'carla_banking_cooldowns';
+  const COOLDOWN_DURATION = 300; // 5 minutes in seconds
+  const [cooldowns, setCooldowns] = useState<Record<string, number>>(() => {
+    try {
+      const stored = localStorage.getItem(COOLDOWN_KEY);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [now, setNow] = useState(Date.now());
+
+  // Persist cooldowns to localStorage
+  useEffect(() => {
+    localStorage.setItem(COOLDOWN_KEY, JSON.stringify(cooldowns));
+  }, [cooldowns]);
+
+  // Tick every second to update countdown timers
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatCooldown = useCallback((seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }, []);
+
+  const getCooldownRemaining = useCallback((key: string) => {
+    const lastTrigger = cooldowns[key];
+    if (!lastTrigger) return 0;
+    const elapsed = Math.floor((now - lastTrigger) / 1000);
+    return Math.max(0, COOLDOWN_DURATION - elapsed);
+  }, [cooldowns, now]);
+
+  const triggerCooldown = useCallback((key: string) => {
+    setCooldowns((prev) => ({ ...prev, [key]: Date.now() }));
+  }, []);
+
   const filters = useMemo(() => ({ q: search, status, limit: 30 }), [search, status]);
   const listQuery = useProcessesAdmin(filters);
   const detailQuery = useProcessDetail(selectedId);
+
+  // Auto-refresh every 60s when detail panel is open
+  useEffect(() => {
+    if (!selectedId) return;
+    const interval = setInterval(() => {
+      detailQuery.refetch();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [selectedId, detailQuery]);
 
   const statusMutation = useProcessStatus(selectedId);
   const retryMutation = useProcessRetry(selectedId);
@@ -649,35 +699,96 @@ export function ProcesosPage() {
                         };
                         return (
                           <div className="space-y-3 rounded-2xl border border-border/50 bg-background/70 p-4">
-                            <div className="flex items-center justify-between text-xs text-foreground/60">
-                              <span>{`Institución: ${valueOrDash(account.institution_name)} (${valueOrDash(account.institution_code)})`}</span>
-                              <span className="flex items-center gap-2">
-                                <span className="rounded-full bg-foreground/10 px-2 py-1">{valueOrDash(bankClientId)}</span>
-                                {account.external_account_id ? (
-                                  <span className="rounded-full bg-foreground/10 px-2 py-1">{valueOrDash(account.external_account_id)}</span>
-                                ) : null}
-                              </span>
+                            <div className="flex items-center justify-between gap-2 border-b border-border/30 pb-3">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-xs text-foreground/60">
+                                  <span>{`Institución: ${valueOrDash(account.institution_name)} (${valueOrDash(account.institution_code)})`}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="rounded-full bg-foreground/10 px-2 py-1 text-[11px] text-foreground/70">{valueOrDash(bankClientId)}</span>
+                                  {account.external_account_id ? (
+                                    <span className="rounded-full bg-foreground/10 px-2 py-1 text-[11px] text-foreground/70">{valueOrDash(account.external_account_id)}</span>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-2 py-1 text-[10px] text-accent">
+                                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
+                                  Auto-refresh 60s
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-[11px]"
+                                  onClick={() => detailQuery.refetch()}
+                                  disabled={detailQuery.isFetching}
+                                >
+                                  <RefreshCw size={12} className={detailQuery.isFetching ? 'animate-spin' : ''} />
+                                </Button>
+                              </div>
                             </div>
+                            <p className="text-[11px] text-foreground/50">
+                              Después de disparar, espere 5 minutos antes de disparar el mismo servicio otra vez.
+                            </p>
                             <div className="grid gap-2 md:grid-cols-2">
                               {endpointRows.map((ep) => {
                                 const status = resolveStatus(ep.finishedAt, ep.resp);
-                                const disabled = status.done || ep.pending || (ep.needsClient && !bankClientId);
+                                const cooldownKey = `${selectedId}_${ep.key}`;
+                                const cooldownRemaining = getCooldownRemaining(cooldownKey);
+                                const isOnCooldown = cooldownRemaining > 0;
+                                const disabled = status.done || ep.pending || isOnCooldown || (ep.needsClient && !bankClientId);
+                                const dotColor = status.done
+                                  ? 'bg-emerald-400'
+                                  : isOnCooldown
+                                    ? 'bg-amber-400 animate-pulse'
+                                    : ep.pending
+                                      ? 'bg-sky-400 animate-pulse'
+                                      : 'bg-foreground/40';
                                 return (
                                   <div
                                     key={ep.key}
-                                    className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-background/80 px-3 py-3 shadow-sm"
+                                    className={`flex items-center justify-between gap-3 rounded-xl border bg-background/80 px-3 py-3 shadow-sm transition-all ${
+                                      isOnCooldown
+                                        ? 'border-amber-500/40'
+                                        : status.done
+                                          ? 'border-emerald-500/30'
+                                          : 'border-border/50'
+                                    }`}
                                   >
                                     <div className="space-y-1">
                                       <div className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
-                                        <span className="h-2 w-2 rounded-full bg-foreground/40" />
+                                        <span className={`h-2 w-2 rounded-full ${dotColor}`} />
                                         {ep.label}
                                       </div>
                                       <span className={`inline-flex items-center gap-2 rounded-full border px-2 py-1 text-[11px] ${toneStyles[status.tone]}`}>
                                         {status.label}
                                       </span>
                                     </div>
-                                    <Button size="sm" variant="outline" disabled={disabled} onClick={() => ep.action()}>
-                                      {status.done ? 'OK' : ep.pending ? 'Disparando...' : 'Disparar'}
+                                    <Button
+                                      size="sm"
+                                      variant={isOnCooldown ? 'secondary' : 'outline'}
+                                      disabled={disabled}
+                                      className={`min-w-[90px] transition-all ${isOnCooldown ? 'border-amber-500/50 text-amber-200' : ''}`}
+                                      onClick={() => {
+                                        triggerCooldown(cooldownKey);
+                                        ep.action();
+                                      }}
+                                    >
+                                      {status.done ? (
+                                        'OK'
+                                      ) : ep.pending ? (
+                                        <span className="flex items-center gap-1.5">
+                                          <RefreshCw size={12} className="animate-spin" />
+                                          <span>Disparando</span>
+                                        </span>
+                                      ) : isOnCooldown ? (
+                                        <span className="flex items-center gap-1.5 font-mono">
+                                          <Clock4 size={12} />
+                                          <span>{formatCooldown(cooldownRemaining)}</span>
+                                        </span>
+                                      ) : (
+                                        'Disparar'
+                                      )}
                                     </Button>
                                   </div>
                                 );
