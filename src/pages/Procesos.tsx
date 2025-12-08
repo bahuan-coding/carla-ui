@@ -46,6 +46,14 @@ export function ProcesosPage() {
   const statusMutation = useProcessStatus(selectedId);
   const retryMutation = useProcessRetry(selectedId);
   const rerunMutation = useProcessRerun(selectedId);
+  const bridgeBlacklist = useBridgeBlacklistQuery(selectedId);
+  const bridgeMicoopeClient = useBridgeMicoopeClient(selectedId);
+  const bridgeCreateIndividual = useBridgeCreateMicoopeIndividual(selectedId);
+  const bridgeComplementaryCreate = useBridgeComplementaryDataCreate(selectedId);
+  const bridgeCreateAccount = useBridgeCreateStandardAccount(selectedId);
+  const bridgeUpdateOnboarding = useBridgeUpdateOnboarding(selectedId);
+  const bridgeUpdateComplementary = useBridgeUpdateComplementaryData(selectedId);
+  const bridgeQueryComplement = useBridgeQueryComplementClient(selectedId);
 
   const processes = listQuery.data || [];
   const resolvedBaseUrl = API_URL;
@@ -486,17 +494,175 @@ export function ProcesosPage() {
                     </TabsContent>
 
                     <TabsContent value="banco" className="pt-3">
-                      <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/70 p-4 md:grid-cols-2">
-                        {renderField('Institución', `${valueOrDash(account.institution_name)} (${valueOrDash(account.institution_code)})`)}
-                        {renderField('External account id', account.external_account_id)}
-                        {renderField('External customer id', account.external_customer_id)}
-                        {renderField('Blacklist terminado', formatDate(account.bank_blacklist_finished_at))}
-                        {renderField('Onboarding terminado', formatDate(account.bank_onboarding_finished_at))}
-                        {renderField('Cuenta terminada', formatDate(account.bank_account_finished_at))}
-                        {renderField('Complementario terminado', formatDate(account.bank_complementary_finished_at))}
-                        {renderField('Complement query', formatDate(account.bank_complement_query_finished_at))}
-                        {renderField('Complement update', formatDate(account.bank_complementary_update_finished_at))}
-                      </div>
+                      {(() => {
+                        const bankClientId =
+                          account.external_customer_id || account.bank_partner_client_id || account.external_account_id || account.id;
+                        const mainPhone = normalized.mainPhone || account.phone_main || undefined;
+                        const isSuccessResponse = (resp: unknown) => {
+                          const raw =
+                            (resp as { status?: unknown })?.status ??
+                            (resp as { statusCode?: unknown })?.statusCode ??
+                            (resp as { code?: unknown })?.code ??
+                            (resp as { httpCode?: unknown })?.httpCode ??
+                            (resp as { meta?: { status?: unknown } })?.meta?.status;
+                          const numeric = typeof raw === 'string' ? Number(raw) : (raw as number | undefined);
+                          if (numeric === 200 || numeric === 201) return true;
+                          const text = typeof raw === 'string' ? raw.toLowerCase() : '';
+                          if (text.includes('200') || text === 'ok' || text === 'created' || text.includes('201')) return true;
+                          return false;
+                        };
+                        const resolveStatus = (finishedAt?: string | null, resp?: unknown) => {
+                          if (isSuccessResponse(resp) || finishedAt) {
+                            return { tone: 'ok', label: `OK${finishedAt ? ` · ${formatDate(finishedAt)}` : ''}`, done: true };
+                          }
+                          if (resp) return { tone: 'error', label: 'Falha ou incompleto', done: false };
+                          return { tone: 'warn', label: 'Pendente', done: false };
+                        };
+                        const endpointRows = [
+                          {
+                            key: 'blacklist',
+                            label: 'Blacklist Query',
+                            finishedAt: account.bank_blacklist_finished_at,
+                            resp: account.bank_blacklist_response,
+                            action: () =>
+                              bridgeBlacklist.mutate({
+                                document: account.document_number || account.id,
+                                clientId: bankClientId,
+                                phone: mainPhone,
+                              }),
+                            pending: bridgeBlacklist.isPending,
+                            needsClient: false,
+                          },
+                          {
+                            key: 'onboarding',
+                            label: 'Onboarding',
+                            finishedAt: account.bank_onboarding_finished_at,
+                            resp: account.bank_onboarding_response,
+                            action: () =>
+                              bridgeUpdateOnboarding.mutate({
+                                clientId: bankClientId ?? '',
+                                body: { email: account.email, phone: mainPhone, full_name: account.full_name },
+                              }),
+                            pending: bridgeUpdateOnboarding.isPending,
+                            needsClient: true,
+                          },
+                          {
+                            key: 'account',
+                            label: 'Cuenta',
+                            finishedAt: account.bank_account_finished_at,
+                            resp: account.bank_account_response,
+                            action: () =>
+                              bridgeCreateAccount.mutate({
+                                clientId: bankClientId ?? '',
+                                body: { currency: account.account_currency, product: account.product_type, phone: mainPhone },
+                              }),
+                            pending: bridgeCreateAccount.isPending,
+                            needsClient: true,
+                          },
+                          {
+                            key: 'complementary',
+                            label: 'Complementary Data',
+                            finishedAt: account.bank_complementary_finished_at,
+                            resp: account.bank_complementary_response,
+                            action: () =>
+                              bridgeComplementaryCreate.mutate({
+                                clientId: bankClientId ?? '',
+                                body: account.extra_data?.complete_flow_data || account.extra_data || {},
+                              }),
+                            pending: bridgeComplementaryCreate.isPending,
+                            needsClient: true,
+                          },
+                          {
+                            key: 'complement_query',
+                            label: 'Complement Query',
+                            finishedAt: account.bank_complement_query_finished_at,
+                            resp: account.bank_complement_query_response,
+                            action: () => bridgeQueryComplement.mutate(bankClientId ?? ''),
+                            pending: bridgeQueryComplement.isPending,
+                            needsClient: true,
+                          },
+                          {
+                            key: 'complement_update',
+                            label: 'Complementary Update',
+                            finishedAt: account.bank_complementary_update_finished_at,
+                            resp: account.bank_complementary_update_response,
+                            action: () =>
+                              bridgeUpdateComplementary.mutate({
+                                clientId: bankClientId ?? '',
+                                body: account.extra_data?.complete_flow_data || account.extra_data || {},
+                              }),
+                            pending: bridgeUpdateComplementary.isPending,
+                            needsClient: true,
+                          },
+                          {
+                            key: 'cliente',
+                            label: 'Consulta cliente (Micoope)',
+                            finishedAt: account.bank_client_finished_at,
+                            resp: account.bank_client_response,
+                            action: () => bridgeMicoopeClient.mutate(bankClientId ?? ''),
+                            pending: bridgeMicoopeClient.isPending,
+                            needsClient: true,
+                          },
+                          {
+                            key: 'crear_cliente',
+                            label: 'Crear cliente individual',
+                            finishedAt: account.bank_client_finished_at,
+                            resp: account.bank_client_response,
+                            action: () =>
+                              bridgeCreateIndividual.mutate({
+                                clientId: bankClientId ?? '',
+                                document_number: account.document_number,
+                                full_name: account.full_name,
+                                phone: mainPhone,
+                              } as never),
+                            pending: bridgeCreateIndividual.isPending,
+                            needsClient: true,
+                          },
+                        ];
+                        const toneStyles: Record<string, string> = {
+                          ok: 'text-emerald-300 bg-emerald-400/10 border-emerald-400/40',
+                          warn: 'text-amber-200 bg-amber-500/10 border-amber-400/40',
+                          error: 'text-destructive bg-destructive/10 border-destructive/30',
+                        };
+                        return (
+                          <div className="space-y-3 rounded-2xl border border-border/50 bg-background/70 p-4">
+                            <div className="flex items-center justify-between text-xs text-foreground/60">
+                              <span>{`Institución: ${valueOrDash(account.institution_name)} (${valueOrDash(account.institution_code)})`}</span>
+                              <span className="flex items-center gap-2">
+                                <span className="rounded-full bg-foreground/10 px-2 py-1">{valueOrDash(bankClientId)}</span>
+                                {account.external_account_id ? (
+                                  <span className="rounded-full bg-foreground/10 px-2 py-1">{valueOrDash(account.external_account_id)}</span>
+                                ) : null}
+                              </span>
+                            </div>
+                            <div className="grid gap-2 md:grid-cols-2">
+                              {endpointRows.map((ep) => {
+                                const status = resolveStatus(ep.finishedAt, ep.resp);
+                                const disabled = status.done || ep.pending || (ep.needsClient && !bankClientId);
+                                return (
+                                  <div
+                                    key={ep.key}
+                                    className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-background/80 px-3 py-3 shadow-sm"
+                                  >
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+                                        <span className="h-2 w-2 rounded-full bg-foreground/40" />
+                                        {ep.label}
+                                      </div>
+                                      <span className={`inline-flex items-center gap-2 rounded-full border px-2 py-1 text-[11px] ${toneStyles[status.tone]}`}>
+                                        {status.label}
+                                      </span>
+                                    </div>
+                                    <Button size="sm" variant="outline" disabled={disabled} onClick={() => ep.action()}>
+                                      {status.done ? 'OK' : ep.pending ? 'Disparando...' : 'Disparar'}
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </TabsContent>
 
                     <TabsContent value="raw" className="pt-3">
