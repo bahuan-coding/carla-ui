@@ -24,7 +24,21 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useProcessDetail, useProcessRetry, useProcessRerun, useProcessStatus, useProcessesAdmin } from '@/hooks/use-carla-data';
+import {
+  useProcessDetail,
+  useProcessRetry,
+  useProcessRerun,
+  useProcessStatus,
+  useProcessesAdmin,
+  useBridgeBlacklistQuery,
+  useBridgeMicoopeClient,
+  useBridgeCreateMicoopeIndividual,
+  useBridgeComplementaryDataCreate,
+  useBridgeCreateStandardAccount,
+  useBridgeUpdateOnboarding,
+  useBridgeUpdateComplementaryData,
+  useBridgeQueryComplementClient,
+} from '@/hooks/use-carla-data';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate, formatRelative, mapStatusDisplay, maskPhone, normalizeAccountForUi, shortId, toneBadge } from '@/lib/utils';
 import type { Account } from '@/types/account';
