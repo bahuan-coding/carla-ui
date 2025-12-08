@@ -401,17 +401,20 @@ export function ProcesosPage() {
 
       {/* Detail Sheet */}
       <Sheet open={Boolean(selectedId)} onOpenChange={(open) => setSelectedId(open ? selectedId : undefined)}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-3xl">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2 text-sm">
-              <ShieldCheck size={16} className="text-accent" /> Detalle del proceso
+        <SheetContent className="w-full overflow-y-auto sm:max-w-3xl bg-background/95 backdrop-blur-xl border-l border-border/50">
+          <SheetHeader className="pb-4 border-b border-border/30">
+            <SheetTitle className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                <ShieldCheck size={16} className="text-accent" />
+              </div>
+              <span className="font-display text-lg">Detalle del proceso</span>
             </SheetTitle>
           </SheetHeader>
           {detailQuery.isLoading ? (
-            <div className="space-y-2 py-4">
-              <Skeleton className="h-4 w-2/3" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-32 w-full" />
+            <div className="space-y-3 py-6">
+              <Skeleton className="h-4 w-2/3 rounded-lg" />
+              <Skeleton className="h-4 w-full rounded-lg" />
+              <Skeleton className="h-32 w-full rounded-xl" />
             </div>
           ) : detailQuery.data ? (
             (() => {
@@ -422,12 +425,12 @@ export function ProcesosPage() {
               const email = normalized.email || '—';
               const complianceSource = normalized.complianceSource;
               const risk = normalized.riskFlags.risk;
-              const valueOrDash = (v?: string | number | null) => (v === undefined || v === null || v === '' ? 'Sin datos' : v);
-              const badgeTone = (v?: boolean) => (v ? 'bg-red-500/15 text-red-700 dark:text-red-300' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300');
+              const valueOrDash = (v?: string | number | null) => (v === undefined || v === null || v === '' ? '—' : v);
+              const badgeTone = (v?: boolean) => (v ? 'bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/30' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30');
               const renderField = (label: string, value?: string | number | null) => (
                 <div className="space-y-1">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-                  <p className="text-sm text-foreground">{valueOrDash(value)}</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+                  <p className="text-sm text-foreground font-medium">{valueOrDash(value)}</p>
                 </div>
               );
 
@@ -438,64 +441,76 @@ export function ProcesosPage() {
                 { label: 'Teléfono', value: account.phone_verification_status },
               ];
 
+              const chipTone = (val?: string) => {
+                const v = (val || '').toLowerCase();
+                if (/approved|verified|ok|success/.test(v)) return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30';
+                if (/error|fail|reject/.test(v)) return 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30';
+                return 'bg-muted/50 text-muted-foreground border-border/50';
+              };
+
               return (
                 <div className="space-y-4 py-4 text-sm">
+                  {/* Header Card */}
                   <div className="rounded-2xl bg-muted/30 dark:bg-card/50 border border-border/50 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-[11px] font-mono uppercase text-muted-foreground">
-                          {detailQuery.data.id}
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="space-y-2 min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <code className="text-[10px] font-mono text-muted-foreground bg-muted/50 dark:bg-black/30 px-2 py-1 rounded-md truncate max-w-[200px]">
+                            {detailQuery.data.id}
+                          </code>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6"
+                            className="h-6 w-6 shrink-0"
                             onClick={() => detailQuery.data?.id && navigator.clipboard.writeText(detailQuery.data.id)}
                           >
                             <ClipboardCopy size={12} />
                           </Button>
                         </div>
-                        <h3 className="text-base font-semibold text-foreground">{fullName}</h3>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Phone size={14} /> {mainPhone}
-                          {email !== '—' && <><span className="h-4 w-px bg-border" />{email}</>}
+                        <h3 className="font-display text-lg text-foreground">{fullName}</h3>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1.5"><Phone size={12} className="text-accent/70" /> {mainPhone}</span>
+                          {email !== '—' && <span className="truncate">{email}</span>}
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {statusChips.map((chip) => (
-                          <Badge key={chip.label} variant="outline" className="text-[11px]">
-                            {chip.label}: {valueOrDash(chip.value)}
-                          </Badge>
-                        ))}
-                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border/30">
+                      {statusChips.map((chip) => (
+                        <span key={chip.label} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border ${chipTone(chip.value as string)}`}>
+                          {chip.label}: {valueOrDash(chip.value)}
+                        </span>
+                      ))}
                     </div>
                   </div>
 
                   <Tabs defaultValue="resumen" className="w-full">
-                    <TabsList className="flex w-full flex-wrap gap-2 bg-muted/30 dark:bg-card/50">
-                      <TabsTrigger value="resumen" className="flex items-center gap-1"><Info size={14} /> Resumen</TabsTrigger>
-                      <TabsTrigger value="verificaciones" className="flex items-center gap-1"><ShieldCheck size={14} /> Verificaciones</TabsTrigger>
-                      <TabsTrigger value="banco" className="flex items-center gap-1"><Building2 size={14} /> Banco</TabsTrigger>
-                      <TabsTrigger value="raw" className="flex items-center gap-1"><FileJson size={14} /> Debug</TabsTrigger>
+                    <TabsList className="flex w-full p-1 bg-muted/30 dark:bg-card/50 rounded-xl border border-border/30">
+                      <TabsTrigger value="resumen" className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"><Info size={13} /> Resumen</TabsTrigger>
+                      <TabsTrigger value="verificaciones" className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"><ShieldCheck size={13} /> Verificaciones</TabsTrigger>
+                      <TabsTrigger value="banco" className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"><Building2 size={13} /> Banco</TabsTrigger>
+                      <TabsTrigger value="raw" className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"><FileJson size={13} /> Debug</TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="resumen" className="pt-3">
-                      <div className="grid gap-3 rounded-2xl bg-muted/30 dark:bg-card/50 border border-border/50 p-4 md:grid-cols-2">
-                        {renderField('Nombre', fullName)}
-                        {renderField('Teléfono', mainPhone)}
-                        {renderField('Email', email)}
-                        {renderField('Documento', normalized.documentLabel)}
-                        {renderField('Producto', account.product_type)}
-                        {renderField('Moneda', account.account_currency)}
-                        {renderField('Canal', account.channel)}
-                        {renderField('Estado', account.status)}
-                        {renderField('Creado', formatDate(account.created_at))}
-                        {renderField('Actualizado', formatDate(detailQuery.data.updated_at))}
-                        <div className="space-y-1 md:col-span-2">
-                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Flags de riesgo</p>
+                    <TabsContent value="resumen" className="pt-4">
+                      <div className="rounded-2xl bg-muted/30 dark:bg-card/50 border border-border/50 p-4">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          {renderField('Nombre', fullName)}
+                          {renderField('Teléfono', mainPhone)}
+                          {renderField('Email', email)}
+                          {renderField('Documento', normalized.documentLabel)}
+                          {renderField('Producto', account.product_type)}
+                          {renderField('Moneda', account.account_currency)}
+                          {renderField('Canal', account.channel)}
+                          {renderField('Estado', account.status)}
+                          {renderField('Creado', formatDate(account.created_at))}
+                          {renderField('Actualizado', formatDate(detailQuery.data.updated_at))}
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-border/30">
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-3">Flags de riesgo</p>
                           <div className="flex flex-wrap gap-2">
-                            <Badge className={badgeTone(account.is_pep)}>PEP: {account.is_pep ? 'Sí' : 'No'}</Badge>
-                            <Badge className={badgeTone(account.is_pep_related)}>Rel PEP: {account.is_pep_related ? 'Sí' : 'No'}</Badge>
-                            <Badge className={badgeTone(account.has_us_tax_obligations)}>US Tax: {account.has_us_tax_obligations ? 'Sí' : 'No'}</Badge>
+                            <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium ${badgeTone(account.is_pep)}`}>PEP: {account.is_pep ? 'Sí' : 'No'}</span>
+                            <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium ${badgeTone(account.is_pep_related)}`}>Rel PEP: {account.is_pep_related ? 'Sí' : 'No'}</span>
+                            <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium ${badgeTone(account.has_us_tax_obligations)}`}>US Tax: {account.has_us_tax_obligations ? 'Sí' : 'No'}</span>
                           </div>
                         </div>
                       </div>

@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Database, Gauge, Layers, Link2, Radar, RefreshCw, Rocket, Server, ShieldCheck, Workflow, Wrench } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { ArrowLeft, Database, Gauge, Layers, Link2, Radar, RefreshCw, Rocket, Server, ShieldCheck, Terminal, Workflow, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -349,12 +348,6 @@ const initialForm = (endpoint: Endpoint) =>
     return acc;
   }, {});
 
-const formatValue = (val: any) => {
-  if (val === null || val === undefined) return '—';
-  if (typeof val === 'object') return JSON.stringify(val, null, 2);
-  return String(val);
-};
-
 function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   const { toast } = useToast();
   const [form, setForm] = useState<Record<string, any>>(() => initialForm(endpoint));
@@ -364,23 +357,18 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   const [confirmDanger, setConfirmDanger] = useState(false);
   const [flash, setFlash] = useState<'success' | 'error' | null>(null);
 
-  const flashStyle =
-    flash === 'success'
-      ? { boxShadow: '0 0 0 2px rgba(34,197,94,0.35)', backgroundColor: 'rgba(34,197,94,0.07)' }
-      : flash === 'error'
-        ? { boxShadow: '0 0 0 2px rgba(239,68,68,0.35)', backgroundColor: 'rgba(239,68,68,0.07)' }
-        : undefined;
+  const flashClass = flash === 'success' ? 'ring-2 ring-emerald-500/40' : flash === 'error' ? 'ring-2 ring-red-500/40' : '';
 
   const onChange = (field: Field, value: any) => setForm((prev) => ({ ...prev, [field.name]: value }));
 
   const renderField = (field: Field, inputId: string) => {
-    const common = 'w-full rounded-lg border border-border/50 bg-background/60 px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-accent';
+    const common = 'w-full rounded-xl border border-border/50 bg-muted/30 dark:bg-card/50 px-3 py-2.5 text-sm text-foreground outline-none transition-all focus:ring-2 focus:ring-accent focus:border-accent/50';
     if (field.type === 'textarea')
       return (
         <textarea
           id={inputId}
           name={field.name}
-          className={`${common} min-h-[96px]`}
+          className={`${common} min-h-[80px] font-mono text-xs`}
           placeholder={field.placeholder}
           value={form[field.name] ?? ''}
           onChange={(e) => onChange(field, e.target.value)}
@@ -388,29 +376,21 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
       );
     if (field.type === 'select')
       return (
-        <select
-          id={inputId}
-          name={field.name}
-          className={common}
-          value={form[field.name] ?? ''}
-          onChange={(e) => onChange(field, e.target.value)}
-        >
+        <select id={inputId} name={field.name} className={common} value={form[field.name] ?? ''} onChange={(e) => onChange(field, e.target.value)}>
           <option value="">—</option>
           {(field.options || []).map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
       );
     if (field.type === 'checkbox')
       return (
-        <label className="flex items-center gap-2 text-sm text-foreground/80" htmlFor={inputId}>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer" htmlFor={inputId}>
           <input
             id={inputId}
             name={field.name}
             type="checkbox"
-            className="h-4 w-4 accent-accent"
+            className="h-4 w-4 rounded border-border accent-accent"
             checked={Boolean(form[field.name])}
             onChange={(e) => onChange(field, e.target.checked)}
           />
@@ -423,6 +403,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
         name={field.name}
         placeholder={field.placeholder}
         type={field.type === 'number' ? 'number' : 'text'}
+        className="rounded-xl bg-muted/30 dark:bg-card/50 border-border/50 focus:ring-accent"
         value={form[field.name] ?? ''}
         onChange={(e) => onChange(field, field.type === 'number' ? Number(e.target.value) : e.target.value)}
       />
@@ -455,22 +436,13 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
       });
 
       const headers: Record<string, string> = { Accept: 'application/json' };
-      const autoToken = (
-        import.meta.env.VITE_API_TOKEN ||
-        import.meta.env.VITE_CARLA_SERVICIOS_API_KEY ||
-        import.meta.env.VITE_CHANNELS_API_KEY ||
-        ''
-      ).trim();
+      const autoToken = (import.meta.env.VITE_API_TOKEN || import.meta.env.VITE_CARLA_SERVICIOS_API_KEY || import.meta.env.VITE_CHANNELS_API_KEY || '').trim();
       const stored = typeof window !== 'undefined' ? localStorage.getItem('carla_token') || '' : '';
       const token = autoToken || stored;
       if (token) headers.Authorization = `Bearer ${token}`;
 
       if (!API_URL) {
-        setResult({
-          note: 'API_URL no configurada; usa VITE_API_URL o VITE_CARLA_SERVICIOS_API_URL',
-          url: finalUrl,
-          body: endpoint.method === 'GET' ? undefined : body,
-        });
+        setResult({ note: 'API_URL no configurada', url: finalUrl, body: endpoint.method === 'GET' ? undefined : body });
         toast({ title: 'Simulación offline', description: finalUrl });
         return;
       }
@@ -487,18 +459,18 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
         setResult(json);
         setFlash('error');
         setTimeout(() => setFlash(null), 900);
-        toast({ title: 'Error al ejecutar', description: endpoint.description, variant: 'destructive' });
+        toast({ title: 'Error', description: endpoint.description, variant: 'destructive' });
       } else {
         setResult({ status: res.status, data: json });
         setFlash('success');
         setTimeout(() => setFlash(null), 900);
-        toast({ title: 'Listo', description: endpoint.description });
+        toast({ title: 'OK', description: endpoint.description });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error inesperado');
+      setError(err instanceof Error ? err.message : 'Error');
       setFlash('error');
       setTimeout(() => setFlash(null), 900);
-      toast({ title: 'Error', description: 'Falla al llamar endpoint', variant: 'destructive' });
+      toast({ title: 'Error', variant: 'destructive' });
     } finally {
       setLoading(false);
       setConfirmDanger(false);
@@ -514,54 +486,64 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   };
 
   return (
-    <Card className="group border border-border/60 bg-surface/90 shadow-[0_0_0_1px_rgba(255,255,255,0.03)] transition-all hover:-translate-y-[2px] hover:shadow-[0_10px_45px_rgba(0,0,0,0.55)]" style={flashStyle}>
-      <CardHeader className="flex flex-wrap items-start justify-between gap-4 border-b border-border/30 pb-3">
-        <div className="space-y-1.5">
-          {endpoint.displayTitle ? (
-            <>
-              <p className="text-[15px] font-semibold leading-snug text-foreground">{endpoint.displayTitle}</p>
-              <p className="text-sm leading-relaxed text-foreground/80">{endpoint.description}</p>
-            </>
-          ) : (
-            <p className="text-[15px] font-semibold leading-snug text-foreground">{endpoint.description}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant={endpoint.danger && !confirmDanger ? 'destructive' : 'default'} className="shadow-sm" onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Ejecutando…' : confirmDanger ? 'Confirmar' : 'Ejecutar'}
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3 pt-3">
-        {endpoint.fields?.length ? (
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {endpoint.fields.map((field) => {
-              const inputId = `${endpoint.id}-${field.name}`;
-              const showLabel = field.type !== 'checkbox';
-              return (
-                <div key={field.name} className="space-y-1">
-                  {showLabel ? (
-                    <label className="text-[12px] font-semibold text-foreground" htmlFor={inputId}>
-                      {field.label}
-                    </label>
-                  ) : null}
-                  {renderField(field, inputId)}
-                  {field.helper ? <p className="text-[11px] text-foreground/60 leading-relaxed">{field.helper}</p> : null}
-                </div>
-              );
-            })}
+    <article className={`bento-card glass-hover flex flex-col gap-4 ${flashClass}`}>
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono uppercase ${endpoint.method === 'GET' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : endpoint.method === 'POST' ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'}`}>
+              {endpoint.method}
+            </span>
+            {endpoint.danger && <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-red-500/15 text-red-600 dark:text-red-400">DANGER</span>}
           </div>
-        ) : (
-          <p className="text-xs text-foreground/60">Sin campos adicionales.</p>
-        )}
-        {error ? <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div> : null}
-        {result ? (
-          <pre className="max-h-64 overflow-auto rounded-lg border border-border/40 bg-background/80 px-3 py-2 text-[12px] text-foreground/80 whitespace-pre-wrap">{formatValue(result)}</pre>
-        ) : (
-          <p className="text-[11px] text-foreground/60">La respuesta aparecerá aquí después de ejecutar.</p>
-        )}
-      </CardContent>
-    </Card>
+          <p className="text-sm font-medium text-foreground leading-snug">{endpoint.displayTitle || endpoint.description}</p>
+          {endpoint.displayTitle && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{endpoint.description}</p>}
+        </div>
+        <Button
+          size="sm"
+          variant={endpoint.danger && !confirmDanger ? 'destructive' : 'default'}
+          className="shrink-0 h-8 px-3 text-xs"
+          onClick={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? <RefreshCw size={14} className="animate-spin" /> : confirmDanger ? 'Confirmar' : 'Run'}
+        </Button>
+      </header>
+
+      {endpoint.fields?.length ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {endpoint.fields.map((field) => {
+            const inputId = `${endpoint.id}-${field.name}`;
+            const showLabel = field.type !== 'checkbox';
+            return (
+              <div key={field.name} className={`space-y-1 ${field.type === 'textarea' ? 'sm:col-span-2' : ''}`}>
+                {showLabel && <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide" htmlFor={inputId}>{field.label}</label>}
+                {renderField(field, inputId)}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">Sin campos.</p>
+      )}
+
+      {error && <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-700 dark:text-red-300">{error}</div>}
+
+      {result ? (
+        <pre className="code-block max-h-48 overflow-auto text-[11px] whitespace-pre-wrap">
+          <code dangerouslySetInnerHTML={{
+            __html: JSON.stringify(result, null, 2)
+              .replace(/(".*?")(?=:)/g, '<span class="text-accent dark:text-cyan-400">$1</span>')
+              .replace(/: "(.*?)"/g, ': <span class="text-sky-600 dark:text-cyan-200">"$1"</span>')
+              .replace(/: ([0-9.\-]+)/g, ': <span class="text-amber-600 dark:text-amber-300">$1</span>')
+              .replace(/: (true|false|null)/g, ': <span class="text-purple-600 dark:text-purple-400">$1</span>')
+          }} />
+        </pre>
+      ) : (
+        <div className="rounded-xl bg-muted/30 dark:bg-card/30 border border-border/30 px-3 py-2 text-[11px] text-muted-foreground font-mono">
+          // response
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -571,70 +553,86 @@ export function PainelControlePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/40 bg-surface px-4 py-4">
-        <div className="space-y-1">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-foreground/60">Panel · Operaciones</p>
-          <h1 className="text-2xl font-semibold text-foreground">Panel de Verificaciones</h1>
-          <p className="text-sm text-foreground/70">Acciones guiadas y seguras para liberar cuellos de botella sin exponer rutas.</p>
+      {/* Hero Header */}
+      <header className="relative overflow-hidden rounded-3xl bento-card bg-gradient-to-br from-card via-card to-accent/5 p-8">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--accent)/0.1),transparent_60%)]" />
+        <div className="relative flex flex-wrap items-start justify-between gap-6">
+          <div>
+            <p className="text-xs font-mono uppercase tracking-[0.2em] text-accent mb-2">Mission Control</p>
+            <h1 className="font-display text-4xl md:text-5xl text-foreground tracking-tight">
+              Painel<span className="text-accent glow-text">.</span>
+            </h1>
+            <p className="mt-3 text-sm text-muted-foreground max-w-md">
+              Admin endpoints · Verificações · Workers · Banking bridge
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30">
+              <span className="status-dot status-dot-ok" />
+              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">{endpointGroups.length} grupos</span>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20">
+              <Terminal size={14} className="text-accent" />
+              <span className="text-sm font-medium text-foreground">{endpointGroups.reduce((acc, g) => acc + g.endpoints.length, 0)} endpoints</span>
+            </div>
+          </div>
         </div>
-        <Button variant="ghost" size="sm" className="text-xs">
-          <RefreshCw size={14} className="mr-1" /> Actualizar lista
-        </Button>
-      </div>
+      </header>
 
       {!activeGroup ? (
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">Elige el tipo de proceso</p>
-            <p className="text-sm text-foreground/70">Selecciona el dominio que quieres revisar; luego verás sus acciones.</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {endpointGroups.map((group) => (
-              <Card
+              <article
                 key={group.id}
-                className="group cursor-pointer border border-border/60 bg-surface/80 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all hover:-translate-y-[3px] hover:border-accent/50 hover:shadow-[0_0_0_1px_rgba(94,234,212,0.35),0_18px_45px_rgba(0,0,0,0.55)]"
+                className="bento-card glass-hover group cursor-pointer"
                 onClick={() => setSelectedGroupId(group.id)}
               >
-                <CardHeader className="flex flex-row items-start gap-3 pb-2">
-                  <div className="flex items-center gap-3">
-                    <group.icon className={`h-5 w-5 ${group.accent}`} />
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{group.label}</p>
-                      <p className="text-[11px] text-foreground/60">{group.endpoints.length} acciones guiadas</p>
-                    </div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                    <group.icon className={`w-5 h-5 ${group.accent}`} />
                   </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <p className="text-sm leading-relaxed text-foreground/70">{group.summary}</p>
-                </CardContent>
-              </Card>
+                  <div>
+                    <h3 className="font-display text-base text-foreground group-hover:text-accent transition-colors">{group.label}</h3>
+                    <p className="text-xs text-muted-foreground">{group.endpoints.length} ações</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{group.summary}</p>
+              </article>
             ))}
           </div>
-        </div>
+        </section>
       ) : (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/50 bg-surface/70 px-4 py-3">
-            <div className="space-y-1">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-foreground/60">Grupo seleccionado</p>
-              <div className="flex items-center gap-2">
-                <activeGroup.icon className={`h-5 w-5 ${activeGroup.accent}`} />
-                <h3 className="text-lg font-semibold text-foreground">{activeGroup.label}</h3>
+        <section className="space-y-4">
+          {/* Group Header */}
+          <div className="bento-card flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setSelectedGroupId(null)}
+                className="w-10 h-10 rounded-xl bg-muted/50 dark:bg-card/50 border border-border/50 flex items-center justify-center text-muted-foreground hover:text-accent hover:border-accent/30 transition-all"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                  <activeGroup.icon className={`w-5 h-5 ${activeGroup.accent}`} />
+                </div>
+                <div>
+                  <h2 className="font-display text-xl text-foreground">{activeGroup.label}</h2>
+                  <p className="text-xs text-muted-foreground">{activeGroup.endpoints.length} endpoints disponíveis</p>
+                </div>
               </div>
-              <p className="text-sm text-foreground/70 max-w-3xl">{activeGroup.summary}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" size="sm" className="text-xs" onClick={() => setSelectedGroupId(null)}>
-                Elegir otro grupo
-              </Button>
-            </div>
+            <p className="text-sm text-muted-foreground max-w-lg hidden lg:block">{activeGroup.summary}</p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {/* Endpoints Grid */}
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {activeGroup.endpoints.map((endpoint) => (
               <EndpointCard key={endpoint.id} endpoint={endpoint} />
             ))}
           </div>
-        </div>
+        </section>
       )}
     </div>
   );

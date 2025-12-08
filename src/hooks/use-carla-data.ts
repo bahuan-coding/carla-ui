@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, apiPut, apiWsUrl, API_URL } from '@/lib/api';
 import type { Account } from '@/types/account';
 import { mapStatusDisplay, maskPhone, normalizeAccountForUi, shortId } from '@/lib/utils';
-import { sampleProcessDetailById, sampleProcessEventsById, sampleProcessesAdmin } from '@/lib/samples';
+import { sampleProcessDetailById, sampleProcessEventsById, sampleProcessesAdmin, sampleConversations, sampleConversationDetailById } from '@/lib/samples';
 import {
   conversationDetailSchema,
   conversationListSchema,
@@ -59,7 +59,14 @@ export const useProcessDistribution = (period: string) =>
 export const useConversations = () =>
   useQuery({
     queryKey: ['conversations'],
-    queryFn: () => apiGet('/api/v1/conversations', conversationListSchema, []),
+    queryFn: () => {
+      if (!API_URL) return Promise.resolve(sampleConversations);
+      return withSampleFallback(
+        'conversations',
+        () => apiGet('/api/v1/conversations', conversationListSchema, sampleConversations),
+        sampleConversations,
+      );
+    },
     staleTime: 1000 * 30,
   });
 
@@ -67,7 +74,15 @@ export const useConversationDetail = (id?: string) =>
   useQuery({
     queryKey: ['conversation', id],
     enabled: Boolean(id),
-    queryFn: () => apiGet(`/api/v1/conversations/${id}`, conversationDetailSchema, conversationDetailSchema.parse({ id, name: '...' })),
+    queryFn: () => {
+      const sampleDetail = sampleConversationDetailById(id);
+      if (!API_URL) return Promise.resolve(sampleDetail);
+      return withSampleFallback(
+        'conversation-detail',
+        () => apiGet(`/api/v1/conversations/${id}`, conversationDetailSchema, sampleDetail),
+        sampleDetail,
+      );
+    },
     staleTime: 1000 * 20,
   });
 
