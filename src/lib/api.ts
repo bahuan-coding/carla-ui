@@ -36,17 +36,16 @@ const fetchBridgeAccessToken = async (): Promise<string | null> => {
   const token = getToken();
   if (!token) return null;
   try {
-    const res = await fetch(withBase('/bridge/auth/token'), {
+    const res = await fetch(withBase('/bridge/auth'), {
       method: 'POST',
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
     });
     if (!res.ok) return null;
     const json = await res.json();
-    return json?.access_token || json?.token || null;
+    return json?.token || null;
   } catch {
     return null;
   }
