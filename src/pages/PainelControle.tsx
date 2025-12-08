@@ -373,13 +373,28 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
 
   const onChange = (field: Field, value: any) => setForm((prev) => ({ ...prev, [field.name]: value }));
 
-  const renderField = (field: Field) => {
+  const renderField = (field: Field, inputId: string) => {
     const common = 'w-full rounded-lg border border-border/50 bg-background/60 px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-accent';
     if (field.type === 'textarea')
-      return <textarea className={`${common} min-h-[96px]`} placeholder={field.placeholder} value={form[field.name] ?? ''} onChange={(e) => onChange(field, e.target.value)} />;
+      return (
+        <textarea
+          id={inputId}
+          name={field.name}
+          className={`${common} min-h-[96px]`}
+          placeholder={field.placeholder}
+          value={form[field.name] ?? ''}
+          onChange={(e) => onChange(field, e.target.value)}
+        />
+      );
     if (field.type === 'select')
       return (
-        <select className={common} value={form[field.name] ?? ''} onChange={(e) => onChange(field, e.target.value)}>
+        <select
+          id={inputId}
+          name={field.name}
+          className={common}
+          value={form[field.name] ?? ''}
+          onChange={(e) => onChange(field, e.target.value)}
+        >
           <option value="">—</option>
           {(field.options || []).map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -390,12 +405,28 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
       );
     if (field.type === 'checkbox')
       return (
-        <label className="flex items-center gap-2 text-sm text-foreground/80">
-          <input type="checkbox" className="h-4 w-4 accent-accent" checked={Boolean(form[field.name])} onChange={(e) => onChange(field, e.target.checked)} />
+        <label className="flex items-center gap-2 text-sm text-foreground/80" htmlFor={inputId}>
+          <input
+            id={inputId}
+            name={field.name}
+            type="checkbox"
+            className="h-4 w-4 accent-accent"
+            checked={Boolean(form[field.name])}
+            onChange={(e) => onChange(field, e.target.checked)}
+          />
           {field.label}
         </label>
       );
-    return <Input placeholder={field.placeholder} type={field.type === 'number' ? 'number' : 'text'} value={form[field.name] ?? ''} onChange={(e) => onChange(field, field.type === 'number' ? Number(e.target.value) : e.target.value)} />;
+    return (
+      <Input
+        id={inputId}
+        name={field.name}
+        placeholder={field.placeholder}
+        type={field.type === 'number' ? 'number' : 'text'}
+        value={form[field.name] ?? ''}
+        onChange={(e) => onChange(field, field.type === 'number' ? Number(e.target.value) : e.target.value)}
+      />
+    );
   };
 
   const callEndpoint = async () => {
@@ -424,13 +455,22 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
       });
 
       const headers: Record<string, string> = { Accept: 'application/json' };
-      const autoToken = (import.meta.env.VITE_API_TOKEN || '').trim();
+      const autoToken = (
+        import.meta.env.VITE_API_TOKEN ||
+        import.meta.env.VITE_CARLA_SERVICIOS_API_KEY ||
+        import.meta.env.VITE_CHANNELS_API_KEY ||
+        ''
+      ).trim();
       const stored = typeof window !== 'undefined' ? localStorage.getItem('carla_token') || '' : '';
       const token = autoToken || stored;
       if (token) headers.Authorization = `Bearer ${token}`;
 
       if (!API_URL) {
-        setResult({ note: 'API_URL no configurada; respuesta simulada', url: finalUrl, body: endpoint.method === 'GET' ? undefined : body });
+        setResult({
+          note: 'API_URL no configurada; usa VITE_API_URL o VITE_CARLA_SERVICIOS_API_URL',
+          url: finalUrl,
+          body: endpoint.method === 'GET' ? undefined : body,
+        });
         toast({ title: 'Simulación offline', description: finalUrl });
         return;
       }
@@ -495,13 +535,21 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
       <CardContent className="space-y-3 pt-3">
         {endpoint.fields?.length ? (
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {endpoint.fields.map((field) => (
-              <div key={field.name} className="space-y-1">
-                <span className="text-[12px] font-semibold text-foreground">{field.label}</span>
-                {renderField(field)}
-                {field.helper ? <p className="text-[11px] text-foreground/60 leading-relaxed">{field.helper}</p> : null}
-              </div>
-            ))}
+            {endpoint.fields.map((field) => {
+              const inputId = `${endpoint.id}-${field.name}`;
+              const showLabel = field.type !== 'checkbox';
+              return (
+                <div key={field.name} className="space-y-1">
+                  {showLabel ? (
+                    <label className="text-[12px] font-semibold text-foreground" htmlFor={inputId}>
+                      {field.label}
+                    </label>
+                  ) : null}
+                  {renderField(field, inputId)}
+                  {field.helper ? <p className="text-[11px] text-foreground/60 leading-relaxed">{field.helper}</p> : null}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="text-xs text-foreground/60">Sin campos adicionales.</p>

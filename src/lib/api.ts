@@ -1,7 +1,24 @@
 import { z } from 'zod';
 
-const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-const STATIC_TOKEN = (import.meta.env.VITE_API_TOKEN || '').trim();
+// Resolve base URL and token with fallbacks to the Netlify VITE names in use
+const resolveBaseUrl = () =>
+  (import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_CARLA_SERVICIOS_API_URL ||
+    import.meta.env.VITE_CHANNELS_API_URL ||
+    ''
+  )
+    .trim()
+    .replace(/\/$/, '');
+
+const resolveStaticToken = () =>
+  (import.meta.env.VITE_API_TOKEN ||
+    import.meta.env.VITE_CARLA_SERVICIOS_API_KEY ||
+    import.meta.env.VITE_CHANNELS_API_KEY ||
+    ''
+  ).trim();
+
+const API_URL = resolveBaseUrl();
+const STATIC_TOKEN = resolveStaticToken();
 
 const getToken = () => {
   if (STATIC_TOKEN) return STATIC_TOKEN;

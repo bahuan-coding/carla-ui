@@ -20,6 +20,7 @@ import {
   User,
   Wallet,
 } from 'lucide-react';
+import { API_URL } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +53,13 @@ export function ProcesosPage() {
   const rerunMutation = useProcessRerun(selectedId);
 
   const processes = listQuery.data || [];
+  const resolvedBaseUrl = API_URL;
+  const resolvedToken = (
+    import.meta.env.VITE_API_TOKEN ||
+    import.meta.env.VITE_CARLA_SERVICIOS_API_KEY ||
+    import.meta.env.VITE_CHANNELS_API_KEY ||
+    ''
+  ).trim();
 
   const kpis = useMemo(() => {
     const total = processes.length;
@@ -138,14 +146,32 @@ export function ProcesosPage() {
         </div>
       </header>
 
+      {(!resolvedBaseUrl || !resolvedToken) && (
+        <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <p className="font-semibold">Configuração de ambiente faltando</p>
+          <p className="text-amber-50/80">
+            Defina `VITE_API_URL` ou `VITE_CARLA_SERVICIOS_API_URL` e um token (`VITE_API_TOKEN` ou `VITE_CARLA_SERVICIOS_API_KEY`). Sem isso, Procesos não carrega os dados.
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <Input
           placeholder="Buscar por teléfono, id, estado"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full max-w-sm text-sm"
+          id="process-search"
+          name="process-search"
         />
-        <Input placeholder="Filtro por phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full max-w-xs text-sm" />
+        <Input
+          placeholder="Filtro por phone"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          className="w-full max-w-xs text-sm"
+          id="process-phone"
+          name="process-phone"
+        />
         <div className="flex items-center gap-2">
           {['', 'ready_for_bank', 'bank_processing', 'bank_retry', 'bank_rejected'].map((s) => (
             <Button key={s || 'all'} variant={status === s ? 'default' : 'outline'} size="sm" onClick={() => setStatus(s)} className="text-xs">
