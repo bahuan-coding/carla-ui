@@ -88,7 +88,7 @@ export function ProcesosPage() {
       title: displayName,
       rawId: p.id,
       statusDisplay,
-      phone: p.phone,
+      phone: normalized.mainPhone || p.phone,
       attempts: p.attempts,
       events: p.events_count,
       lastError: p.last_error,
