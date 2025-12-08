@@ -78,22 +78,23 @@ export function ProcesosPage() {
 
   const cards = processes.map((p) => {
     const account = (p as { account?: Account })?.account;
-    const rootPhone = (p as { whatsapp_phone_e164?: string }).whatsapp_phone_e164;
-    const normalized = normalizeAccountForUi(account, { id: p.id, phone: rootPhone || p.phone, name: p.name });
-    const displayName = normalized.displayName || maskPhone(rootPhone || p.phone) || shortId(p.id);
-    const statusDisplay = mapStatusDisplay(p.status || p.banking_status);
-    const verificationDisplay = mapStatusDisplay(p.verification_status);
-    const bankingDisplay = mapStatusDisplay(p.banking_status);
+    const rootPhone = (p as { whatsapp_phone_e164?: string | null }).whatsapp_phone_e164 ?? undefined;
+    const phoneVal = rootPhone || (p.phone ?? undefined);
+    const normalized = normalizeAccountForUi(account, { id: p.id, phone: phoneVal, name: p.name ?? undefined });
+    const displayName = normalized.displayName || maskPhone(phoneVal) || shortId(p.id);
+    const statusDisplay = mapStatusDisplay(p.status ?? p.banking_status ?? undefined);
+    const verificationDisplay = mapStatusDisplay(p.verification_status ?? undefined);
+    const bankingDisplay = mapStatusDisplay(p.banking_status ?? undefined);
     return {
       id: p.id,
       title: displayName,
       rawId: p.id,
       statusDisplay,
-      phone: normalized.mainPhone || rootPhone || p.phone,
+      phone: normalized.mainPhone || phoneVal,
       attempts: p.attempts,
       events: p.events_count,
       lastError: p.last_error,
-      updated: p.updated_at || p.last_error_at || p.created_at,
+      updated: p.updated_at ?? p.last_error_at ?? p.created_at ?? undefined,
       verificationDisplay,
       bankingDisplay,
     };
@@ -352,7 +353,7 @@ export function ProcesosPage() {
           ) : detailQuery.data ? (
             (() => {
               const account = (detailQuery.data?.account || {}) as Account;
-              const normalized = normalizeAccountForUi(account, { id: detailQuery.data.id, phone: detailQuery.data.phone, name: detailQuery.data.name });
+              const normalized = normalizeAccountForUi(account, { id: detailQuery.data.id, phone: detailQuery.data.phone ?? undefined, name: detailQuery.data.name ?? undefined });
               const renapEntry = normalized.renapEntry as RenapCitizenEntry | undefined;
               const fullName = normalized.fullName || normalized.displayName || '—';
               const mainPhone = normalized.mainPhone || '—';
