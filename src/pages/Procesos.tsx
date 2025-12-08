@@ -170,18 +170,17 @@ export function ProcesosPage() {
   const auditFields = useMemo(() => ({ operator: auditOperator || undefined, reason: auditReason || undefined }), [auditOperator, auditReason]);
 
   const renderHeaderKpi = (label: string, value: number | string, tone: 'ok' | 'warn' | 'error' = 'ok', helper?: string) => {
-    const style =
-      tone === 'error'
-        ? 'border-destructive/30 text-destructive'
-        : tone === 'warn'
-          ? 'border-amber-400/40 text-amber-200'
-          : 'border-emerald-400/40 text-emerald-300';
+    const styles = {
+      error: 'border-rose-500/60 bg-rose-500/15 text-rose-400',
+      warn: 'border-amber-500/60 bg-amber-500/15 text-amber-300',
+      ok: 'border-emerald-500/60 bg-emerald-500/15 text-emerald-400',
+    };
     return (
-      <div className="rounded-xl border bg-background/60 px-3 py-2 shadow-sm">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-foreground/60">{label}</p>
-        <div className="mt-1 flex items-center gap-2">
-          <span className={`text-lg font-semibold ${style}`}>{value}</span>
-          {helper ? <span className="text-[11px] text-foreground/50">{helper}</span> : null}
+      <div className={`rounded-xl border px-4 py-3 shadow-md ${styles[tone]}`}>
+        <p className="text-[10px] uppercase tracking-[0.18em] opacity-70">{label}</p>
+        <div className="mt-1 flex items-baseline gap-2">
+          <span className="text-2xl font-bold tabular-nums">{value}</span>
+          {helper ? <span className="text-[10px] opacity-60">{helper}</span> : null}
         </div>
       </div>
     );
@@ -189,28 +188,25 @@ export function ProcesosPage() {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/50 bg-surface/80 px-4 py-3 shadow-[0_10px_50px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-        <div className="space-y-1">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-foreground/60">Mission Control · Procesos</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-lg font-semibold text-foreground">Procesos de WhatsApp · 360 Backoffice</h3>
-            <Badge variant="outline" className="flex items-center gap-1 text-[11px] border-accent/40 text-accent">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />
-              Live · 30s
-            </Badge>
-            <Badge variant="outline" className="flex items-center gap-1 text-[11px]">
-              <Link2 size={12} /> Banking API map
+      <header className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-border/40 bg-gradient-to-br from-card/95 to-card/80 px-5 py-4 shadow-xl backdrop-blur-xl">
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase tracking-[0.25em] text-foreground/50">Mission Control · Procesos</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="text-xl font-bold text-foreground">Procesos WhatsApp</h3>
+            <Badge variant="outline" className="flex items-center gap-1.5 border-emerald-500/50 bg-emerald-500/10 text-xs text-emerald-400">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+              Live
             </Badge>
           </div>
-          <p className="text-xs text-foreground/60">Flujos de apertura/crédito con estado, intentos y timeline bancario/verificación.</p>
+          <p className="text-xs text-foreground/50">Flujos de apertura con estado y timeline bancario.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           {renderHeaderKpi('Ativos', kpis.active, 'ok')}
           {renderHeaderKpi('Erros', kpis.errors, kpis.errors ? 'error' : 'ok')}
           {renderHeaderKpi('Retry', kpis.retry, kpis.retry ? 'warn' : 'ok')}
           {renderHeaderKpi('Total', kpis.total, 'ok')}
-          <Button variant="ghost" size="icon" onClick={() => listQuery.refetch()}>
-            <RefreshCw size={16} />
+          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => listQuery.refetch()}>
+            <RefreshCw size={18} />
           </Button>
         </div>
       </header>
@@ -255,87 +251,81 @@ export function ProcesosPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
-        <Card className="glass border-border/60 bg-surface/90 text-foreground">
-          <CardHeader className="flex flex-wrap items-center justify-between gap-2 pb-3">
-            <CardTitle className="text-sm font-semibold">Procesos en tiempo real</CardTitle>
-            <Badge variant="outline" className="flex items-center gap-1 text-[11px] border-border/60 text-foreground/70">
-              <Activity size={14} /> Auto-refresh 30s
+        <Card className="border-border/40 bg-card/80 backdrop-blur-sm">
+          <CardHeader className="flex flex-wrap items-center justify-between gap-2 pb-4">
+            <CardTitle className="text-base font-semibold">Procesos en tiempo real</CardTitle>
+            <Badge variant="outline" className="flex items-center gap-1.5 border-accent/40 bg-accent/10 text-xs text-accent">
+              <Activity size={14} /> Auto 30s
             </Badge>
           </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <CardContent className="grid gap-4 sm:grid-cols-2">
             {listQuery.isLoading
-              ? Array.from({ length: 6 }).map((_, idx) => <Skeleton key={idx} className="h-40 w-full bg-foreground/10" />)
+              ? Array.from({ length: 6 }).map((_, idx) => <Skeleton key={idx} className="h-48 w-full rounded-2xl bg-foreground/10" />)
               : cards.map((card) => (
                   <article
                     key={card.id}
-                    className="group relative flex h-full cursor-pointer flex-col gap-3 rounded-xl border border-border/50 bg-background/70 p-4 shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-[0_16px_40px_rgba(93,163,255,0.25)]"
+                    className="group relative flex h-full cursor-pointer flex-col gap-4 rounded-2xl border border-border/40 bg-gradient-to-br from-background/90 to-background/70 p-5 shadow-lg transition-all hover:-translate-y-1 hover:border-accent/40 hover:shadow-xl hover:shadow-accent/10"
                     onClick={() => setSelectedId(card.id)}
                   >
-                    <header className="flex items-start justify-between gap-2">
-                      <div className="space-y-1">
-                        <p className="text-[11px] uppercase tracking-[0.12em] text-foreground/60" title={card.rawId}>
+                    <header className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[10px] uppercase tracking-widest text-foreground/50" title={card.rawId}>
                           {shortId(card.rawId)}
                         </p>
-                        <h4 className="text-sm font-semibold text-foreground">{card.title}</h4>
+                        <h4 className="mt-1 truncate text-base font-semibold text-foreground">{card.title}</h4>
                       </div>
-                      <span className={`rounded-full px-2 py-1 text-[11px] ${toneBadge(card.statusDisplay.tone)}`}>{card.statusDisplay.label}</span>
+                      <span className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${toneBadge(card.statusDisplay.tone)}`}>
+                        {card.statusDisplay.label}
+                      </span>
                     </header>
-                    <section className="grid grid-cols-2 gap-2 text-xs text-foreground/70">
-                      <span className="flex items-center gap-2">
-                        <Phone size={12} /> {maskPhone(card.phone)}
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <BadgeCheck size={12} /> Verif: {card.verificationDisplay.label}
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <Database size={12} /> Banco: {card.bankingDisplay.label}
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <Clock4 size={12} /> {card.updated ? `${formatDate(card.updated)} · ${formatRelative(card.updated)}` : 'Sin datos'}
-                      </span>
-                    </section>
-                    <section className="flex items-center gap-3 text-[11px] text-foreground/60">
-                      {card.attempts !== undefined ? (
-                        <span className="flex items-center gap-1 rounded-full bg-foreground/10 px-2 py-1">
-                          <ShieldCheck size={12} /> Intentos: {card.attempts}
-                        </span>
-                      ) : null}
-                      {card.events !== undefined ? (
-                        <span className="flex items-center gap-1 rounded-full bg-foreground/10 px-2 py-1">
-                          <Activity size={12} /> Eventos: {card.events}
-                        </span>
-                      ) : null}
+                    <section className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="flex items-center gap-2 text-foreground/70">
+                        <Phone size={14} className="shrink-0 text-accent/70" />
+                        <span className="truncate font-mono">{maskPhone(card.phone)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-foreground/70">
+                        <BadgeCheck size={14} className="shrink-0 text-emerald-400/70" />
+                        <span className="truncate">{card.verificationDisplay.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-foreground/70">
+                        <Database size={14} className="shrink-0 text-amber-400/70" />
+                        <span className="truncate">{card.bankingDisplay.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-foreground/70">
+                        <Clock4 size={14} className="shrink-0 text-foreground/50" />
+                        <span className="truncate">{card.updated ? formatRelative(card.updated) : '—'}</span>
+                      </div>
                     </section>
                     {card.lastError ? (
-                      <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
-                        {card.lastError.slice(0, 140)}
+                      <p className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+                        {card.lastError.slice(0, 100)}
                       </p>
                     ) : (
-                      <p className="rounded-lg border border-border/40 bg-background/60 px-3 py-2 text-[11px] text-foreground/70">Flujo operacional OK.</p>
+                      <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300/80">
+                        Flujo OK
+                      </p>
                     )}
-                    <footer className="flex items-center justify-between gap-2 pt-1">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs"
-                          disabled={retryMutation.isPending}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!confirmDanger('Recolocar en retry?')) return;
-                            retryMutation.mutate(
-                              { ...auditFields },
-                              { onError: (er) => onActionError('Fallo al retry', er), onSuccess: () => toast({ title: 'Retry enviado', description: 'Worker actualizado.' }) },
-                            );
-                          }}
-                        >
-                          <Repeat2 size={14} className="mr-1" /> Retry
-                        </Button>
-                      </div>
+                    <footer className="mt-auto flex items-center justify-between gap-3 border-t border-border/30 pt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1.5 text-xs"
+                        disabled={retryMutation.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!confirmDanger('Recolocar en retry?')) return;
+                          retryMutation.mutate(
+                            { ...auditFields },
+                            { onError: (er) => onActionError('Fallo al retry', er), onSuccess: () => toast({ title: 'Retry enviado', description: 'Worker actualizado.' }) },
+                          );
+                        }}
+                      >
+                        <Repeat2 size={14} /> Retry
+                      </Button>
                       <Button
                         variant="secondary"
                         size="sm"
-                        className="text-xs"
+                        className="h-8 gap-1.5 text-xs"
                         disabled={rerunMutation.isPending}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -346,7 +336,7 @@ export function ProcesosPage() {
                           );
                         }}
                       >
-                        <Sparkles size={14} className="mr-1" /> Rerun
+                        <Sparkles size={14} /> Rerun
                       </Button>
                     </footer>
                   </article>
@@ -360,32 +350,29 @@ export function ProcesosPage() {
           </CardContent>
         </Card>
 
-        <Card className="glass border-border/60 bg-surface/90 text-foreground">
-          <CardHeader className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <ArrowRight size={14} /> Acciones rápidas
+        <Card className="border-border/40 bg-card/80 backdrop-blur-sm">
+          <CardHeader className="flex items-center justify-between pb-4">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <ArrowRight size={16} /> Acciones rápidas
             </CardTitle>
-            <Badge variant="outline" className="text-[11px] border-border/60 text-foreground/70">
-              Auditoría + Dry run seguro
-            </Badge>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm text-foreground/70">
-            <section className="rounded-lg border border-border/50 bg-background/70 p-3">
-              <p className="font-medium text-foreground">Forzar estado</p>
-              <p className="text-xs text-foreground/60">Usar tras corregir manualmente; pide motivo y operador.</p>
-              <div className="mt-2 flex flex-wrap gap-2">
+          <CardContent className="space-y-4">
+            <section className="rounded-xl border border-border/40 bg-background/60 p-4">
+              <p className="font-semibold text-foreground">Forzar estado</p>
+              <p className="mt-1 text-xs text-foreground/50">Seleccione un proceso primero.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
                 {[
-                  { value: 'ready_for_bank', label: 'Listo para banco' },
-                  { value: 'bank_processing', label: 'Proceso bancario' },
-                  { value: 'bank_retry', label: 'Reintento banco' },
-                  { value: 'bank_rejected', label: 'Rechazado banco' },
-                  { value: 'account_created', label: 'Cuenta creada' },
+                  { value: 'ready_for_bank', label: 'Listo banco' },
+                  { value: 'bank_processing', label: 'Procesando' },
+                  { value: 'bank_retry', label: 'Reintento' },
+                  { value: 'bank_rejected', label: 'Rechazado' },
+                  { value: 'account_created', label: 'Creada' },
                 ].map((s) => (
                   <Button
                     key={s.value}
                     variant="outline"
                     size="sm"
-                    className="text-[11px]"
+                    className="h-8 text-xs"
                     disabled={!selectedId || statusMutation.isPending}
                     onClick={() => {
                       if (!confirmDanger(`Forzar estado "${s.label}"?`)) return;
@@ -400,8 +387,8 @@ export function ProcesosPage() {
                 ))}
               </div>
             </section>
-            <p className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-xs text-foreground/60">
-              Retry para reintentar el worker; Rerun para rehacer eventos completos. Usa con auditaría activa.
+            <p className="rounded-xl border border-border/30 bg-background/50 px-4 py-3 text-xs text-foreground/50">
+              Retry reintentar worker. Rerun rehacer eventos.
             </p>
           </CardContent>
         </Card>

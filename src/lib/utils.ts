@@ -32,12 +32,12 @@ export const mapStatusDisplay = (status?: string): StatusDisplay => {
 
 export const toneBadge = (tone: StatusTone) =>
   tone === 'error'
-    ? 'bg-destructive/15 text-destructive'
+    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
     : tone === 'warn'
-      ? 'bg-amber-500/15 text-amber-200'
+      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
       : tone === 'ok'
-        ? 'bg-emerald-500/15 text-emerald-200'
-        : 'bg-foreground/10 text-foreground/70'
+        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+        : 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
 
 export const toneDot = (tone: StatusTone) =>
   tone === 'error' ? 'bg-destructive' : tone === 'warn' ? 'bg-amber-300' : tone === 'ok' ? 'bg-emerald-300' : 'bg-foreground/40'
