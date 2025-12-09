@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  AlertTriangle,
   BadgeCheck,
   Building2,
-  CheckCircle2,
   ClipboardCopy,
   Clock4,
   Database,
@@ -45,6 +43,32 @@ import type { Account } from '@/types/account';
 
 const confirmDanger = (message: string) => window.confirm(message || '¿Continuar?');
 
+// Extracts error payload from API errors for inline display in bank step rows
+const extractBankStepErrorPayload = (error: unknown): unknown => {
+  // Handle structured BankError type (502 with BANK_ERROR code)
+  if (isBankError(error)) {
+    return {
+      status: 'error',
+      step: error.step,
+      error: error.detail.error_message,
+      correlation_id: error.correlationId,
+      can_retry: error.canRetry,
+      finished_at: error.detail.finished_at,
+    };
+  }
+  
+  // Handle generic errors with payload attached by api.ts
+  const e = error as { payload?: unknown };
+  if (e?.payload) return e.payload;
+  
+  // Fallback: create error object from Error message
+  if (error instanceof Error) {
+    return { status: 'error', error: error.message, step: 'unknown' };
+  }
+  
+  return { status: 'error', error: 'Error desconocido', step: 'unknown' };
+};
+
 export function ProcesosPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState('');
@@ -55,7 +79,7 @@ export function ProcesosPage() {
   const auditOperator = 'operador.demo@carla';
 
   const COOLDOWN_KEY = 'carla_banking_cooldowns';
-  const COOLDOWN_DURATION = 300;
+  const COOLDOWN_DURATION = 10;
   const [cooldowns, setCooldowns] = useState<Record<string, number>>(() => {
     try {
       const stored = localStorage.getItem(COOLDOWN_KEY);
@@ -126,28 +150,20 @@ export function ProcesosPage() {
     return { total, active, errors, retry };
   }, [processes]);
 
-  const [lastBankError, setLastBankError] = useState<{
-    step: string;
-    message: string;
-    canRetry: boolean;
-    correlationId: string;
-  } | null>(null);
+  // Local state to track manually triggered bank step results (success OR error)
+  const [localBankResults, setLocalBankResults] = useState<Record<string, { data: unknown; isError: boolean }>>({});
 
+  // Clear local bank results when switching to a different process
+  useEffect(() => {
+    setLocalBankResults({});
+  }, [selectedId]);
+
+  const saveBankStepResult = useCallback((stepKey: string, data: unknown, isError: boolean) => {
+    setLocalBankResults((prev) => ({ ...prev, [stepKey]: { data, isError } }));
+  }, []);
+
+  // Generic error handler for non-bank-step actions (still uses toast)
   const onActionError = useCallback((message: string, error?: unknown) => {
-    if (isBankError(error)) {
-      setLastBankError({
-        step: error.step,
-        message: error.detail.error_message,
-        canRetry: error.canRetry,
-        correlationId: error.correlationId,
-      });
-      toast({
-        variant: 'destructive',
-        title: '¡Ups! El banco respondió con un error',
-        description: error.detail.error_message.slice(0, 120),
-      });
-      return;
-    }
     toast({ variant: 'destructive', title: message, description: error instanceof Error ? error.message : 'Intente de nuevo.' });
   }, [toast]);
 
@@ -593,11 +609,6 @@ export function ProcesosPage() {
                           const text = typeof raw === 'string' ? raw.toLowerCase() : '';
                           return text.includes('200') || text === 'ok' || text === 'created' || text.includes('201');
                         };
-                        const resolveStatus = (finishedAt?: string | null, resp?: unknown) => {
-                          if (isSuccessResponse(resp) || finishedAt) return { tone: 'ok', label: `OK${finishedAt ? ` · ${formatDate(finishedAt)}` : ''}`, done: true };
-                          if (resp) return { tone: 'error', label: 'Fallo', done: false };
-                          return { tone: 'warn', label: 'Pendiente', done: false };
-                        };
                         const formatBirthDate = (date?: string | null) => {
                           if (!date) return '';
                           const digits = date.replace(/\D/g, '').slice(0, 8);
@@ -605,59 +616,18 @@ export function ProcesosPage() {
                         };
 
                         const endpointRows = [
-                          { key: 'blacklist', label: 'Blacklist', finishedAt: account.bank_blacklist_finished_at, resp: account.bank_blacklist_response, action: () => bridgeBlacklist.mutate({ process_id: selectedId, dpi: account.document_number, C75000: account.document_type || '11', C75016: `D${(account.document_number || '').replace(/^D/i, '')}`, C75804: '', C75020: '', C75503: account.document_country || 'GT', C75043: account.document_country || 'GT', C75084: formatBirthDate(account.birth_date) }, { onError: (e) => onActionError('Blacklist falló', e) }), pending: bridgeBlacklist.isPending, needsClient: false },
-                          { key: 'onboarding', label: 'Onboarding', finishedAt: account.bank_onboarding_finished_at, resp: account.bank_onboarding_response, action: () => bridgeUpdateOnboarding.mutate({ clientId: bankClientId ?? '', body: { account_opening_id: detailQuery.data?.account_opening_id || selectedId, email: account.email, phone: phoneForBank, full_name: account.full_name } }, { onError: (e) => onActionError('Onboarding falló', e) }), pending: bridgeUpdateOnboarding.isPending, needsClient: true },
-                          { key: 'account', label: 'Cuenta', finishedAt: account.bank_account_finished_at, resp: account.bank_account_response, action: () => bridgeCreateAccount.mutate({ clientId: bankClientId ?? '', body: { currency: account.account_currency, product: account.product_type, phone: phoneForBank } }, { onError: (e) => onActionError('Cuenta falló', e) }), pending: bridgeCreateAccount.isPending, needsClient: true },
-                          { key: 'complementary', label: 'Complementary', finishedAt: account.bank_complementary_finished_at, resp: account.bank_complementary_response, action: () => bridgeComplementaryCreate.mutate({ clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, { onError: (e) => onActionError('Complementary falló', e) }), pending: bridgeComplementaryCreate.isPending, needsClient: true },
-                          { key: 'complement_query', label: 'Query', finishedAt: account.bank_complement_query_finished_at, resp: account.bank_complement_query_response, action: () => bridgeQueryComplement.mutate(bankClientId ?? '', { onError: (e) => onActionError('Query falló', e) }), pending: bridgeQueryComplement.isPending, needsClient: true },
-                          { key: 'complement_update', label: 'Update', finishedAt: account.bank_complementary_update_finished_at, resp: account.bank_complementary_update_response, action: () => bridgeUpdateComplementary.mutate({ clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, { onError: (e) => onActionError('Update falló', e) }), pending: bridgeUpdateComplementary.isPending, needsClient: true },
-                          { key: 'cliente', label: 'Consulta', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => bridgeMicoopeClient.mutate(bankClientId ?? '', { onError: (e) => onActionError('Consulta falló', e) }), pending: bridgeMicoopeClient.isPending, needsClient: true },
-                          { key: 'crear_cliente', label: 'Crear', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => bridgeCreateIndividual.mutate({ clientId: bankClientId ?? '', document_number: account.document_number, full_name: account.full_name, phone: phoneForBank } as never, { onError: (e) => onActionError('Crear falló', e) }), pending: bridgeCreateIndividual.isPending, needsClient: true },
+                          { key: 'blacklist', label: 'Blacklist', finishedAt: account.bank_blacklist_finished_at, resp: account.bank_blacklist_response, action: () => bridgeBlacklist.mutate({ process_id: selectedId, dpi: account.document_number, C75000: account.document_type || '11', C75016: `D${(account.document_number || '').replace(/^D/i, '')}`, C75804: '', C75020: '', C75503: account.document_country || 'GT', C75043: account.document_country || 'GT', C75084: formatBirthDate(account.birth_date) }, { onSuccess: (data) => saveBankStepResult('blacklist', data, false), onError: (e) => saveBankStepResult('blacklist', extractBankStepErrorPayload(e), true) }), pending: bridgeBlacklist.isPending, needsClient: false },
+                          { key: 'onboarding', label: 'Onboarding', finishedAt: account.bank_onboarding_finished_at, resp: account.bank_onboarding_response, action: () => bridgeUpdateOnboarding.mutate({ clientId: bankClientId ?? '', body: { account_opening_id: detailQuery.data?.account_opening_id || selectedId, email: account.email, phone: phoneForBank, full_name: account.full_name } }, { onSuccess: (data) => saveBankStepResult('onboarding', data, false), onError: (e) => saveBankStepResult('onboarding', extractBankStepErrorPayload(e), true) }), pending: bridgeUpdateOnboarding.isPending, needsClient: true },
+                          { key: 'account', label: 'Cuenta', finishedAt: account.bank_account_finished_at, resp: account.bank_account_response, action: () => bridgeCreateAccount.mutate({ clientId: bankClientId ?? '', body: { currency: account.account_currency, product: account.product_type, phone: phoneForBank } }, { onSuccess: (data) => saveBankStepResult('account', data, false), onError: (e) => saveBankStepResult('account', extractBankStepErrorPayload(e), true) }), pending: bridgeCreateAccount.isPending, needsClient: true },
+                          { key: 'complementary', label: 'Complementary', finishedAt: account.bank_complementary_finished_at, resp: account.bank_complementary_response, action: () => bridgeComplementaryCreate.mutate({ clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, { onSuccess: (data) => saveBankStepResult('complementary', data, false), onError: (e) => saveBankStepResult('complementary', extractBankStepErrorPayload(e), true) }), pending: bridgeComplementaryCreate.isPending, needsClient: true },
+                          { key: 'complement_query', label: 'Query', finishedAt: account.bank_complement_query_finished_at, resp: account.bank_complement_query_response, action: () => bridgeQueryComplement.mutate(bankClientId ?? '', { onSuccess: (data) => saveBankStepResult('complement_query', data, false), onError: (e) => saveBankStepResult('complement_query', extractBankStepErrorPayload(e), true) }), pending: bridgeQueryComplement.isPending, needsClient: true },
+                          { key: 'complement_update', label: 'Update', finishedAt: account.bank_complementary_update_finished_at, resp: account.bank_complementary_update_response, action: () => bridgeUpdateComplementary.mutate({ clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, { onSuccess: (data) => saveBankStepResult('complement_update', data, false), onError: (e) => saveBankStepResult('complement_update', extractBankStepErrorPayload(e), true) }), pending: bridgeUpdateComplementary.isPending, needsClient: true },
+                          { key: 'cliente', label: 'Consulta', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => bridgeMicoopeClient.mutate(bankClientId ?? '', { onSuccess: (data) => saveBankStepResult('cliente', data, false), onError: (e) => saveBankStepResult('cliente', extractBankStepErrorPayload(e), true) }), pending: bridgeMicoopeClient.isPending, needsClient: true },
+                          { key: 'crear_cliente', label: 'Crear', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => bridgeCreateIndividual.mutate({ clientId: bankClientId ?? '', document_number: account.document_number, full_name: account.full_name, phone: phoneForBank } as never, { onSuccess: (data) => saveBankStepResult('crear_cliente', data, false), onError: (e) => saveBankStepResult('crear_cliente', extractBankStepErrorPayload(e), true) }), pending: bridgeCreateIndividual.isPending, needsClient: true },
                         ];
 
                         return (
                           <div className="space-y-4">
-                            {/* Friendly Bank Error Banner */}
-                            {lastBankError && (
-                              <div className="rounded-2xl bg-gradient-to-r from-red-500/10 via-orange-500/5 to-amber-500/10 border border-red-500/30 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <div className="flex items-start gap-3">
-                                  <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
-                                    <AlertTriangle className="w-5 h-5 text-red-500" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <h4 className="font-semibold text-red-700 dark:text-red-300">El banco respondió con un error</h4>
-                                      <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-[10px] font-mono text-red-600 dark:text-red-400 uppercase">
-                                        {lastBankError.step}
-                                      </span>
-                                    </div>
-                                    <p className="text-sm text-red-600/90 dark:text-red-300/80 leading-relaxed">
-                                      {lastBankError.message}
-                                    </p>
-                                    <div className="flex items-center gap-4 mt-3">
-                                      {lastBankError.canRetry && (
-                                        <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-                                          <CheckCircle2 size={12} />
-                                          Puede reintentar
-                                        </span>
-                                      )}
-                                      <span className="text-[10px] font-mono text-muted-foreground">
-                                        ID: {lastBankError.correlationId.slice(0, 8)}...
-                                      </span>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-                                        onClick={() => setLastBankError(null)}
-                                      >
-                                        Cerrar
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
                             {/* Header - Clean */}
                             <div className="flex items-center justify-between mb-4">
                               <div className="space-y-0.5">
@@ -671,7 +641,20 @@ export function ProcesosPage() {
                             {/* Minimal Accordion */}
                             <div className="space-y-px rounded-xl overflow-hidden border border-slate-200/60 dark:border-slate-800/60">
                               {endpointRows.map((ep, idx) => {
-                                const st = resolveStatus(ep.finishedAt, ep.resp);
+                                // Merge local result with server response (local takes priority for just-triggered actions)
+                                const localResult = localBankResults[ep.key];
+                                const effectiveResp = localResult?.data ?? ep.resp;
+                                const isLocalError = localResult?.isError ?? false;
+
+                                // Updated status resolution that accounts for local error results
+                                const resolveStatusWithLocal = () => {
+                                  if (isLocalError && effectiveResp) return { tone: 'error', label: 'ERROR', done: false };
+                                  if (isSuccessResponse(effectiveResp) || ep.finishedAt) return { tone: 'ok', label: `OK${ep.finishedAt ? ` · ${formatDate(ep.finishedAt)}` : ''}`, done: true };
+                                  if (effectiveResp) return { tone: 'error', label: 'Fallo', done: false };
+                                  return { tone: 'warn', label: 'Pendiente', done: false };
+                                };
+
+                                const st = resolveStatusWithLocal();
                                 const isExpanded = activeResponseTab === ep.key;
                                 const cooldownKey = `${selectedId}_${ep.key}`;
                                 const cooldownRemaining = getCooldownRemaining(cooldownKey);
@@ -686,10 +669,11 @@ export function ProcesosPage() {
                                       onClick={() => setActiveResponseTab(isExpanded ? '' : ep.key)}
                                     >
                                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                        st.done ? 'bg-emerald-500' : st.tone === 'error' ? 'bg-red-400' : 'bg-slate-300 dark:bg-slate-600'
+                                        st.done ? 'bg-emerald-500' : st.tone === 'error' ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-600'
                                       }`} />
                                       <span className="text-xs font-medium text-slate-700 dark:text-slate-200 flex-1">{ep.label}</span>
                                       {st.done && <span className="text-[9px] text-slate-400 dark:text-slate-500 tabular-nums">{st.label}</span>}
+                                      {st.tone === 'error' && !st.done && <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-600 dark:text-red-400 font-medium">ERROR</span>}
                                       {ep.pending && <RefreshCw size={10} className="animate-spin text-slate-400" />}
                                       {isOnCooldown && <span className="text-[9px] font-mono text-amber-500/80">{formatCooldown(cooldownRemaining)}</span>}
                                       {canTrigger && (
@@ -706,19 +690,24 @@ export function ProcesosPage() {
                                     </button>
 
                                     {isExpanded && (
-                                      <div className="animate-in fade-in slide-in-from-top-1 duration-150 bg-slate-50/80 dark:bg-[#0a0d12]">
-                                        {ep.resp != null ? (
+                                      <div className={`animate-in fade-in slide-in-from-top-1 duration-150 ${isLocalError ? 'bg-red-50/80 dark:bg-red-950/20' : 'bg-slate-50/80 dark:bg-[#0a0d12]'}`}>
+                                        {effectiveResp != null ? (
                                           <div className="relative group">
+                                            {isLocalError && (
+                                              <div className="px-3 py-2 border-b border-red-200 dark:border-red-900/50 bg-red-100/50 dark:bg-red-900/30">
+                                                <span className="text-[10px] font-medium text-red-700 dark:text-red-300">⚠ Error response — el banco rechazó la solicitud</span>
+                                              </div>
+                                            )}
                                             <button
                                               type="button"
                                               className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded bg-white/80 dark:bg-slate-800/80 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                                              onClick={() => { navigator.clipboard.writeText(JSON.stringify(ep.resp, null, 2)); toast({ title: 'Copiado' }); }}
+                                              onClick={() => { navigator.clipboard.writeText(JSON.stringify(effectiveResp, null, 2)); toast({ title: 'Copiado' }); }}
                                             >
                                               <ClipboardCopy size={10} />
                                             </button>
                                             <pre className="max-h-56 overflow-auto p-3 text-[10px] leading-relaxed font-mono">
                                               <code>
-                                                {JSON.stringify(ep.resp, null, 2).split('\n').map((line, i) => {
+                                                {JSON.stringify(effectiveResp, null, 2).split('\n').map((line, i) => {
                                                   const highlighted = line
                                                     .replace(/^(\s*)("[\w_-]+")(:)/g, '$1<span class="text-fuchsia-600 dark:text-fuchsia-400">$2</span><span class="text-slate-400">$3</span>')
                                                     .replace(/: "(.*?)"/g, ': <span class="text-teal-600 dark:text-teal-400">"$1"</span>')
