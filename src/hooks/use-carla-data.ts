@@ -259,10 +259,14 @@ export const useProcessesAdmin = (filters: Partial<{ q: string; status: string; 
 
   return useQuery({
     queryKey: ['admin-processes', queryString],
-    queryFn: () => {
-      if (!API_URL) return Promise.resolve(sampleProcessesAdmin);
-      // Prefer real API data; only use samples when API_URL is absent.
-      return apiGet(`/admin/processes${queryString}`, processesAdminSchema, sampleProcessesAdmin);
+    queryFn: async () => {
+      if (!API_URL) return sampleProcessesAdmin;
+      try {
+        return await apiGet(`/admin/processes${queryString}`, processesAdminSchema, sampleProcessesAdmin);
+      } catch {
+        // Fallback to sample data when API fails
+        return sampleProcessesAdmin;
+      }
     },
     staleTime: 1000 * 30,
     refetchInterval: 30000,

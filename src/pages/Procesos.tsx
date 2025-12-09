@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  BadgeCheck,
   Building2,
   CheckCircle2,
   ClipboardCopy,
-  Clock4,
   Database,
   FileJson,
   Hash,
   Info,
   Loader2,
+  MessageCircle,
   Phone,
   RefreshCw,
   Repeat2,
@@ -18,9 +17,10 @@ import {
   ShieldCheck,
   Sparkles,
   User,
-  Zap,
+  CircleDot,
+  ArrowRight,
 } from 'lucide-react';
-import { API_URL, isBankError } from '@/lib/api';
+import { isBankError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,7 +42,7 @@ import {
   useBridgeQueryComplementClient,
 } from '@/hooks/use-carla-data';
 import { useToast } from '@/hooks/use-toast';
-import { formatDate, formatPhone, formatRelative, mapStatusDisplay, normalizeAccountForUi, shortId, toneBadge } from '@/lib/utils';
+import { formatDate, formatPhone, formatRelative, mapStatusDisplay, normalizeAccountForUi, shortId } from '@/lib/utils';
 import type { Account } from '@/types/account';
 
 const confirmDanger = (message: string) => window.confirm(message || '¿Continuar?');
@@ -50,12 +50,40 @@ const confirmDanger = (message: string) => window.confirm(message || '¿Continua
 type FilterStatus = '' | 'ready_for_bank' | 'bank_processing' | 'bank_retry' | 'bank_rejected';
 
 const STATUS_FILTERS: { value: FilterStatus; label: string; icon: React.ReactNode }[] = [
-  { value: '', label: 'Todos', icon: null },
-  { value: 'ready_for_bank', label: 'Listo', icon: <CheckCircle2 size={12} className="text-emerald-500" /> },
-  { value: 'bank_processing', label: 'Procesando', icon: <Loader2 size={12} className="text-amber-500" /> },
-  { value: 'bank_retry', label: 'Retry', icon: <Repeat2 size={12} className="text-orange-500" /> },
-  { value: 'bank_rejected', label: 'Rechazado', icon: <AlertTriangle size={12} className="text-red-500" /> },
+  { value: '', label: 'Todos', icon: <CircleDot size={12} /> },
+  { value: 'ready_for_bank', label: 'Listo', icon: <CheckCircle2 size={12} /> },
+  { value: 'bank_processing', label: 'En proceso', icon: <Loader2 size={12} /> },
+  { value: 'bank_retry', label: 'Retry', icon: <Repeat2 size={12} /> },
+  { value: 'bank_rejected', label: 'Rechazado', icon: <AlertTriangle size={12} /> },
 ];
+
+const STATUS_COLORS: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+  ok: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', dot: 'bg-emerald-500' },
+  warn: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', dot: 'bg-amber-500' },
+  error: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20', dot: 'bg-red-500' },
+  info: { bg: 'bg-sky-500/10', text: 'text-sky-400', border: 'border-sky-500/20', dot: 'bg-sky-500' },
+};
+
+const getInitials = (name: string) => {
+  if (!name || name.startsWith('#') || name.startsWith('+')) return '?';
+  const parts = name.split(' ').filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+};
+
+const AVATAR_COLORS = [
+  'from-violet-500 to-purple-600',
+  'from-cyan-500 to-blue-600',
+  'from-emerald-500 to-teal-600',
+  'from-orange-500 to-red-600',
+  'from-pink-500 to-rose-600',
+  'from-indigo-500 to-blue-600',
+];
+
+const getAvatarColor = (id: string) => {
+  const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+};
 
 export function ProcesosPage() {
   const { toast } = useToast();
@@ -127,8 +155,6 @@ export function ProcesosPage() {
   const bridgeQueryComplement = useBridgeQueryComplementClient(selectedId);
 
   const processes = listQuery.data || [];
-  const resolvedBaseUrl = API_URL;
-  const resolvedToken = (import.meta.env.VITE_API_TOKEN || import.meta.env.VITE_CARLA_SERVICIOS_API_KEY || import.meta.env.VITE_CHANNELS_API_KEY || '').trim();
 
   const kpis = useMemo(() => {
     const total = processes.length;
@@ -162,30 +188,28 @@ export function ProcesosPage() {
     const rootPhone = (p as { whatsapp_phone_e164?: string | null }).whatsapp_phone_e164 ?? undefined;
     const phoneVal = rootPhone || (p.phone ?? undefined);
     const normalized = normalizeAccountForUi(account, { id: p.id, phone: phoneVal, name: p.name ?? undefined });
-    const displayName = normalized.fullName || normalized.displayName || p.name || 'Sin nombre';
     const statusDisplay = mapStatusDisplay(p.status ?? p.banking_status ?? undefined);
     const verificationDisplay = mapStatusDisplay(p.verification_status ?? undefined);
     const bankingDisplay = mapStatusDisplay(p.banking_status ?? undefined);
     
     // Get document info
-    const docType = account?.document_type || '—';
-    const docNumber = account?.document_number || '—';
-    const product = account?.product_type || p.product_type || '—';
-    const channel = account?.channel || '—';
-    const institution = account?.institution_name || '—';
+    const docType = account?.document_type || '';
+    const docNumber = account?.document_number || '';
+    const product = account?.product_type || p.product_type || '';
+    
+    // Build display name - NEVER use phone as title (avoid duplicated data)
+    const realName = normalized.fullName || p.name || account?.full_name;
+    const title = realName || (docNumber ? `${docType || 'Doc'} ${docNumber}` : `#${shortId(p.id)}`);
     
     return {
       id: p.id,
-      title: displayName,
-      rawId: p.id,
+      title,
       statusDisplay,
-      phone: normalized.mainPhone || phoneVal,
       phoneFormatted: formatPhone(normalized.mainPhone || phoneVal),
+      hasPhone: Boolean(normalized.mainPhone || phoneVal),
       docType,
       docNumber,
       product,
-      channel,
-      institution,
       attempts: p.attempts ?? 0,
       events: p.events_count ?? 0,
       lastError: p.last_error,
@@ -199,172 +223,171 @@ export function ProcesosPage() {
   const auditFields = useMemo(() => ({ operator: auditOperator || undefined, reason: auditReason || undefined }), []);
 
   return (
-    <div className="space-y-5">
-      {/* Compact Header */}
-      <header className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-border/40">
+    <div className="space-y-4">
+      {/* Header */}
+      <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center">
-            <Zap className="w-5 h-5 text-accent" />
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <MessageCircle className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="font-display text-2xl text-foreground tracking-tight">Procesos</h1>
+            <h1 className="font-semibold text-xl text-foreground">Procesos</h1>
             <p className="text-xs text-muted-foreground">
-              {listQuery.isLoading ? 'Cargando...' : `${processes.length} procesos`}
-              {listQuery.isFetching && !listQuery.isLoading && ' · Actualizando...'}
+              {listQuery.isLoading ? 'Cargando...' : `${processes.length} conversaciones activas`}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-500">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Live
-          </span>
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => listQuery.refetch()} disabled={listQuery.isFetching}>
+          </div>
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={() => listQuery.refetch()} disabled={listQuery.isFetching}>
             <RefreshCw size={16} className={listQuery.isFetching ? 'animate-spin' : ''} />
           </Button>
         </div>
       </header>
 
-      {/* KPIs Row */}
-      <div className="grid grid-cols-4 gap-3">
+      {/* Stats Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
         {[
-          { label: 'Activos', value: kpis.active, color: 'text-emerald-600 dark:text-emerald-400' },
-          { label: 'Errores', value: kpis.errors, color: kpis.errors ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground' },
-          { label: 'Retry', value: kpis.retry, color: kpis.retry ? 'text-orange-600 dark:text-orange-400' : 'text-muted-foreground' },
-          { label: 'Total', value: kpis.total, color: 'text-foreground' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/30 border border-border/40">
-            <span className={`font-display text-2xl ${kpi.color}`}>{kpi.value}</span>
-            <span className="text-xs text-muted-foreground uppercase tracking-wide">{kpi.label}</span>
+          { label: 'Activos', value: kpis.active, color: 'emerald' },
+          { label: 'Errores', value: kpis.errors, color: 'red' },
+          { label: 'Retry', value: kpis.retry, color: 'amber' },
+          { label: 'Total', value: kpis.total, color: 'slate' },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl ${
+              stat.color === 'emerald' ? 'bg-emerald-500/10 text-emerald-500' :
+              stat.color === 'red' ? 'bg-red-500/10 text-red-500' :
+              stat.color === 'amber' ? 'bg-amber-500/10 text-amber-500' :
+              'bg-muted/50 text-foreground'
+            }`}
+          >
+            <span className="font-bold text-lg tabular-nums">{stat.value}</span>
+            <span className="text-xs opacity-80">{stat.label}</span>
           </div>
         ))}
       </div>
 
-      {(!resolvedBaseUrl || !resolvedToken) && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 dark:bg-amber-500/10 px-4 py-3">
-          <p className="text-sm font-medium text-amber-700 dark:text-amber-200">Configuración de entorno faltante</p>
-          <p className="text-xs text-amber-600 dark:text-amber-300/80 mt-0.5">
-            Defina `VITE_API_URL` y token API para cargar datos reales.
-          </p>
-        </div>
-      )}
-
-      {/* Search & Filters - Single Row */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[280px] max-w-md">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+      {/* Search + Filter Bar */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
           <Input
-            placeholder="Buscar por teléfono, nombre, ID..."
+            placeholder="Buscar conversación..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-10"
+            className="pl-10 h-11 bg-muted/30 border-0 rounded-xl focus-visible:ring-1 focus-visible:ring-emerald-500/50"
             id="process-search"
             name="process-search"
           />
         </div>
-        <div className="flex items-center rounded-lg border border-border/50 bg-muted/20 p-0.5">
-          {STATUS_FILTERS.map((item) => (
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-1 p-1 bg-muted/30 rounded-xl w-fit">
+        {STATUS_FILTERS.map((item) => {
+          const isActive = status === item.value;
+          return (
             <button
               key={item.value || 'all'}
               onClick={() => setStatus(item.value)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                status === item.value
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                isActive
                   ? 'bg-background shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
               }`}
             >
-              {item.icon}
+              <span className={isActive ? 'text-emerald-500' : ''}>{item.icon}</span>
               {item.label}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      {/* Process Cards Grid */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Conversation List - WhatsApp Style */}
+      <div className="rounded-2xl bg-card/50 border border-border/30 overflow-hidden divide-y divide-border/20">
         {listQuery.isLoading
-          ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)
-          : cards.map((card) => (
-              <article
-                key={card.id}
-                className="group relative flex flex-col gap-2.5 p-4 rounded-xl bg-card border border-border/50 hover:border-accent/40 transition-all cursor-pointer hover:shadow-md"
-                onClick={() => setSelectedId(card.id)}
-              >
-                {/* Top: Name + Status */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h4 className="text-sm font-semibold text-foreground truncate">{card.title}</h4>
-                    <p className="text-[11px] text-muted-foreground font-mono truncate">{card.docType} {card.docNumber}</p>
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-4">
+                <Skeleton className="w-12 h-12 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-3 w-2/3" />
+                </div>
+              </div>
+            ))
+          : cards.map((card) => {
+              const colors = STATUS_COLORS[card.statusDisplay.tone] || STATUS_COLORS.info;
+              return (
+                <article
+                  key={card.id}
+                  className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors cursor-pointer group"
+                  onClick={() => setSelectedId(card.id)}
+                >
+                  {/* Avatar */}
+                  <div className={`relative w-12 h-12 rounded-full bg-gradient-to-br ${getAvatarColor(card.id)} flex items-center justify-center text-white font-semibold text-sm shadow-lg`}>
+                    {getInitials(card.title)}
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full ${colors.dot} border-2 border-card`} />
                   </div>
-                  <span className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-medium ${toneBadge(card.statusDisplay.tone)}`}>
-                    {card.statusDisplay.label}
-                  </span>
-                </div>
 
-                {/* Phone + Product */}
-                <div className="flex items-center gap-4 text-xs">
-                  <span className="flex items-center gap-1.5 text-foreground">
-                    <Phone size={12} className="text-accent/70" />
-                    <span className="font-mono">{card.phoneFormatted}</span>
-                  </span>
-                  <span className="text-muted-foreground truncate">{card.product}</span>
-                </div>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    {/* Top row: Name + Time */}
+                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                      <h4 className="font-semibold text-sm text-foreground truncate">{card.title}</h4>
+                      <span className="text-[11px] text-muted-foreground shrink-0">
+                        {card.updated ? formatRelative(card.updated) : ''}
+                      </span>
+                    </div>
 
-                {/* Status Row */}
-                <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/50">
-                    <BadgeCheck size={11} className="text-emerald-500" />
-                    {card.verificationDisplay.label}
-                  </span>
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/50">
-                    <Database size={11} className="text-amber-500" />
-                    {card.bankingDisplay.label}
-                  </span>
-                </div>
+                    {/* Phone number - clean display */}
+                    {card.hasPhone && (
+                      <p className="text-sm text-muted-foreground font-mono mb-1">{card.phoneFormatted}</p>
+                    )}
 
-                {/* Error or OK */}
-                {card.lastError ? (
-                  <p className="rounded-lg bg-red-500/10 border border-red-500/20 px-2.5 py-1.5 text-[11px] text-red-700 dark:text-red-300 line-clamp-2">
-                    {card.lastError}
-                  </p>
-                ) : (
-                  <p className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 text-[11px] text-emerald-700 dark:text-emerald-300">
-                    Flujo sin errores
-                  </p>
-                )}
-
-                {/* Footer: Meta */}
-                <div className="flex items-center justify-between pt-2 mt-auto border-t border-border/30 text-[10px] text-muted-foreground">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1">
-                      <Hash size={10} />
-                      {shortId(card.correlationId || card.id)}
-                    </span>
-                    <span>{card.attempts} intentos</span>
-                    <span>{card.events} eventos</span>
+                    {/* Bottom row: Status + Product */}
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${colors.bg} ${colors.text}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
+                        {card.statusDisplay.label}
+                      </span>
+                      {card.product && (
+                        <span className="text-[11px] text-muted-foreground truncate">{card.product}</span>
+                      )}
+                      {card.lastError && (
+                        <AlertTriangle size={12} className="text-red-500 shrink-0" />
+                      )}
+                    </div>
                   </div>
-                  <span className="flex items-center gap-1">
-                    <Clock4 size={10} />
-                    {card.updated ? formatRelative(card.updated) : '—'}
-                  </span>
-                </div>
-              </article>
-            ))}
+
+                  {/* Arrow indicator */}
+                  <ArrowRight size={16} className="text-muted-foreground/30 group-hover:text-muted-foreground transition-colors shrink-0" />
+                </article>
+              );
+            })}
         {listQuery.isError && (
-          <div className="col-span-full rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-6 text-center">
-            <AlertTriangle size={24} className="mx-auto text-red-500 mb-2" />
-            <p className="font-medium text-red-700 dark:text-red-300">Error al cargar procesos</p>
-            <p className="text-xs text-red-600/80 dark:text-red-300/60 mt-1">Verifique conexión y credenciales</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => listQuery.refetch()}>
+          <div className="p-8 text-center">
+            <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle size={24} className="text-red-500" />
+            </div>
+            <p className="font-semibold text-foreground mb-1">Error de conexión</p>
+            <p className="text-sm text-muted-foreground mb-4">No se pudieron cargar las conversaciones</p>
+            <Button variant="outline" size="sm" className="rounded-xl" onClick={() => listQuery.refetch()}>
+              <RefreshCw size={14} className="mr-2" />
               Reintentar
             </Button>
           </div>
         )}
         {!listQuery.isLoading && !processes.length && !listQuery.isError && (
-          <div className="col-span-full text-center py-12 text-muted-foreground">
-            <Database size={32} className="mx-auto mb-3 opacity-40" />
-            <p className="font-medium">Sin procesos</p>
-            <p className="text-xs mt-1">No hay resultados para este filtro</p>
+          <div className="p-12 text-center">
+            <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
+              <MessageCircle size={28} className="text-muted-foreground/50" />
+            </div>
+            <p className="font-semibold text-foreground mb-1">Sin conversaciones</p>
+            <p className="text-sm text-muted-foreground">No hay procesos que coincidan con tu búsqueda</p>
           </div>
         )}
       </div>
