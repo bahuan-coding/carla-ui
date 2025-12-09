@@ -20,7 +20,7 @@ import {
   User,
   Zap,
 } from 'lucide-react';
-import { API_URL } from '@/lib/api';
+import { API_URL, isBankError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,6 +62,7 @@ export function ProcesosPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<FilterStatus>('');
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
+  const [bankError, setBankError] = useState<{ step: string; code: string; message: string; correlationId: string } | null>(null);
   const auditReason = '';
   const auditOperator = 'operador.demo@carla';
 
@@ -137,8 +138,19 @@ export function ProcesosPage() {
     return { total, active, errors, retry };
   }, [processes]);
 
-  const onActionError = (message: string, error?: unknown) =>
+  const onActionError = (message: string, error?: unknown) => {
+    if (isBankError(error)) {
+      setBankError({
+        step: error.step,
+        code: error.detail.error_code,
+        message: error.detail.error_message,
+        correlationId: error.correlationId,
+      });
+      toast({ variant: 'destructive', title: `Error: ${error.detail.error_code}`, description: error.detail.error_message });
+      return;
+    }
     toast({ variant: 'destructive', title: message, description: error instanceof Error ? error.message : 'Intente de nuevo.' });
+  };
 
   const cards = useMemo(() => processes.map((p) => {
     const account = (p as { account?: Account })?.account;
@@ -353,7 +365,7 @@ export function ProcesosPage() {
       </div>
 
       {/* Detail Sheet */}
-      <Sheet open={Boolean(selectedId)} onOpenChange={(open) => setSelectedId(open ? selectedId : undefined)}>
+      <Sheet open={Boolean(selectedId)} onOpenChange={(open) => { setSelectedId(open ? selectedId : undefined); if (!open) setBankError(null); }}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-2xl bg-background border-l border-border/50">
           <SheetHeader className="pb-3 border-b border-border/30">
             <SheetTitle className="flex items-center gap-2 text-base">
@@ -543,15 +555,21 @@ export function ProcesosPage() {
                           const digits = date.replace(/\D/g, '').slice(0, 8);
                           return digits.length === 8 ? digits : '';
                         };
+                        const mutateWithError = <T,>(mutation: { mutate: (args: T, opts?: { onError?: (e: unknown) => void; onSuccess?: () => void }) => void }, args: T, label: string) => {
+                          mutation.mutate(args, {
+                            onError: (e) => onActionError(`Fallo ${label}`, e),
+                            onSuccess: () => { toast({ title: `${label} OK` }); detailQuery.refetch(); },
+                          });
+                        };
                         const endpointRows = [
-                          { key: 'blacklist', label: 'Blacklist', finishedAt: account.bank_blacklist_finished_at, resp: account.bank_blacklist_response, action: () => bridgeBlacklist.mutate({ dpi: account.document_number, C75000: account.document_type || '11', C75016: `D${(account.document_number || '').replace(/^D/i, '')}`, C75804: '', C75020: '', C75503: account.document_country || 'GT', C75043: account.document_country || 'GT', C75084: formatBirthDate(account.birth_date) }), pending: bridgeBlacklist.isPending, needsClient: false },
-                          { key: 'onboarding', label: 'Onboarding', finishedAt: account.bank_onboarding_finished_at, resp: account.bank_onboarding_response, action: () => bridgeUpdateOnboarding.mutate({ clientId: bankClientId ?? '', body: { email: account.email, phone: phoneForBank, full_name: account.full_name } }), pending: bridgeUpdateOnboarding.isPending, needsClient: true },
-                          { key: 'account', label: 'Cuenta', finishedAt: account.bank_account_finished_at, resp: account.bank_account_response, action: () => bridgeCreateAccount.mutate({ clientId: bankClientId ?? '', body: { currency: account.account_currency, product: account.product_type, phone: phoneForBank } }), pending: bridgeCreateAccount.isPending, needsClient: true },
-                          { key: 'complementary', label: 'Complementary', finishedAt: account.bank_complementary_finished_at, resp: account.bank_complementary_response, action: () => bridgeComplementaryCreate.mutate({ clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }), pending: bridgeComplementaryCreate.isPending, needsClient: true },
-                          { key: 'complement_query', label: 'Query Complement', finishedAt: account.bank_complement_query_finished_at, resp: account.bank_complement_query_response, action: () => bridgeQueryComplement.mutate(bankClientId ?? ''), pending: bridgeQueryComplement.isPending, needsClient: true },
-                          { key: 'complement_update', label: 'Update Complement', finishedAt: account.bank_complementary_update_finished_at, resp: account.bank_complementary_update_response, action: () => bridgeUpdateComplementary.mutate({ clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }), pending: bridgeUpdateComplementary.isPending, needsClient: true },
-                          { key: 'cliente', label: 'Consulta Micoope', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => bridgeMicoopeClient.mutate(bankClientId ?? ''), pending: bridgeMicoopeClient.isPending, needsClient: true },
-                          { key: 'crear_cliente', label: 'Crear Individual', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => bridgeCreateIndividual.mutate({ clientId: bankClientId ?? '', document_number: account.document_number, full_name: account.full_name, phone: phoneForBank } as never), pending: bridgeCreateIndividual.isPending, needsClient: true },
+                          { key: 'blacklist', label: 'Blacklist', finishedAt: account.bank_blacklist_finished_at, resp: account.bank_blacklist_response, action: () => mutateWithError(bridgeBlacklist, { dpi: account.document_number, C75000: account.document_type || '11', C75016: `D${(account.document_number || '').replace(/^D/i, '')}`, C75804: '', C75020: '', C75503: account.document_country || 'GT', C75043: account.document_country || 'GT', C75084: formatBirthDate(account.birth_date) }, 'Blacklist'), pending: bridgeBlacklist.isPending, needsClient: false },
+                          { key: 'onboarding', label: 'Onboarding', finishedAt: account.bank_onboarding_finished_at, resp: account.bank_onboarding_response, action: () => mutateWithError(bridgeUpdateOnboarding, { clientId: bankClientId ?? '', body: { email: account.email, phone: phoneForBank, full_name: account.full_name } }, 'Onboarding'), pending: bridgeUpdateOnboarding.isPending, needsClient: true },
+                          { key: 'account', label: 'Cuenta', finishedAt: account.bank_account_finished_at, resp: account.bank_account_response, action: () => mutateWithError(bridgeCreateAccount, { clientId: bankClientId ?? '', body: { currency: account.account_currency, product: account.product_type, phone: phoneForBank } }, 'Cuenta'), pending: bridgeCreateAccount.isPending, needsClient: true },
+                          { key: 'complementary', label: 'Complementary', finishedAt: account.bank_complementary_finished_at, resp: account.bank_complementary_response, action: () => mutateWithError(bridgeComplementaryCreate, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Complementary'), pending: bridgeComplementaryCreate.isPending, needsClient: true },
+                          { key: 'complement_query', label: 'Query Complement', finishedAt: account.bank_complement_query_finished_at, resp: account.bank_complement_query_response, action: () => mutateWithError(bridgeQueryComplement, bankClientId ?? '', 'Query Complement'), pending: bridgeQueryComplement.isPending, needsClient: true },
+                          { key: 'complement_update', label: 'Update Complement', finishedAt: account.bank_complementary_update_finished_at, resp: account.bank_complementary_update_response, action: () => mutateWithError(bridgeUpdateComplementary, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Update Complement'), pending: bridgeUpdateComplementary.isPending, needsClient: true },
+                          { key: 'cliente', label: 'Consulta Micoope', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => mutateWithError(bridgeMicoopeClient, bankClientId ?? '', 'Consulta Micoope'), pending: bridgeMicoopeClient.isPending, needsClient: true },
+                          { key: 'crear_cliente', label: 'Crear Individual', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => mutateWithError(bridgeCreateIndividual, { clientId: bankClientId ?? '', document_number: account.document_number, full_name: account.full_name, phone: phoneForBank } as never, 'Crear Individual'), pending: bridgeCreateIndividual.isPending, needsClient: true },
                         ];
                         return (
                           <div className="space-y-3 rounded-xl bg-muted/30 border border-border/50 p-4">
@@ -589,13 +607,29 @@ export function ProcesosPage() {
                                         {st.label}
                                       </span>
                                     </div>
-                                    <Button size="sm" variant={isOnCooldown ? 'secondary' : 'outline'} disabled={disabled} className="h-7 min-w-[70px] text-xs" onClick={() => { triggerCooldown(cooldownKey); ep.action(); }}>
+                                    <Button size="sm" variant={isOnCooldown ? 'secondary' : 'outline'} disabled={disabled} className="h-7 min-w-[70px] text-xs" onClick={() => { triggerCooldown(cooldownKey); setBankError(null); ep.action(); }}>
                                       {st.done ? 'OK' : ep.pending ? <RefreshCw size={12} className="animate-spin" /> : isOnCooldown ? <span className="font-mono">{formatCooldown(cooldownRemaining)}</span> : 'Disparar'}
                                     </Button>
                                   </div>
                                 );
                               })}
                             </div>
+                            {bankError && (
+                              <div className="mt-3 rounded-lg bg-red-500/10 border border-red-500/30 p-3">
+                                <div className="flex items-start gap-2">
+                                  <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-semibold text-red-700 dark:text-red-300">{bankError.code}</p>
+                                    <p className="text-[11px] text-red-600 dark:text-red-400 mt-0.5">{bankError.message}</p>
+                                    <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-red-500/80">
+                                      <span>Step: {bankError.step}</span>
+                                      {bankError.correlationId && <span className="font-mono">ID: {bankError.correlationId}</span>}
+                                    </div>
+                                  </div>
+                                  <button onClick={() => setBankError(null)} className="text-red-400 hover:text-red-300 p-1">×</button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })()}

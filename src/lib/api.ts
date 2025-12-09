@@ -49,32 +49,37 @@ const resolveBaseUrl = () =>
     .trim()
     .replace(/\/$/, '');
 
-const resolveStaticToken = () =>
-  (import.meta.env.VITE_API_TOKEN ||
-    import.meta.env.VITE_CARLA_SERVICIOS_API_KEY ||
-    import.meta.env.VITE_CHANNELS_API_KEY ||
-    ''
-  ).trim();
+// Separate keys for admin vs bridge
+const CHANNELS_API_KEY = (import.meta.env.VITE_CHANNELS_API_KEY || '').trim();
+const BRIDGE_API_KEY = (import.meta.env.VITE_CARLA_SERVICIOS_API_KEY || '').trim();
 
 const API_URL = resolveBaseUrl();
-const STATIC_TOKEN = resolveStaticToken();
 const IS_DEV = import.meta.env.DEV;
-
-const getToken = () => {
-  if (STATIC_TOKEN) return STATIC_TOKEN;
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('carla_token');
-};
 
 const withBase = (path: string) => {
   const normalized = path.startsWith('/') ? path : `/${path}`;
   return `${API_URL}${normalized}`;
 };
 
-const BRIDGE_API_KEY = (import.meta.env.VITE_CARLA_SERVICIOS_API_KEY || '').trim();
+// Token selection: admin endpoints use CHANNELS_API_KEY, others use bridge or localStorage
+const getTokenForPath = (path: string) => {
+  if (path.startsWith('/admin')) return CHANNELS_API_KEY || null;
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('carla_token');
+    if (stored) return stored;
+  }
+  return CHANNELS_API_KEY || BRIDGE_API_KEY || null;
+};
 
-const fetchBridgeAccessToken = async (): Promise<string | null> => {
+// Bridge token cache
+let bridgeTokenCache: { token: string; expiresAt: number } | null = null;
+
+const fetchBridgeAccessToken = async (forceRefresh = false): Promise<string | null> => {
   if (!BRIDGE_API_KEY) return null;
+  // Return cached token if still valid (with 30s buffer)
+  if (!forceRefresh && bridgeTokenCache && Date.now() < bridgeTokenCache.expiresAt - 30000) {
+    return bridgeTokenCache.token;
+  }
   try {
     const res = await fetch(withBase('/bridge/auth'), {
       method: 'POST',
@@ -83,10 +88,19 @@ const fetchBridgeAccessToken = async (): Promise<string | null> => {
         Authorization: `Bearer ${BRIDGE_API_KEY}`,
       },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      bridgeTokenCache = null;
+      return null;
+    }
     const json = await res.json();
-    return json?.token || null;
+    const token = json?.token || null;
+    const expiresIn = json?.expires_in || 3600;
+    if (token) {
+      bridgeTokenCache = { token, expiresAt: Date.now() + expiresIn * 1000 };
+    }
+    return token;
   } catch {
+    bridgeTokenCache = null;
     return null;
   }
 };
@@ -120,20 +134,22 @@ async function request<T>({
   schema,
   fallback,
   init,
+  _retried = false,
 }: {
   path: string;
   schema: z.ZodType<T>;
   fallback: T;
   init?: RequestInitLite;
+  _retried?: boolean;
 }): Promise<T> {
-  const token = getToken();
+  const token = getTokenForPath(path);
   const isBridge = path.startsWith('/bridge') && !path.startsWith('/bridge/auth');
   const bridgeToken = isBridge ? await fetchBridgeAccessToken() : null;
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(bridgeToken ? { 'X-Bridge-Token': bridgeToken } : {}),
+    ...(bridgeToken ? { 'x-bridge-token': bridgeToken } : {}),
     ...(init?.headers as Record<string, string> | undefined),
   };
 
@@ -143,18 +159,35 @@ async function request<T>({
     body: init?.body ? JSON.stringify(init.body) : undefined,
   });
 
+  // Retry once on 401/403 for bridge endpoints (token may have expired)
+  if (isBridge && !_retried && (response.status === 401 || response.status === 403)) {
+    bridgeTokenCache = null;
+    return request({ path, schema, fallback, init, _retried: true });
+  }
+
   const buildError = async () => {
     const base = `Carla API error ${response.status}`;
     try {
       const payload = await response.json();
 
       // Handle 502 BANK_ERROR from bridge endpoints
-      if (response.status === 502 && payload?.detail?.error_code === 'BANK_ERROR') {
-        const bankDetail = payload.detail as BankErrorDetail;
-        return new BankError(bankDetail, response.status);
+      if (response.status === 502) {
+        const detail = payload?.detail || payload;
+        if (detail?.error_code || detail?.code) {
+          const bankDetail: BankErrorDetail = {
+            status: 'error',
+            step: detail.step || detail.field || 'unknown',
+            error_code: detail.error_code || detail.code || 'BANK_ERROR',
+            error_message: detail.error_message || detail.error || detail.message || 'Error de banco',
+            correlation_id: detail.correlation_id || '',
+            finished_at: detail.finished_at || new Date().toISOString(),
+            retry: detail.retry ?? false,
+          };
+          return new BankError(bankDetail, response.status);
+        }
       }
 
-      const detail = payload?.error?.detail || payload?.detail || payload?.message;
+      const detail = payload?.error?.detail || payload?.detail || payload?.message || payload?.error;
       const message = detail
         ? typeof detail === 'string'
           ? `${base}: ${detail}`
