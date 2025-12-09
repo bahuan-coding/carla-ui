@@ -55,15 +55,47 @@ export const formatPhone = (phone?: string | null) => {
   if (!phone) return '—'
   const cleaned = phone.replace(/[^\d+]/g, '')
   if (cleaned.length < 8) return phone
-  // Format: +502 5550 1234 or similar
-  if (cleaned.startsWith('+')) {
-    const cc = cleaned.slice(0, 4)
-    const rest = cleaned.slice(4)
-    if (rest.length === 8) return `${cc} ${rest.slice(0, 4)} ${rest.slice(4)}`
-    return `${cc} ${rest}`
+
+  const formatNational = (val: string) => {
+    const len = val.length
+    if (len === 8) return `${val.slice(0, 4)} ${val.slice(4)}`
+    if (len === 9) return `${val.slice(0, 1)} ${val.slice(1, 5)} ${val.slice(5)}`
+    if (len === 10) return `${val.slice(0, 2)} ${val.slice(2, 6)} ${val.slice(6)}`
+    if (len === 11) return `${val.slice(0, 2)} ${val.slice(2, 7)} ${val.slice(7)}`
+    return val.replace(/(\d{3,4})(?=\d)/g, '$1 ').trim()
   }
+
+  if (cleaned.startsWith('+')) {
+    const digits = cleaned.slice(1)
+    if (!digits) return phone
+
+    const ccHints = [
+      { code: '55', len: 2 },  // BR
+      { code: '52', len: 2 },  // MX
+      { code: '54', len: 2 },  // AR
+      { code: '56', len: 2 },  // CL
+      { code: '57', len: 2 },  // CO
+      { code: '58', len: 2 },  // VE
+      { code: '502', len: 3 }, // GT
+      { code: '503', len: 3 }, // SV
+      { code: '504', len: 3 }, // HN
+      { code: '505', len: 3 }, // NI
+      { code: '506', len: 3 }, // CR
+      { code: '507', len: 3 }, // PA
+      { code: '509', len: 3 }, // HT
+    ]
+
+    const ccLen = ccHints.find((h) => digits.startsWith(h.code))?.len || (digits.length >= 11 ? 2 : 1)
+    const cc = digits.slice(0, ccLen)
+    const national = digits.slice(ccLen)
+    return `+${cc} ${formatNational(national)}`.trim()
+  }
+
   if (cleaned.length === 8) return `${cleaned.slice(0, 4)} ${cleaned.slice(4)}`
-  return phone
+  if (cleaned.length === 9) return `${cleaned.slice(0, 1)} ${cleaned.slice(1, 5)} ${cleaned.slice(5)}`
+  if (cleaned.length === 10) return `${cleaned.slice(0, 2)} ${cleaned.slice(2, 6)} ${cleaned.slice(6)}`
+  if (cleaned.length === 11) return `${cleaned.slice(0, 2)} ${cleaned.slice(2, 7)} ${cleaned.slice(7)}`
+  return cleaned
 }
 
 export const shortId = (id?: string) => {
