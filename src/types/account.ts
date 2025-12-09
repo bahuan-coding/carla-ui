@@ -191,6 +191,24 @@ export type Account = {
   bank_complementary_update_finished_at?: string | null;
   bank_complement_query_response?: unknown;
   bank_complement_query_finished_at?: string | null;
+  bank_responses?: {
+    blacklist?: unknown;
+    client?: unknown;
+    complementary?: unknown;
+    account?: unknown;
+    onboarding?: unknown;
+    complementary_update?: unknown;
+    complement_query?: unknown;
+  };
+  bank_finished_at?: {
+    blacklist?: string;
+    client?: string;
+    complementary?: string;
+    account?: string;
+    onboarding?: string;
+    complementary_update?: string;
+    complement_query?: string;
+  };
   phone_verification_status?: string;
   phone_verification_sent_at?: string | null;
   phone_verification_otp_reference?: string | null;
