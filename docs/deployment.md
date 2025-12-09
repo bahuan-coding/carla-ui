@@ -63,3 +63,5 @@ netlify dev  # Emula redirects, headers e env
 O Netlify mantém histórico de deploys. Reverter para deploy anterior com um clique na UI.
 
 
+
+

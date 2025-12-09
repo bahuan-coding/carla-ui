@@ -1,5 +1,44 @@
 import { z } from 'zod';
 
+// Bank error detail structure for 502 responses
+export interface BankErrorDetail {
+  status: 'error';
+  step: string;
+  error_code: string;
+  error_message: string;
+  correlation_id: string;
+  finished_at: string;
+  retry: boolean;
+}
+
+export class BankError extends Error {
+  detail: BankErrorDetail;
+  httpStatus: number;
+
+  constructor(detail: BankErrorDetail, httpStatus: number) {
+    super(detail.error_message);
+    this.name = 'BankError';
+    this.detail = detail;
+    this.httpStatus = httpStatus;
+  }
+
+  get canRetry() {
+    return this.detail.retry;
+  }
+
+  get step() {
+    return this.detail.step;
+  }
+
+  get correlationId() {
+    return this.detail.correlation_id;
+  }
+}
+
+export const isBankError = (error: unknown): error is BankError => {
+  return error instanceof BankError;
+};
+
 // Resolve base URL and token with fallbacks to the Netlify VITE names in use
 const resolveBaseUrl = () =>
   (import.meta.env.VITE_API_URL ||
@@ -108,8 +147,19 @@ async function request<T>({
     const base = `Carla API error ${response.status}`;
     try {
       const payload = await response.json();
+
+      // Handle 502 BANK_ERROR from bridge endpoints
+      if (response.status === 502 && payload?.detail?.error_code === 'BANK_ERROR') {
+        const bankDetail = payload.detail as BankErrorDetail;
+        return new BankError(bankDetail, response.status);
+      }
+
       const detail = payload?.error?.detail || payload?.detail || payload?.message;
-      const message = detail ? `${base}: ${detail}` : base;
+      const message = detail
+        ? typeof detail === 'string'
+          ? `${base}: ${detail}`
+          : `${base}: ${JSON.stringify(detail)}`
+        : base;
       const error = new Error(message) as Error & { violations?: unknown; payload?: unknown };
       error.violations = payload?.error?.violations;
       error.payload = payload;

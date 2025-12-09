@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   BadgeCheck,
   Building2,
+  CheckCircle2,
   ClipboardCopy,
   Clock4,
   Database,
@@ -16,7 +18,7 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react';
-import { API_URL } from '@/lib/api';
+import { API_URL, isBankError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -48,6 +50,7 @@ export function ProcesosPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
+  const [activeResponseTab, setActiveResponseTab] = useState('');
   const auditReason = '';
   const auditOperator = 'operador.demo@carla';
 
@@ -123,8 +126,30 @@ export function ProcesosPage() {
     return { total, active, errors, retry };
   }, [processes]);
 
-  const onActionError = (message: string, error?: unknown) =>
+  const [lastBankError, setLastBankError] = useState<{
+    step: string;
+    message: string;
+    canRetry: boolean;
+    correlationId: string;
+  } | null>(null);
+
+  const onActionError = useCallback((message: string, error?: unknown) => {
+    if (isBankError(error)) {
+      setLastBankError({
+        step: error.step,
+        message: error.detail.error_message,
+        canRetry: error.canRetry,
+        correlationId: error.correlationId,
+      });
+      toast({
+        variant: 'destructive',
+        title: '¡Ups! El banco respondió con un error',
+        description: error.detail.error_message.slice(0, 120),
+      });
+      return;
+    }
     toast({ variant: 'destructive', title: message, description: error instanceof Error ? error.message : 'Intente de nuevo.' });
+  }, [toast]);
 
   const cards = processes.map((p) => {
     const account = (p as { account?: Account })?.account;
@@ -578,54 +603,139 @@ export function ProcesosPage() {
                           const digits = date.replace(/\D/g, '').slice(0, 8);
                           return digits.length === 8 ? digits : '';
                         };
+
                         const endpointRows = [
-                          { key: 'blacklist', label: 'Blacklist', finishedAt: account.bank_blacklist_finished_at, resp: account.bank_blacklist_response, action: () => bridgeBlacklist.mutate({ process_id: selectedId, dpi: account.document_number, C75000: account.document_type || '11', C75016: `D${(account.document_number || '').replace(/^D/i, '')}`, C75804: '', C75020: '', C75503: account.document_country || 'GT', C75043: account.document_country || 'GT', C75084: formatBirthDate(account.birth_date) }), pending: bridgeBlacklist.isPending, needsClient: false },
-                          { key: 'onboarding', label: 'Onboarding', finishedAt: account.bank_onboarding_finished_at, resp: account.bank_onboarding_response, action: () => bridgeUpdateOnboarding.mutate({ clientId: bankClientId ?? '', body: { account_opening_id: detailQuery.data?.account_opening_id || selectedId, email: account.email, phone: phoneForBank, full_name: account.full_name } }), pending: bridgeUpdateOnboarding.isPending, needsClient: true },
-                          { key: 'account', label: 'Cuenta', finishedAt: account.bank_account_finished_at, resp: account.bank_account_response, action: () => bridgeCreateAccount.mutate({ clientId: bankClientId ?? '', body: { currency: account.account_currency, product: account.product_type, phone: phoneForBank } }), pending: bridgeCreateAccount.isPending, needsClient: true },
-                          { key: 'complementary', label: 'Complementary', finishedAt: account.bank_complementary_finished_at, resp: account.bank_complementary_response, action: () => bridgeComplementaryCreate.mutate({ clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }), pending: bridgeComplementaryCreate.isPending, needsClient: true },
-                          { key: 'complement_query', label: 'Complement Query', finishedAt: account.bank_complement_query_finished_at, resp: account.bank_complement_query_response, action: () => bridgeQueryComplement.mutate(bankClientId ?? ''), pending: bridgeQueryComplement.isPending, needsClient: true },
-                          { key: 'complement_update', label: 'Complement Update', finishedAt: account.bank_complementary_update_finished_at, resp: account.bank_complementary_update_response, action: () => bridgeUpdateComplementary.mutate({ clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }), pending: bridgeUpdateComplementary.isPending, needsClient: true },
-                          { key: 'cliente', label: 'Consulta Micoope', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => bridgeMicoopeClient.mutate(bankClientId ?? ''), pending: bridgeMicoopeClient.isPending, needsClient: true },
-                          { key: 'crear_cliente', label: 'Crear Individual', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => bridgeCreateIndividual.mutate({ clientId: bankClientId ?? '', document_number: account.document_number, full_name: account.full_name, phone: phoneForBank } as never), pending: bridgeCreateIndividual.isPending, needsClient: true },
+                          { key: 'blacklist', label: 'Blacklist', finishedAt: account.bank_blacklist_finished_at, resp: account.bank_blacklist_response, action: () => bridgeBlacklist.mutate({ process_id: selectedId, dpi: account.document_number, C75000: account.document_type || '11', C75016: `D${(account.document_number || '').replace(/^D/i, '')}`, C75804: '', C75020: '', C75503: account.document_country || 'GT', C75043: account.document_country || 'GT', C75084: formatBirthDate(account.birth_date) }, { onError: (e) => onActionError('Blacklist falló', e) }), pending: bridgeBlacklist.isPending, needsClient: false },
+                          { key: 'onboarding', label: 'Onboarding', finishedAt: account.bank_onboarding_finished_at, resp: account.bank_onboarding_response, action: () => bridgeUpdateOnboarding.mutate({ clientId: bankClientId ?? '', body: { account_opening_id: detailQuery.data?.account_opening_id || selectedId, email: account.email, phone: phoneForBank, full_name: account.full_name } }, { onError: (e) => onActionError('Onboarding falló', e) }), pending: bridgeUpdateOnboarding.isPending, needsClient: true },
+                          { key: 'account', label: 'Cuenta', finishedAt: account.bank_account_finished_at, resp: account.bank_account_response, action: () => bridgeCreateAccount.mutate({ clientId: bankClientId ?? '', body: { currency: account.account_currency, product: account.product_type, phone: phoneForBank } }, { onError: (e) => onActionError('Cuenta falló', e) }), pending: bridgeCreateAccount.isPending, needsClient: true },
+                          { key: 'complementary', label: 'Complementary', finishedAt: account.bank_complementary_finished_at, resp: account.bank_complementary_response, action: () => bridgeComplementaryCreate.mutate({ clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, { onError: (e) => onActionError('Complementary falló', e) }), pending: bridgeComplementaryCreate.isPending, needsClient: true },
+                          { key: 'complement_query', label: 'Query', finishedAt: account.bank_complement_query_finished_at, resp: account.bank_complement_query_response, action: () => bridgeQueryComplement.mutate(bankClientId ?? '', { onError: (e) => onActionError('Query falló', e) }), pending: bridgeQueryComplement.isPending, needsClient: true },
+                          { key: 'complement_update', label: 'Update', finishedAt: account.bank_complementary_update_finished_at, resp: account.bank_complementary_update_response, action: () => bridgeUpdateComplementary.mutate({ clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, { onError: (e) => onActionError('Update falló', e) }), pending: bridgeUpdateComplementary.isPending, needsClient: true },
+                          { key: 'cliente', label: 'Consulta', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => bridgeMicoopeClient.mutate(bankClientId ?? '', { onError: (e) => onActionError('Consulta falló', e) }), pending: bridgeMicoopeClient.isPending, needsClient: true },
+                          { key: 'crear_cliente', label: 'Crear', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => bridgeCreateIndividual.mutate({ clientId: bankClientId ?? '', document_number: account.document_number, full_name: account.full_name, phone: phoneForBank } as never, { onError: (e) => onActionError('Crear falló', e) }), pending: bridgeCreateIndividual.isPending, needsClient: true },
                         ];
+
                         return (
-                          <div className="space-y-3 rounded-2xl bg-muted/30 dark:bg-card/50 border border-border/50 p-4">
-                            <div className="flex items-center justify-between pb-3 border-b border-border/30">
-                              <div className="space-y-1">
-                                <p className="text-xs text-muted-foreground">{`Institución: ${valueOrDash(account.institution_name)}`}</p>
-                                <p className="font-mono text-xs text-muted-foreground">{valueOrDash(bankClientId)}</p>
+                          <div className="space-y-4">
+                            {/* Friendly Bank Error Banner */}
+                            {lastBankError && (
+                              <div className="rounded-2xl bg-gradient-to-r from-red-500/10 via-orange-500/5 to-amber-500/10 border border-red-500/30 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
+                                    <AlertTriangle className="w-5 h-5 text-red-500" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <h4 className="font-semibold text-red-700 dark:text-red-300">El banco respondió con un error</h4>
+                                      <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-[10px] font-mono text-red-600 dark:text-red-400 uppercase">
+                                        {lastBankError.step}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-red-600/90 dark:text-red-300/80 leading-relaxed">
+                                      {lastBankError.message}
+                                    </p>
+                                    <div className="flex items-center gap-4 mt-3">
+                                      {lastBankError.canRetry && (
+                                        <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                                          <CheckCircle2 size={12} />
+                                          Puede reintentar
+                                        </span>
+                                      )}
+                                      <span className="text-[10px] font-mono text-muted-foreground">
+                                        ID: {lastBankError.correlationId.slice(0, 8)}...
+                                      </span>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                        onClick={() => setLastBankError(null)}
+                                      >
+                                        Cerrar
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <span className="flex items-center gap-1.5 rounded-full bg-accent/10 border border-accent/30 px-2 py-1 text-[10px] text-accent">
-                                  <span className="status-dot status-dot-ok" /> Auto 60s
-                                </span>
-                                <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => detailQuery.refetch()} disabled={detailQuery.isFetching}>
-                                  <RefreshCw size={12} className={detailQuery.isFetching ? 'animate-spin' : ''} />
-                                </Button>
+                            )}
+
+                            {/* Header - Clean */}
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="space-y-0.5">
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Cliente: <span className="font-mono">{valueOrDash(bankClientId)}</span></p>
                               </div>
+                              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => detailQuery.refetch()} disabled={detailQuery.isFetching}>
+                                <RefreshCw size={12} className={detailQuery.isFetching ? 'animate-spin' : ''} />
+                              </Button>
                             </div>
-                            <p className="text-[11px] text-muted-foreground">Espere 5min entre disparos del mismo servicio.</p>
-                            <div className="grid gap-2 md:grid-cols-2">
-                              {endpointRows.map((ep) => {
+
+                            {/* Minimal Accordion */}
+                            <div className="space-y-px rounded-xl overflow-hidden border border-slate-200/60 dark:border-slate-800/60">
+                              {endpointRows.map((ep, idx) => {
                                 const st = resolveStatus(ep.finishedAt, ep.resp);
+                                const isExpanded = activeResponseTab === ep.key;
                                 const cooldownKey = `${selectedId}_${ep.key}`;
                                 const cooldownRemaining = getCooldownRemaining(cooldownKey);
                                 const isOnCooldown = cooldownRemaining > 0;
-                                const disabled = st.done || ep.pending || isOnCooldown || (ep.needsClient && !bankClientId);
+                                const canTrigger = !st.done && !ep.pending && !isOnCooldown && (!ep.needsClient || bankClientId);
+
                                 return (
-                                  <div key={ep.key} className={`flex items-center justify-between gap-3 rounded-xl bg-background/50 border px-3 py-3 ${isOnCooldown ? 'border-amber-500/40' : st.done ? 'border-emerald-500/30' : 'border-border/50'}`}>
-                                    <div className="space-y-1">
-                                      <div className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
-                                        <span className={`status-dot ${st.done ? 'status-dot-ok' : isOnCooldown ? 'status-dot-warn' : ep.pending ? 'status-dot-warn' : ''}`} />
-                                        {ep.label}
+                                  <div key={ep.key} className={`transition-all ${idx > 0 ? 'border-t border-slate-100 dark:border-slate-800/40' : ''}`}>
+                                    <button
+                                      type="button"
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 bg-white/50 dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors text-left"
+                                      onClick={() => setActiveResponseTab(isExpanded ? '' : ep.key)}
+                                    >
+                                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                        st.done ? 'bg-emerald-500' : st.tone === 'error' ? 'bg-red-400' : 'bg-slate-300 dark:bg-slate-600'
+                                      }`} />
+                                      <span className="text-xs font-medium text-slate-700 dark:text-slate-200 flex-1">{ep.label}</span>
+                                      {st.done && <span className="text-[9px] text-slate-400 dark:text-slate-500 tabular-nums">{st.label}</span>}
+                                      {ep.pending && <RefreshCw size={10} className="animate-spin text-slate-400" />}
+                                      {isOnCooldown && <span className="text-[9px] font-mono text-amber-500/80">{formatCooldown(cooldownRemaining)}</span>}
+                                      {canTrigger && (
+                                        <span
+                                          className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-accent hover:text-white transition-colors cursor-pointer"
+                                          onClick={(e) => { e.stopPropagation(); triggerCooldown(cooldownKey); ep.action(); }}
+                                        >
+                                          Disparar
+                                        </span>
+                                      )}
+                                      <svg className={`w-3 h-3 text-slate-400 transition-transform duration-150 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                    </button>
+
+                                    {isExpanded && (
+                                      <div className="animate-in fade-in slide-in-from-top-1 duration-150 bg-slate-50/80 dark:bg-[#0a0d12]">
+                                        {ep.resp != null ? (
+                                          <div className="relative group">
+                                            <button
+                                              type="button"
+                                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded bg-white/80 dark:bg-slate-800/80 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                                              onClick={() => { navigator.clipboard.writeText(JSON.stringify(ep.resp, null, 2)); toast({ title: 'Copiado' }); }}
+                                            >
+                                              <ClipboardCopy size={10} />
+                                            </button>
+                                            <pre className="max-h-56 overflow-auto p-3 text-[10px] leading-relaxed font-mono">
+                                              <code>
+                                                {JSON.stringify(ep.resp, null, 2).split('\n').map((line, i) => {
+                                                  const highlighted = line
+                                                    .replace(/^(\s*)("[\w_-]+")(:)/g, '$1<span class="text-fuchsia-600 dark:text-fuchsia-400">$2</span><span class="text-slate-400">$3</span>')
+                                                    .replace(/: "(.*?)"/g, ': <span class="text-teal-600 dark:text-teal-400">"$1"</span>')
+                                                    .replace(/: (-?\d+\.?\d*)/g, ': <span class="text-amber-600 dark:text-amber-400">$1</span>')
+                                                    .replace(/: (true)/g, ': <span class="text-emerald-500">$1</span>')
+                                                    .replace(/: (false)/g, ': <span class="text-rose-500">$1</span>')
+                                                    .replace(/: (null)/g, ': <span class="text-slate-400 italic">$1</span>');
+                                                  return <div key={i} className="text-slate-600 dark:text-slate-400" dangerouslySetInnerHTML={{ __html: highlighted || '&nbsp;' }} />;
+                                                })}
+                                              </code>
+                                            </pre>
+                                          </div>
+                                        ) : (
+                                          <p className="py-4 text-center text-[10px] text-slate-400 italic">Sin datos</p>
+                                        )}
                                       </div>
-                                      <span className={`inline-flex text-[11px] ${st.tone === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : st.tone === 'error' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                        {st.label}
-                                      </span>
-                                    </div>
-                                    <Button size="sm" variant={isOnCooldown ? 'secondary' : 'outline'} disabled={disabled} className="min-w-[80px]" onClick={() => { triggerCooldown(cooldownKey); ep.action(); }}>
-                                      {st.done ? 'OK' : ep.pending ? <RefreshCw size={12} className="animate-spin" /> : isOnCooldown ? <span className="font-mono">{formatCooldown(cooldownRemaining)}</span> : 'Disparar'}
-                                    </Button>
+                                    )}
                                   </div>
                                 );
                               })}
