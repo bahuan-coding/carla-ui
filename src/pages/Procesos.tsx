@@ -62,12 +62,12 @@ export function ProcesosPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<FilterStatus>('');
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
-  const [bankError, setBankError] = useState<{ step: string; code: string; message: string; correlationId: string } | null>(null);
+  const [bankError, setBankError] = useState<{ key: string; step: string; code: string; message: string; correlationId: string } | null>(null);
   const auditReason = '';
   const auditOperator = 'operador.demo@carla';
 
   const COOLDOWN_KEY = 'carla_banking_cooldowns';
-  const COOLDOWN_DURATION = 300;
+  const COOLDOWN_DURATION = 10;
   const [cooldowns, setCooldowns] = useState<Record<string, number>>(() => {
     try {
       const stored = localStorage.getItem(COOLDOWN_KEY);
@@ -138,18 +138,23 @@ export function ProcesosPage() {
     return { total, active, errors, retry };
   }, [processes]);
 
-  const onActionError = (message: string, error?: unknown) => {
+  const onActionError = (message: string, error?: unknown, key?: string) => {
     if (isBankError(error)) {
       setBankError({
+        key: key || 'unknown',
         step: error.step,
         code: error.detail.error_code,
         message: error.detail.error_message,
         correlationId: error.correlationId,
       });
-      toast({ variant: 'destructive', title: `Error: ${error.detail.error_code}`, description: error.detail.error_message });
       return;
     }
-    toast({ variant: 'destructive', title: message, description: error instanceof Error ? error.message : 'Intente de nuevo.' });
+    const errMsg = error instanceof Error ? error.message : 'Intente de nuevo.';
+    if (key) {
+      setBankError({ key, step: 'request', code: 'ERROR', message: errMsg, correlationId: '' });
+    } else {
+      toast({ variant: 'destructive', title: message, description: errMsg });
+    }
   };
 
   const cards = useMemo(() => processes.map((p) => {
@@ -555,21 +560,21 @@ export function ProcesosPage() {
                           const digits = date.replace(/\D/g, '').slice(0, 8);
                           return digits.length === 8 ? digits : '';
                         };
-                        const mutateWithError = <T,>(mutation: { mutate: (args: T, opts?: { onError?: (e: unknown) => void; onSuccess?: () => void }) => void }, args: T, label: string) => {
+                        const mutateWithError = <T,>(mutation: { mutate: (args: T, opts?: { onError?: (e: unknown) => void; onSuccess?: () => void }) => void }, args: T, label: string, key: string) => {
                           mutation.mutate(args, {
-                            onError: (e) => onActionError(`Fallo ${label}`, e),
+                            onError: (e) => onActionError(`Fallo ${label}`, e, key),
                             onSuccess: () => { toast({ title: `${label} OK` }); detailQuery.refetch(); },
                           });
                         };
                         const endpointRows = [
-                          { key: 'blacklist', label: 'Blacklist', finishedAt: account.bank_blacklist_finished_at, resp: account.bank_blacklist_response, action: () => mutateWithError(bridgeBlacklist, { dpi: account.document_number, C75000: account.document_type || '11', C75016: `D${(account.document_number || '').replace(/^D/i, '')}`, C75804: '', C75020: '', C75503: account.document_country || 'GT', C75043: account.document_country || 'GT', C75084: formatBirthDate(account.birth_date) }, 'Blacklist'), pending: bridgeBlacklist.isPending, needsClient: false },
-                          { key: 'onboarding', label: 'Onboarding', finishedAt: account.bank_onboarding_finished_at, resp: account.bank_onboarding_response, action: () => mutateWithError(bridgeUpdateOnboarding, { clientId: bankClientId ?? '', body: { email: account.email, phone: phoneForBank, full_name: account.full_name } }, 'Onboarding'), pending: bridgeUpdateOnboarding.isPending, needsClient: true },
-                          { key: 'account', label: 'Cuenta', finishedAt: account.bank_account_finished_at, resp: account.bank_account_response, action: () => mutateWithError(bridgeCreateAccount, { clientId: bankClientId ?? '', body: { currency: account.account_currency, product: account.product_type, phone: phoneForBank } }, 'Cuenta'), pending: bridgeCreateAccount.isPending, needsClient: true },
-                          { key: 'complementary', label: 'Complementary', finishedAt: account.bank_complementary_finished_at, resp: account.bank_complementary_response, action: () => mutateWithError(bridgeComplementaryCreate, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Complementary'), pending: bridgeComplementaryCreate.isPending, needsClient: true },
-                          { key: 'complement_query', label: 'Query Complement', finishedAt: account.bank_complement_query_finished_at, resp: account.bank_complement_query_response, action: () => mutateWithError(bridgeQueryComplement, bankClientId ?? '', 'Query Complement'), pending: bridgeQueryComplement.isPending, needsClient: true },
-                          { key: 'complement_update', label: 'Update Complement', finishedAt: account.bank_complementary_update_finished_at, resp: account.bank_complementary_update_response, action: () => mutateWithError(bridgeUpdateComplementary, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Update Complement'), pending: bridgeUpdateComplementary.isPending, needsClient: true },
-                          { key: 'cliente', label: 'Consulta Micoope', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => mutateWithError(bridgeMicoopeClient, bankClientId ?? '', 'Consulta Micoope'), pending: bridgeMicoopeClient.isPending, needsClient: true },
-                          { key: 'crear_cliente', label: 'Crear Individual', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => mutateWithError(bridgeCreateIndividual, { clientId: bankClientId ?? '', document_number: account.document_number, full_name: account.full_name, phone: phoneForBank } as never, 'Crear Individual'), pending: bridgeCreateIndividual.isPending, needsClient: true },
+                          { key: 'blacklist', label: 'Blacklist', finishedAt: account.bank_blacklist_finished_at, resp: account.bank_blacklist_response, action: () => mutateWithError(bridgeBlacklist, { dpi: account.document_number, C75000: account.document_type || '11', C75016: `D${(account.document_number || '').replace(/^D/i, '')}`, C75804: '', C75020: '', C75503: account.document_country || 'GT', C75043: account.document_country || 'GT', C75084: formatBirthDate(account.birth_date) }, 'Blacklist', 'blacklist'), pending: bridgeBlacklist.isPending, needsClient: false },
+                          { key: 'onboarding', label: 'Onboarding', finishedAt: account.bank_onboarding_finished_at, resp: account.bank_onboarding_response, action: () => mutateWithError(bridgeUpdateOnboarding, { clientId: bankClientId ?? '', body: { email: account.email, phone: phoneForBank, full_name: account.full_name } }, 'Onboarding', 'onboarding'), pending: bridgeUpdateOnboarding.isPending, needsClient: true },
+                          { key: 'account', label: 'Cuenta', finishedAt: account.bank_account_finished_at, resp: account.bank_account_response, action: () => mutateWithError(bridgeCreateAccount, { clientId: bankClientId ?? '', body: { currency: account.account_currency, product: account.product_type, phone: phoneForBank } }, 'Cuenta', 'account'), pending: bridgeCreateAccount.isPending, needsClient: true },
+                          { key: 'complementary', label: 'Complementary', finishedAt: account.bank_complementary_finished_at, resp: account.bank_complementary_response, action: () => mutateWithError(bridgeComplementaryCreate, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Complementary', 'complementary'), pending: bridgeComplementaryCreate.isPending, needsClient: true },
+                          { key: 'complement_query', label: 'Query Complement', finishedAt: account.bank_complement_query_finished_at, resp: account.bank_complement_query_response, action: () => mutateWithError(bridgeQueryComplement, bankClientId ?? '', 'Query Complement', 'complement_query'), pending: bridgeQueryComplement.isPending, needsClient: true },
+                          { key: 'complement_update', label: 'Update Complement', finishedAt: account.bank_complementary_update_finished_at, resp: account.bank_complementary_update_response, action: () => mutateWithError(bridgeUpdateComplementary, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Update Complement', 'complement_update'), pending: bridgeUpdateComplementary.isPending, needsClient: true },
+                          { key: 'cliente', label: 'Consulta Micoope', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => mutateWithError(bridgeMicoopeClient, bankClientId ?? '', 'Consulta Micoope', 'cliente'), pending: bridgeMicoopeClient.isPending, needsClient: true },
+                          { key: 'crear_cliente', label: 'Crear Individual', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => mutateWithError(bridgeCreateIndividual, { clientId: bankClientId ?? '', document_number: account.document_number, full_name: account.full_name, phone: phoneForBank } as never, 'Crear Individual', 'crear_cliente'), pending: bridgeCreateIndividual.isPending, needsClient: true },
                         ];
                         return (
                           <div className="space-y-3 rounded-xl bg-muted/30 border border-border/50 p-4">
@@ -588,7 +593,7 @@ export function ProcesosPage() {
                                 </Button>
                               </div>
                             </div>
-                            <p className="text-[10px] text-muted-foreground">Espere 5min entre disparos del mismo servicio.</p>
+                            <p className="text-[10px] text-muted-foreground">Espere 10s entre disparos del mismo servicio.</p>
                             <div className="grid gap-2">
                               {endpointRows.map((ep) => {
                                 const st = resolveStatus(ep.finishedAt, ep.resp);
@@ -596,40 +601,49 @@ export function ProcesosPage() {
                                 const cooldownRemaining = getCooldownRemaining(cooldownKey);
                                 const isOnCooldown = cooldownRemaining > 0;
                                 const disabled = st.done || ep.pending || isOnCooldown || (ep.needsClient && !bankClientId);
+                                const hasError = bankError?.key === ep.key;
                                 return (
-                                  <div key={ep.key} className={`flex items-center justify-between gap-2 rounded-lg bg-background/50 border px-3 py-2 ${isOnCooldown ? 'border-amber-500/40' : st.done ? 'border-emerald-500/30' : 'border-border/50'}`}>
-                                    <div>
-                                      <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-                                        <span className={`w-1.5 h-1.5 rounded-full ${st.done ? 'bg-emerald-500' : isOnCooldown ? 'bg-amber-500' : ep.pending ? 'bg-amber-500 animate-pulse' : 'bg-muted-foreground'}`} />
-                                        {ep.label}
+                                  <div key={ep.key} className="space-y-0">
+                                    <div className={`flex items-center justify-between gap-2 rounded-lg bg-background/50 border px-3 py-2 transition-all ${hasError ? 'border-red-500/50 bg-red-500/5' : isOnCooldown ? 'border-amber-500/40' : st.done ? 'border-emerald-500/30' : 'border-border/50'}`}>
+                                      <div>
+                                        <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                                          <span className={`w-1.5 h-1.5 rounded-full ${hasError ? 'bg-red-500' : st.done ? 'bg-emerald-500' : isOnCooldown ? 'bg-amber-500' : ep.pending ? 'bg-amber-500 animate-pulse' : 'bg-muted-foreground'}`} />
+                                          {ep.label}
+                                        </div>
+                                        <span className={`text-[10px] ${hasError ? 'text-red-600 dark:text-red-400' : st.tone === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : st.tone === 'error' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                          {hasError ? 'Error' : st.label}
+                                        </span>
                                       </div>
-                                      <span className={`text-[10px] ${st.tone === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : st.tone === 'error' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                        {st.label}
-                                      </span>
+                                      <Button size="sm" variant={hasError ? 'destructive' : isOnCooldown ? 'secondary' : 'outline'} disabled={disabled} className="h-7 min-w-[70px] text-xs" onClick={() => { triggerCooldown(cooldownKey); setBankError(null); ep.action(); }}>
+                                        {st.done ? 'OK' : ep.pending ? <RefreshCw size={12} className="animate-spin" /> : isOnCooldown ? <span className="font-mono">{formatCooldown(cooldownRemaining)}</span> : 'Disparar'}
+                                      </Button>
                                     </div>
-                                    <Button size="sm" variant={isOnCooldown ? 'secondary' : 'outline'} disabled={disabled} className="h-7 min-w-[70px] text-xs" onClick={() => { triggerCooldown(cooldownKey); setBankError(null); ep.action(); }}>
-                                      {st.done ? 'OK' : ep.pending ? <RefreshCw size={12} className="animate-spin" /> : isOnCooldown ? <span className="font-mono">{formatCooldown(cooldownRemaining)}</span> : 'Disparar'}
-                                    </Button>
+                                    {hasError && (
+                                      <div className="mx-1 -mt-1 rounded-b-lg bg-gradient-to-b from-red-500/20 to-red-500/5 border border-t-0 border-red-500/30 px-3 py-2.5 backdrop-blur-sm">
+                                        <div className="flex items-start gap-2">
+                                          <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                                            <AlertTriangle size={12} className="text-red-400" />
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2">
+                                              <span className="px-1.5 py-0.5 rounded bg-red-500/30 text-[10px] font-bold text-red-300 tracking-wide">{bankError.code}</span>
+                                              <button onClick={() => setBankError(null)} className="ml-auto text-red-400/60 hover:text-red-300 text-sm leading-none">×</button>
+                                            </div>
+                                            <p className="text-[11px] text-red-200/90 mt-1.5 leading-relaxed">{bankError.message}</p>
+                                            {bankError.correlationId && (
+                                              <p className="text-[9px] font-mono text-red-400/50 mt-1.5 flex items-center gap-1">
+                                                <Hash size={9} />
+                                                {bankError.correlationId}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               })}
                             </div>
-                            {bankError && (
-                              <div className="mt-3 rounded-lg bg-red-500/10 border border-red-500/30 p-3">
-                                <div className="flex items-start gap-2">
-                                  <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-semibold text-red-700 dark:text-red-300">{bankError.code}</p>
-                                    <p className="text-[11px] text-red-600 dark:text-red-400 mt-0.5">{bankError.message}</p>
-                                    <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-red-500/80">
-                                      <span>Step: {bankError.step}</span>
-                                      {bankError.correlationId && <span className="font-mono">ID: {bankError.correlationId}</span>}
-                                    </div>
-                                  </div>
-                                  <button onClick={() => setBankError(null)} className="text-red-400 hover:text-red-300 p-1">×</button>
-                                </div>
-                              </div>
-                            )}
                           </div>
                         );
                       })()}
