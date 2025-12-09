@@ -51,6 +51,21 @@ export const maskPhone = (phone?: string) => {
   return prefix ? `${prefix} *** ${last4}` : `*** ${last4}`
 }
 
+export const formatPhone = (phone?: string | null) => {
+  if (!phone) return '—'
+  const cleaned = phone.replace(/[^\d+]/g, '')
+  if (cleaned.length < 8) return phone
+  // Format: +502 5550 1234 or similar
+  if (cleaned.startsWith('+')) {
+    const cc = cleaned.slice(0, 4)
+    const rest = cleaned.slice(4)
+    if (rest.length === 8) return `${cc} ${rest.slice(0, 4)} ${rest.slice(4)}`
+    return `${cc} ${rest}`
+  }
+  if (cleaned.length === 8) return `${cleaned.slice(0, 4)} ${cleaned.slice(4)}`
+  return phone
+}
+
 export const shortId = (id?: string) => {
   if (!id) return '—'
   if (id.length <= 8) return id
