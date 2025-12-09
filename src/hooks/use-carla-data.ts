@@ -261,11 +261,8 @@ export const useProcessesAdmin = (filters: Partial<{ q: string; status: string; 
     queryKey: ['admin-processes', queryString],
     queryFn: () => {
       if (!API_URL) return Promise.resolve(sampleProcessesAdmin);
-      return withSampleFallback(
-        'admin-processes',
-        () => apiGet(`/admin/processes${queryString}`, processesAdminSchema, sampleProcessesAdmin),
-        sampleProcessesAdmin,
-      );
+      // Prefer real API data; only use samples when API_URL is absent.
+      return apiGet(`/admin/processes${queryString}`, processesAdminSchema, sampleProcessesAdmin);
     },
     staleTime: 1000 * 30,
     refetchInterval: 30000,
@@ -281,11 +278,7 @@ export const useProcessDetail = (id?: string) =>
       const sampleDetail = sampleProcessDetailById(id) as ProcessDetail;
       const fallbackDetail = sampleDetail || defaultProcess(id);
       const raw = API_URL
-        ? await withSampleFallback(
-            'admin-process',
-            () => apiGet<unknown>(`/admin/processes/${id}`, z.any(), fallbackDetail as ProcessDetail),
-            fallbackDetail,
-          )
+        ? await apiGet<unknown>(`/admin/processes/${id}`, z.any(), fallbackDetail as ProcessDetail)
         : fallbackDetail;
       const base = unwrapProcessDetail(raw, fallbackDetail, id);
 
@@ -327,11 +320,7 @@ export const useProcessEvents = (id?: string) =>
     queryFn: () => {
       const sampleEvents = sampleProcessEventsById(id);
       if (!API_URL) return Promise.resolve(sampleEvents);
-      return withSampleFallback(
-        'admin-process-events',
-        () => apiGet(`/admin/processes/${id}/events`, processEventsSchema, sampleEvents),
-        sampleEvents,
-      );
+      return apiGet(`/admin/processes/${id}/events`, processEventsSchema, sampleEvents);
     },
     staleTime: 1000 * 20,
     refetchInterval: 20000,
