@@ -3,11 +3,9 @@ import {
   AlertTriangle,
   Building2,
   CheckCircle2,
-  ClipboardCopy,
   Database,
   FileJson,
   Hash,
-  Info,
   Loader2,
   MessageCircle,
   Phone,
@@ -19,12 +17,37 @@ import {
   User,
   CircleDot,
   ArrowRight,
+  Globe,
+  Mail,
+  MapPin,
+  Briefcase,
+  CreditCard,
+  Calendar,
+  Fingerprint,
+  Shield,
+  Activity,
+  Zap,
+  ExternalLink,
+  Copy,
+  ChevronRight,
+  Clock,
+  AlertCircle,
+  TrendingUp,
+  Wallet,
+  Home,
+  Heart,
+  Users,
+  FileText,
+  Eye,
+  Lock,
+  Cpu,
+  Radio,
 } from 'lucide-react';
 import { isBankError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   useProcessDetail,
@@ -91,7 +114,6 @@ export function ProcesosPage() {
   const [status, setStatus] = useState<FilterStatus>('');
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [bankError, setBankError] = useState<{ key: string; step: string; code: string; message: string; correlationId: string } | null>(null);
-  const auditReason = '';
   const auditOperator = 'operador.demo@carla';
 
   const COOLDOWN_KEY = 'carla_banking_cooldowns';
@@ -220,7 +242,6 @@ export function ProcesosPage() {
     };
   }), [processes]);
 
-  const auditFields = useMemo(() => ({ operator: auditOperator || undefined, reason: auditReason || undefined }), []);
 
   return (
     <div className="space-y-4">
@@ -392,30 +413,36 @@ export function ProcesosPage() {
         )}
       </div>
 
-      {/* Detail Sheet */}
+      {/* Detail Sheet - Premium Design */}
       <Sheet open={Boolean(selectedId)} onOpenChange={(open) => { setSelectedId(open ? selectedId : undefined); if (!open) setBankError(null); }}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-2xl bg-background border-l border-border/50">
-          <SheetHeader className="pb-3 border-b border-border/30">
-            <SheetTitle className="flex items-center gap-2 text-base">
-              <ShieldCheck size={18} className="text-accent" />
-              Detalle del proceso
-            </SheetTitle>
-          </SheetHeader>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-2xl p-0 bg-gradient-to-b from-background via-background to-muted/20 border-l border-border/30">
           {detailQuery.isLoading ? (
-            <div className="space-y-3 py-6">
-              <Skeleton className="h-4 w-2/3" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-32 w-full" />
+            <div className="p-6 space-y-6">
+              <div className="flex items-center gap-4">
+                <Skeleton className="w-20 h-20 rounded-2xl" />
+                <div className="flex-1 space-y-3">
+                  <Skeleton className="h-6 w-2/3" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                {[1,2,3,4].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
+              </div>
+              <Skeleton className="h-10 w-full rounded-xl" />
+              <Skeleton className="h-64 w-full rounded-xl" />
             </div>
           ) : detailQuery.isError ? (
-            <div className="py-6">
-              <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-4 text-center">
-                <AlertTriangle size={24} className="mx-auto text-red-500 mb-2" />
-                <p className="font-medium text-red-700 dark:text-red-300">Error al cargar</p>
-                <p className="text-xs text-red-600/80 mt-1">{selectedId}</p>
+            <div className="p-6">
+              <div className="rounded-2xl bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent border border-red-500/20 p-8 text-center backdrop-blur-sm">
+                <div className="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                  <AlertTriangle size={32} className="text-red-400" />
+                </div>
+                <p className="font-semibold text-lg text-foreground mb-1">Error al cargar</p>
+                <p className="text-sm text-muted-foreground mb-4">No se pudo obtener la información del proceso</p>
+                <code className="text-xs font-mono text-red-400/70 bg-red-500/10 px-3 py-1 rounded-lg">{selectedId}</code>
               </div>
-              <Button variant="outline" size="sm" className="mt-4 w-full" onClick={() => detailQuery.refetch()}>
-                <RefreshCw size={14} className={detailQuery.isFetching ? 'animate-spin mr-2' : 'mr-2'} />
+              <Button variant="outline" size="lg" className="mt-6 w-full rounded-xl h-12" onClick={() => detailQuery.refetch()}>
+                <RefreshCw size={16} className={`mr-2 ${detailQuery.isFetching ? 'animate-spin' : ''}`} />
                 Reintentar
               </Button>
             </div>
@@ -429,355 +456,688 @@ export function ProcesosPage() {
               const complianceSource = normalized.complianceSource;
               const risk = normalized.riskFlags.risk;
               const valueOrDash = (v?: string | number | null) => (v === undefined || v === null || v === '' ? '—' : v);
-              const badgeTone = (v?: boolean) => (v ? 'bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/30' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30');
-              const renderField = (label: string, value?: string | number | null, mono?: boolean) => (
-                <div className="space-y-0.5">
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-                  <p className={`text-sm text-foreground ${mono ? 'font-mono' : ''}`}>{valueOrDash(value)}</p>
-                </div>
-              );
-
-              const statusChips = [
-                { label: 'DIDIT', value: account.didit_status },
-                { label: 'QIC', value: account.qic_status },
-                { label: 'RENAP', value: account.renap_status },
-                { label: 'Teléfono', value: account.phone_verification_status },
-              ];
-
-              const chipTone = (val?: string) => {
-                const v = (val || '').toLowerCase();
-                if (/approved|verified|ok|success|clear/.test(v)) return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30';
-                if (/error|fail|reject/.test(v)) return 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30';
-                return 'bg-muted/50 text-muted-foreground border-border/50';
-              };
-
+              
+              const statusDisplay = mapStatusDisplay(detailQuery.data.status ?? detailQuery.data.banking_status ?? undefined);
+              const statusColors = STATUS_COLORS[statusDisplay.tone] || STATUS_COLORS.info;
+              
               const bankClientId = account.external_customer_id || account.bank_partner_client_id || account.external_account_id || account.id;
               const phoneForBank = normalized.mainPhone || account.phone_main || undefined;
 
+              // Calculate stats
+              const verificationsDone = [account.didit_status, account.renap_status, account.phone_verification_status].filter(s => /approved|verified|ok|success/.test((s || '').toLowerCase())).length;
+              const bankStepsDone = [account.bank_blacklist_finished_at, account.bank_client_finished_at, account.bank_account_finished_at, account.bank_complementary_finished_at].filter(Boolean).length;
+
+              const copyToClipboard = (text: string, label: string) => {
+                navigator.clipboard.writeText(text);
+                toast({ title: 'Copiado', description: label });
+              };
+
               return (
-                <div className="space-y-4 py-4 text-sm">
-                  {/* Identity Card */}
-                  <div className="rounded-xl bg-muted/30 border border-border/50 p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                        <User size={18} className="text-accent" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <code className="text-[10px] font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded truncate max-w-[180px]">
-                            {detailQuery.data.id}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5"
-                            onClick={() => detailQuery.data?.id && navigator.clipboard.writeText(detailQuery.data.id)}
+                <div className="flex flex-col min-h-full">
+                  {/* Hero Header with Gradient */}
+                  <div className="relative overflow-hidden">
+                    {/* Background gradient based on status */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${
+                      statusDisplay.tone === 'ok' ? 'from-emerald-500/20 via-emerald-500/5' :
+                      statusDisplay.tone === 'error' ? 'from-red-500/20 via-red-500/5' :
+                      statusDisplay.tone === 'warn' ? 'from-amber-500/20 via-amber-500/5' :
+                      'from-sky-500/20 via-sky-500/5'
+                    } to-transparent`} />
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/5 via-transparent to-transparent" />
+                    
+                    <div className="relative p-6 pb-8">
+                      {/* Top bar with ID and actions */}
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => copyToClipboard(detailQuery.data?.id || '', 'ID copiado')}
+                            className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/50 backdrop-blur-sm border border-border/30 hover:border-accent/50 transition-all"
                           >
-                            <ClipboardCopy size={10} />
+                            <Hash size={12} className="text-muted-foreground" />
+                            <code className="text-[11px] font-mono text-muted-foreground group-hover:text-foreground transition-colors">{shortId(detailQuery.data?.id || '')}</code>
+                            <Copy size={10} className="text-muted-foreground/50 group-hover:text-accent transition-colors" />
+                          </button>
+                          <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${statusColors.bg} ${statusColors.text} border ${statusColors.border}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${statusColors.dot} animate-pulse`} />
+                            {statusDisplay.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-background/50" onClick={() => detailQuery.refetch()} disabled={detailQuery.isFetching}>
+                            <RefreshCw size={14} className={detailQuery.isFetching ? 'animate-spin' : ''} />
                           </Button>
                         </div>
-                        <h3 className="font-semibold text-foreground">{fullName}</h3>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><Phone size={11} className="text-accent/70" /> {mainPhone}</span>
-                          {email !== '—' && <span className="truncate">{email}</span>}
+                      </div>
+
+                      {/* Main identity */}
+                      <div className="flex items-start gap-4">
+                        {/* Large Avatar */}
+                        <div className={`relative w-20 h-20 rounded-2xl bg-gradient-to-br ${getAvatarColor(detailQuery.data?.id || '')} flex items-center justify-center text-white font-bold text-2xl shadow-xl shadow-black/20 ring-4 ring-background/50`}>
+                          {getInitials(fullName)}
+                          <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-lg ${statusColors.dot} border-4 border-background flex items-center justify-center`}>
+                            {statusDisplay.tone === 'ok' ? <CheckCircle2 size={12} className="text-white" /> :
+                             statusDisplay.tone === 'error' ? <AlertCircle size={10} className="text-white" /> :
+                             <Clock size={10} className="text-white" />}
+                          </div>
+                        </div>
+
+                        {/* Identity info */}
+                        <div className="flex-1 min-w-0">
+                          <h2 className="text-xl font-bold text-foreground truncate mb-1">{fullName}</h2>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                            {mainPhone !== '—' && (
+                              <button onClick={() => copyToClipboard(normalized.mainPhone || '', 'Teléfono copiado')} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors group">
+                                <Phone size={13} className="text-accent/70" />
+                                <span className="font-mono">{mainPhone}</span>
+                                <Copy size={10} className="opacity-0 group-hover:opacity-100 text-accent transition-opacity" />
+                              </button>
+                            )}
+                            {email !== '—' && (
+                              <button onClick={() => copyToClipboard(email, 'Email copiado')} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors group">
+                                <Mail size={13} className="text-accent/70" />
+                                <span className="truncate max-w-[180px]">{email}</span>
+                                <Copy size={10} className="opacity-0 group-hover:opacity-100 text-accent transition-opacity" />
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/50 backdrop-blur-sm text-[11px] text-muted-foreground">
+                              <Fingerprint size={11} />
+                              {account.document_type || 'DPI'} {account.document_number || '—'}
+                            </span>
+                            {account.product_type && (
+                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/50 backdrop-blur-sm text-[11px] text-muted-foreground">
+                                <CreditCard size={11} />
+                                {account.product_type}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-border/30">
-                      {renderField('Documento', `${account.document_type || '—'} ${account.document_number || ''}`, true)}
-                      {renderField('País', account.document_country)}
-                      {renderField('Producto', account.product_type)}
-                      {renderField('Moneda', account.account_currency)}
-                      {renderField('Canal', account.channel)}
-                      {renderField('Institución', account.institution_name)}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border/30">
-                      {statusChips.map((chip) => (
-                        <span key={chip.label} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border ${chipTone(chip.value as string)}`}>
-                          {chip.label}: {valueOrDash(chip.value)}
-                        </span>
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="px-6 -mt-4">
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { icon: ShieldCheck, label: 'Verificaciones', value: `${verificationsDone}/3`, color: verificationsDone === 3 ? 'emerald' : 'amber', gradient: 'from-emerald-500/20 to-teal-500/10' },
+                        { icon: Building2, label: 'Banco', value: `${bankStepsDone}/4`, color: bankStepsDone === 4 ? 'emerald' : 'sky', gradient: 'from-sky-500/20 to-blue-500/10' },
+                        { icon: Shield, label: 'Compliance', value: risk ? 'Alerta' : 'OK', color: risk ? 'red' : 'emerald', gradient: risk ? 'from-red-500/20 to-orange-500/10' : 'from-emerald-500/20 to-green-500/10' },
+                        { icon: Activity, label: 'Intentos', value: String(account.integration_attempts || 0), color: 'violet', gradient: 'from-violet-500/20 to-purple-500/10' },
+                      ].map((stat) => (
+                        <div key={stat.label} className={`group relative overflow-hidden rounded-xl bg-gradient-to-br ${stat.gradient} border border-border/30 p-3 hover:border-${stat.color}-500/30 transition-all cursor-default`}>
+                          <div className={`w-8 h-8 rounded-lg bg-${stat.color}-500/20 flex items-center justify-center mb-2`}>
+                            <stat.icon size={16} className={`text-${stat.color}-500`} />
+                          </div>
+                          <p className="text-lg font-bold text-foreground">{stat.value}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{stat.label}</p>
+                        </div>
                       ))}
                     </div>
                   </div>
 
-                  <Tabs defaultValue="resumen" className="w-full">
-                    <TabsList className="flex w-full p-0.5 bg-muted/30 rounded-lg border border-border/30">
-                      <TabsTrigger value="resumen" className="flex-1 flex items-center justify-center gap-1 rounded text-xs py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"><Info size={12} /> Resumen</TabsTrigger>
-                      <TabsTrigger value="verificaciones" className="flex-1 flex items-center justify-center gap-1 rounded text-xs py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"><ShieldCheck size={12} /> Verificación</TabsTrigger>
-                      <TabsTrigger value="banco" className="flex-1 flex items-center justify-center gap-1 rounded text-xs py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"><Building2 size={12} /> Banco</TabsTrigger>
-                      <TabsTrigger value="raw" className="flex-1 flex items-center justify-center gap-1 rounded text-xs py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"><FileJson size={12} /> JSON</TabsTrigger>
-                    </TabsList>
+                  {/* Tabs */}
+                  <div className="flex-1 px-6 pt-6 pb-6">
+                    <Tabs defaultValue="resumen" className="w-full">
+                      <TabsList className="w-full p-1 bg-muted/30 rounded-xl border border-border/30 mb-4">
+                        <TabsTrigger value="resumen" className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-xs py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">
+                          <User size={13} /> Resumen
+                        </TabsTrigger>
+                        <TabsTrigger value="verificaciones" className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-xs py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">
+                          <Fingerprint size={13} /> Verificación
+                        </TabsTrigger>
+                        <TabsTrigger value="banco" className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-xs py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">
+                          <Building2 size={13} /> Banco
+                        </TabsTrigger>
+                        <TabsTrigger value="raw" className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-xs py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all">
+                          <Cpu size={13} /> JSON
+                        </TabsTrigger>
+                      </TabsList>
 
-                    <TabsContent value="resumen" className="pt-3">
-                      <div className="rounded-xl bg-muted/30 border border-border/50 p-4 space-y-4">
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {renderField('Nombre completo', fullName)}
-                          {renderField('Teléfono', mainPhone, true)}
-                          {renderField('Email', email)}
-                          {renderField('Documento', normalized.documentLabel, true)}
-                          {renderField('Dirección', normalized.address)}
-                          {renderField('Tipo vivienda', normalized.housingType)}
-                          {renderField('Nacionalidad', normalized.nationality)}
-                          {renderField('Estado civil', normalized.maritalStatus)}
-                          {renderField('Empleo', normalized.employmentStatus)}
-                          {renderField('Empleador', normalized.employer)}
-                          {renderField('Ingreso mensual', normalized.monthlyIncome ? `Q${normalized.monthlyIncome.toLocaleString()}` : null)}
-                          {renderField('Egreso mensual', normalized.monthlyExpenses ? `Q${normalized.monthlyExpenses.toLocaleString()}` : null)}
-                          {renderField('Creado', formatDate(account.created_at))}
-                          {renderField('Actualizado', formatDate(detailQuery.data.updated_at))}
-                        </div>
-                        <div className="pt-3 border-t border-border/30">
-                          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">Flags de riesgo</p>
-                          <div className="flex flex-wrap gap-2">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${badgeTone(account.is_pep)}`}>PEP: {account.is_pep ? 'Sí' : 'No'}</span>
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${badgeTone(account.is_pep_related)}`}>Rel PEP: {account.is_pep_related ? 'Sí' : 'No'}</span>
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${badgeTone(account.has_us_tax_obligations)}`}>US Tax: {account.has_us_tax_obligations ? 'Sí' : 'No'}</span>
+                      {/* Tab: Resumen */}
+                      <TabsContent value="resumen" className="mt-0 space-y-4 animate-in fade-in-50 duration-200">
+                        {/* Identity Section */}
+                        <div className="rounded-xl bg-gradient-to-br from-muted/50 to-muted/20 border border-border/30 overflow-hidden">
+                          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/30 bg-muted/30">
+                            <User size={14} className="text-accent" />
+                            <span className="text-xs font-semibold text-foreground">Identidad</span>
+                          </div>
+                          <div className="p-4 grid grid-cols-2 gap-4">
+                            {[
+                              { label: 'Nombre completo', value: fullName, icon: User },
+                              { label: 'Documento', value: normalized.documentLabel, icon: Fingerprint, mono: true },
+                              { label: 'Nacionalidad', value: normalized.nationality, icon: Globe },
+                              { label: 'Estado civil', value: normalized.maritalStatus, icon: Heart },
+                              { label: 'Fecha nacimiento', value: formatDate(account.birth_date), icon: Calendar },
+                              { label: 'Género', value: account.gender, icon: Users },
+                            ].map((field) => (
+                              <div key={field.label} className="group">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <field.icon size={11} className="text-muted-foreground/50" />
+                                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{field.label}</p>
+                                </div>
+                                <p className={`text-sm text-foreground ${field.mono ? 'font-mono' : ''}`}>{valueOrDash(field.value)}</p>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      </div>
-                    </TabsContent>
 
-                    <TabsContent value="verificaciones" className="pt-3">
-                      <div className="rounded-xl bg-muted/30 border border-border/50 p-4">
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {renderField('DIDIT', account.didit_status)}
-                          {renderField('Último check DIDIT', formatDate(account.didit_last_check))}
-                          {renderField('Decisión DIDIT', account.didit_metadata?.decision?.status)}
-                          {renderField('Motivo DIDIT', account.didit_metadata?.decision?.reason)}
-                          {renderField('RENAP', account.renap_status)}
-                          {renderField('Último check RENAP', formatDate(account.renap_last_check))}
-                          {renderField('Teléfono verificación', account.phone_verification_status)}
-                          {renderField('OTP verificado', formatDate(account.phone_verification_metadata?.verified_at))}
-                          {renderField('Compliance', complianceSource.join(', '))}
-                        </div>
-                        {risk && (
-                          <div className="mt-4 rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-xs text-amber-700 dark:text-amber-200 flex items-center gap-2">
-                            <AlertTriangle size={14} />
-                            Riesgo identificado (PEP/Compliance). Revisar manualmente.
+                        {/* Contact Section */}
+                        <div className="rounded-xl bg-gradient-to-br from-muted/50 to-muted/20 border border-border/30 overflow-hidden">
+                          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/30 bg-muted/30">
+                            <Phone size={14} className="text-accent" />
+                            <span className="text-xs font-semibold text-foreground">Contacto</span>
                           </div>
-                        )}
-                        {account.didit_verification_link && (
-                          <Button variant="secondary" size="sm" className="mt-4" onClick={() => window.open(account.didit_verification_link || '#', '_blank')}>
-                            Abrir verificación DIDIT
-                          </Button>
-                        )}
-                      </div>
-                    </TabsContent>
+                          <div className="p-4 grid grid-cols-2 gap-4">
+                            {[
+                              { label: 'Teléfono', value: mainPhone, icon: Phone, mono: true },
+                              { label: 'Email', value: email, icon: Mail },
+                              { label: 'Dirección', value: normalized.address, icon: MapPin, span: true },
+                              { label: 'Tipo vivienda', value: normalized.housingType, icon: Home },
+                            ].map((field) => (
+                              <div key={field.label} className={`group ${field.span ? 'col-span-2' : ''}`}>
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <field.icon size={11} className="text-muted-foreground/50" />
+                                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{field.label}</p>
+                                </div>
+                                <p className={`text-sm text-foreground ${field.mono ? 'font-mono' : ''}`}>{valueOrDash(field.value)}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
 
-                    <TabsContent value="banco" className="pt-3">
-                      {(() => {
-                        const isSuccessResponse = (resp: unknown) => {
-                          const raw = (resp as { status?: unknown })?.status ?? (resp as { statusCode?: unknown })?.statusCode ?? (resp as { code?: unknown })?.code;
-                          const numeric = typeof raw === 'string' ? Number(raw) : (raw as number | undefined);
-                          if (numeric === 200 || numeric === 201) return true;
-                          const text = typeof raw === 'string' ? raw.toLowerCase() : '';
-                          return text.includes('200') || text === 'ok' || text === 'created' || text.includes('201');
-                        };
-                        const resolveStatus = (finishedAt?: string | null, resp?: unknown) => {
-                          if (isSuccessResponse(resp) || finishedAt) return { tone: 'ok', label: `OK${finishedAt ? ` · ${formatDate(finishedAt)}` : ''}`, done: true };
-                          if (resp) return { tone: 'error', label: 'Fallo', done: false };
-                          return { tone: 'warn', label: 'Pendiente', done: false };
-                        };
-                        const formatBirthDate = (date?: string | null) => {
-                          if (!date) return '';
-                          const digits = date.replace(/\D/g, '').slice(0, 8);
-                          return digits.length === 8 ? digits : '';
-                        };
-                        const mutateWithError = <T,>(mutation: { mutate: (args: T, opts?: { onError?: (e: unknown) => void; onSuccess?: () => void }) => void }, args: T, label: string, key: string) => {
-                          mutation.mutate(args, {
-                            onError: (e) => onActionError(`Fallo ${label}`, e, key),
-                            onSuccess: () => { toast({ title: `${label} OK` }); detailQuery.refetch(); },
-                          });
-                        };
-                        const endpointRows = [
-                          { key: 'blacklist', label: 'Blacklist', finishedAt: account.bank_blacklist_finished_at, resp: account.bank_blacklist_response, action: () => mutateWithError(bridgeBlacklist, { dpi: account.document_number, C75000: account.document_type || '11', C75016: `D${(account.document_number || '').replace(/^D/i, '')}`, C75804: '', C75020: '', C75503: account.document_country || 'GT', C75043: account.document_country || 'GT', C75084: formatBirthDate(account.birth_date) }, 'Blacklist', 'blacklist'), pending: bridgeBlacklist.isPending, needsClient: false },
-                          { key: 'onboarding', label: 'Onboarding', finishedAt: account.bank_onboarding_finished_at, resp: account.bank_onboarding_response, action: () => mutateWithError(bridgeUpdateOnboarding, { clientId: bankClientId ?? '', body: { email: account.email, phone: phoneForBank, full_name: account.full_name } }, 'Onboarding', 'onboarding'), pending: bridgeUpdateOnboarding.isPending, needsClient: true },
-                          { key: 'account', label: 'Cuenta', finishedAt: account.bank_account_finished_at, resp: account.bank_account_response, action: () => mutateWithError(bridgeCreateAccount, { clientId: bankClientId ?? '', body: { currency: account.account_currency, product: account.product_type, phone: phoneForBank } }, 'Cuenta', 'account'), pending: bridgeCreateAccount.isPending, needsClient: true },
-                          { key: 'complementary', label: 'Complementary', finishedAt: account.bank_complementary_finished_at, resp: account.bank_complementary_response, action: () => mutateWithError(bridgeComplementaryCreate, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Complementary', 'complementary'), pending: bridgeComplementaryCreate.isPending, needsClient: true },
-                          { key: 'complement_query', label: 'Query Complement', finishedAt: account.bank_complement_query_finished_at, resp: account.bank_complement_query_response, action: () => mutateWithError(bridgeQueryComplement, bankClientId ?? '', 'Query Complement', 'complement_query'), pending: bridgeQueryComplement.isPending, needsClient: true },
-                          { key: 'complement_update', label: 'Update Complement', finishedAt: account.bank_complementary_update_finished_at, resp: account.bank_complementary_update_response, action: () => mutateWithError(bridgeUpdateComplementary, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Update Complement', 'complement_update'), pending: bridgeUpdateComplementary.isPending, needsClient: true },
-                          { key: 'cliente', label: 'Consulta Micoope', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => mutateWithError(bridgeMicoopeClient, bankClientId ?? '', 'Consulta Micoope', 'cliente'), pending: bridgeMicoopeClient.isPending, needsClient: true },
-                          { key: 'crear_cliente', label: 'Crear Individual', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => mutateWithError(bridgeCreateIndividual, { clientId: bankClientId ?? '', document_number: account.document_number, full_name: account.full_name, phone: phoneForBank } as never, 'Crear Individual', 'crear_cliente'), pending: bridgeCreateIndividual.isPending, needsClient: true },
-                        ];
-                        return (
-                          <div className="space-y-3 rounded-xl bg-muted/30 border border-border/50 p-4">
-                            <div className="flex items-center justify-between pb-2 border-b border-border/30">
-                              <div>
-                                <p className="text-xs text-muted-foreground">{valueOrDash(account.institution_name)}</p>
-                                <p className="font-mono text-[11px] text-muted-foreground">{valueOrDash(bankClientId)}</p>
+                        {/* Employment & Financial */}
+                        <div className="rounded-xl bg-gradient-to-br from-muted/50 to-muted/20 border border-border/30 overflow-hidden">
+                          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/30 bg-muted/30">
+                            <Briefcase size={14} className="text-accent" />
+                            <span className="text-xs font-semibold text-foreground">Empleo y Finanzas</span>
+                          </div>
+                          <div className="p-4 grid grid-cols-2 gap-4">
+                            {[
+                              { label: 'Situación laboral', value: normalized.employmentStatus, icon: Briefcase },
+                              { label: 'Empleador', value: normalized.employer, icon: Building2 },
+                              { label: 'Ingreso mensual', value: normalized.monthlyIncome ? `Q${normalized.monthlyIncome.toLocaleString()}` : null, icon: TrendingUp },
+                              { label: 'Egreso mensual', value: normalized.monthlyExpenses ? `Q${normalized.monthlyExpenses.toLocaleString()}` : null, icon: Wallet },
+                            ].map((field) => (
+                              <div key={field.label} className="group">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <field.icon size={11} className="text-muted-foreground/50" />
+                                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{field.label}</p>
+                                </div>
+                                <p className="text-sm text-foreground">{valueOrDash(field.value)}</p>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <span className="flex items-center gap-1 text-[10px] text-accent">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                                  Auto 60s
-                                </span>
-                                <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => detailQuery.refetch()} disabled={detailQuery.isFetching}>
-                                  <RefreshCw size={12} className={detailQuery.isFetching ? 'animate-spin' : ''} />
-                                </Button>
-                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Risk Flags */}
+                        <div className="rounded-xl bg-gradient-to-br from-muted/50 to-muted/20 border border-border/30 overflow-hidden">
+                          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/30 bg-muted/30">
+                            <Shield size={14} className="text-accent" />
+                            <span className="text-xs font-semibold text-foreground">Compliance & Riesgo</span>
+                          </div>
+                          <div className="p-4">
+                            <div className="flex flex-wrap gap-2">
+                              {[
+                                { label: 'PEP', value: account.is_pep, icon: AlertTriangle },
+                                { label: 'Relacionado PEP', value: account.is_pep_related, icon: Users },
+                                { label: 'US Tax', value: account.has_us_tax_obligations, icon: Globe },
+                              ].map((flag) => (
+                                <div key={flag.label} className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${flag.value ? 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'}`}>
+                                  <flag.icon size={14} />
+                                  <span className="text-xs font-medium">{flag.label}: {flag.value ? 'Sí' : 'No'}</span>
+                                </div>
+                              ))}
                             </div>
-                            <p className="text-[10px] text-muted-foreground">Espere 10s entre disparos del mismo servicio.</p>
-                            <div className="grid gap-2">
-                              {endpointRows.map((ep) => {
-                                const st = resolveStatus(ep.finishedAt, ep.resp);
-                                const cooldownKey = `${selectedId}_${ep.key}`;
-                                const cooldownRemaining = getCooldownRemaining(cooldownKey);
-                                const isOnCooldown = cooldownRemaining > 0;
-                                const disabled = st.done || ep.pending || isOnCooldown || (ep.needsClient && !bankClientId);
-                                const hasError = bankError?.key === ep.key;
-                                return (
-                                  <div key={ep.key} className="space-y-0">
-                                    <div className={`flex items-center justify-between gap-2 rounded-lg bg-background/50 border px-3 py-2 transition-all ${hasError ? 'border-red-500/50 bg-red-500/5' : isOnCooldown ? 'border-amber-500/40' : st.done ? 'border-emerald-500/30' : 'border-border/50'}`}>
+                            {complianceSource.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-border/30">
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">Fuentes compliance</p>
+                                <p className="text-xs text-foreground">{complianceSource.join(', ')}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Timestamps */}
+                        <div className="flex items-center gap-4 px-1 text-[11px] text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar size={11} />
+                            Creado: {formatDate(account.created_at)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock size={11} />
+                            Actualizado: {formatDate(detailQuery.data.updated_at)}
+                          </span>
+                        </div>
+                      </TabsContent>
+
+                      {/* Tab: Verificaciones */}
+                      <TabsContent value="verificaciones" className="mt-0 space-y-3 animate-in fade-in-50 duration-200">
+                        {/* Timeline */}
+                        <div className="relative pl-6">
+                          <div className="absolute left-2 top-4 bottom-4 w-px bg-gradient-to-b from-accent via-border to-border/30" />
+                          
+                          {[
+                            { 
+                              key: 'didit',
+                              label: 'DIDIT Identity', 
+                              status: account.didit_status, 
+                              date: account.didit_last_check,
+                              decision: account.didit_metadata?.decision?.status,
+                              reason: account.didit_metadata?.decision?.reason,
+                              link: account.didit_verification_link,
+                              icon: Eye
+                            },
+                            { 
+                              key: 'renap',
+                              label: 'RENAP Guatemala', 
+                              status: account.renap_status, 
+                              date: account.renap_last_check,
+                              icon: FileText
+                            },
+                            { 
+                              key: 'phone',
+                              label: 'Verificación Teléfono', 
+                              status: account.phone_verification_status, 
+                              date: account.phone_verification_metadata?.verified_at,
+                              icon: Phone
+                            },
+                            { 
+                              key: 'qic',
+                              label: 'QIC Check', 
+                              status: account.qic_status, 
+                              date: account.qic_last_check,
+                              icon: Lock
+                            },
+                          ].map((item) => {
+                            const isOk = /approved|verified|ok|success|clear/.test((item.status || '').toLowerCase());
+                            const isError = /error|fail|reject/.test((item.status || '').toLowerCase());
+                            const tone = isOk ? 'emerald' : isError ? 'red' : 'amber';
+                            
+                            return (
+                              <div key={item.key} className="relative pb-4 last:pb-0">
+                                {/* Timeline dot */}
+                                <div className={`absolute -left-4 w-4 h-4 rounded-full border-2 border-background ${isOk ? 'bg-emerald-500' : isError ? 'bg-red-500' : 'bg-amber-500'} flex items-center justify-center`}>
+                                  {isOk && <CheckCircle2 size={10} className="text-white" />}
+                                  {isError && <AlertCircle size={8} className="text-white" />}
+                                </div>
+                                
+                                <div className={`ml-4 rounded-xl bg-gradient-to-r from-${tone}-500/10 to-transparent border border-${tone}-500/20 p-4 hover:border-${tone}-500/40 transition-all`}>
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-8 h-8 rounded-lg bg-${tone}-500/20 flex items-center justify-center`}>
+                                        <item.icon size={16} className={`text-${tone}-500`} />
+                                      </div>
                                       <div>
-                                        <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-                                          <span className={`w-1.5 h-1.5 rounded-full ${hasError ? 'bg-red-500' : st.done ? 'bg-emerald-500' : isOnCooldown ? 'bg-amber-500' : ep.pending ? 'bg-amber-500 animate-pulse' : 'bg-muted-foreground'}`} />
-                                          {ep.label}
-                                        </div>
-                                        <span className={`text-[10px] ${hasError ? 'text-red-600 dark:text-red-400' : st.tone === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : st.tone === 'error' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                          {hasError ? 'Error' : st.label}
-                                        </span>
+                                        <h4 className="text-sm font-semibold text-foreground">{item.label}</h4>
+                                        <p className={`text-xs text-${tone}-600 dark:text-${tone}-400`}>{valueOrDash(item.status)}</p>
                                       </div>
-                                      <Button size="sm" variant={hasError ? 'destructive' : isOnCooldown ? 'secondary' : 'outline'} disabled={disabled} className="h-7 min-w-[70px] text-xs" onClick={() => { triggerCooldown(cooldownKey); setBankError(null); ep.action(); }}>
-                                        {st.done ? 'OK' : ep.pending ? <RefreshCw size={12} className="animate-spin" /> : isOnCooldown ? <span className="font-mono">{formatCooldown(cooldownRemaining)}</span> : 'Disparar'}
-                                      </Button>
                                     </div>
-                                    {hasError && (
-                                      <div className="mx-1 -mt-1 rounded-b-lg bg-gradient-to-b from-red-500/20 to-red-500/5 border border-t-0 border-red-500/30 px-3 py-2.5 backdrop-blur-sm">
-                                        <div className="flex items-start gap-2">
-                                          <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
-                                            <AlertTriangle size={12} className="text-red-400" />
-                                          </div>
-                                          <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2">
-                                              <span className="px-1.5 py-0.5 rounded bg-red-500/30 text-[10px] font-bold text-red-300 tracking-wide">{bankError.code}</span>
-                                              <button onClick={() => setBankError(null)} className="ml-auto text-red-400/60 hover:text-red-300 text-sm leading-none">×</button>
-                                            </div>
-                                            <p className="text-[11px] text-red-200/90 mt-1.5 leading-relaxed">{bankError.message}</p>
-                                            {bankError.correlationId && (
-                                              <p className="text-[9px] font-mono text-red-400/50 mt-1.5 flex items-center gap-1">
-                                                <Hash size={9} />
-                                                {bankError.correlationId}
-                                              </p>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </div>
+                                    {item.date && (
+                                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">{formatDate(item.date)}</span>
                                     )}
                                   </div>
-                                );
-                              })}
+                                  
+                                  {(item.decision || item.reason) && (
+                                    <div className="mt-3 pt-3 border-t border-border/30 grid grid-cols-2 gap-3">
+                                      {item.decision && (
+                                        <div>
+                                          <p className="text-[10px] text-muted-foreground uppercase">Decisión</p>
+                                          <p className="text-xs text-foreground">{item.decision}</p>
+                                        </div>
+                                      )}
+                                      {item.reason && (
+                                        <div>
+                                          <p className="text-[10px] text-muted-foreground uppercase">Motivo</p>
+                                          <p className="text-xs text-foreground">{item.reason}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {item.link && (
+                                    <Button variant="ghost" size="sm" className="mt-3 h-7 text-xs" onClick={() => window.open(item.link || '#', '_blank')}>
+                                      <ExternalLink size={12} className="mr-1" /> Ver verificación
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {risk && (
+                          <div className="rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/10 border border-amber-500/30 p-4 flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+                              <AlertTriangle size={20} className="text-amber-500" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-amber-700 dark:text-amber-300 mb-1">Alerta de Riesgo</h4>
+                              <p className="text-sm text-amber-600/80 dark:text-amber-200/80">Se detectaron flags de compliance (PEP/relacionado). Se requiere revisión manual antes de continuar.</p>
                             </div>
                           </div>
-                        );
-                      })()}
-                    </TabsContent>
-
-                    <TabsContent value="raw" className="pt-3">
-                      <div className="space-y-3">
-                        <details className="group rounded-xl border border-border/50 bg-muted/30 overflow-hidden" open>
-                          <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors flex items-center gap-2">
-                            <Database size={12} className="text-accent" />
-                            Account
-                          </summary>
-                          <pre className="max-h-64 overflow-auto px-4 py-3 border-t border-border/30 text-[10px] font-mono bg-black/5 dark:bg-black/30">
-                            <code dangerouslySetInnerHTML={{
-                              __html: JSON.stringify(account, null, 2)
-                                .replace(/(".*?")(?=:)/g, '<span class="text-accent dark:text-cyan-400">$1</span>')
-                                .replace(/: "(.*?)"/g, ': <span class="text-sky-600 dark:text-cyan-200">"$1"</span>')
-                                .replace(/: ([0-9.\-]+)/g, ': <span class="text-amber-600 dark:text-amber-300">$1</span>')
-                                .replace(/: (true|false|null)/g, ': <span class="text-purple-600 dark:text-purple-400">$1</span>')
-                            }} />
-                          </pre>
-                        </details>
-                        {account.extra_data && (
-                          <details className="group rounded-xl border border-border/50 bg-muted/30 overflow-hidden">
-                            <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors flex items-center gap-2">
-                              <FileJson size={12} className="text-accent" />
-                              Extra data
-                            </summary>
-                            <pre className="max-h-64 overflow-auto px-4 py-3 border-t border-border/30 text-[10px] font-mono bg-black/5 dark:bg-black/30">
-                              <code dangerouslySetInnerHTML={{
-                                __html: JSON.stringify(account.extra_data, null, 2)
-                                  .replace(/(".*?")(?=:)/g, '<span class="text-accent dark:text-cyan-400">$1</span>')
-                                  .replace(/: "(.*?)"/g, ': <span class="text-sky-600 dark:text-cyan-200">"$1"</span>')
-                                  .replace(/: ([0-9.\-]+)/g, ': <span class="text-amber-600 dark:text-amber-300">$1</span>')
-                                  .replace(/: (true|false|null)/g, ': <span class="text-purple-600 dark:text-purple-400">$1</span>')
-                              }} />
-                            </pre>
-                          </details>
                         )}
-                      </div>
-                    </TabsContent>
-                  </Tabs>
+                      </TabsContent>
 
-                  {/* Actions Panel - Consolidated */}
-                  <div className="rounded-xl bg-muted/30 border border-border/50 p-4 mt-4">
-                    <p className="text-xs font-medium text-foreground mb-3">Acciones rápidas</p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs"
-                        disabled={retryMutation.isPending}
-                        onClick={() => {
-                          if (!confirmDanger('Recolocar en retry?')) return;
-                          retryMutation.mutate(
-                            { ...auditFields },
-                            { onError: (er) => onActionError('Fallo retry', er), onSuccess: () => toast({ title: 'Retry enviado' }) },
+                      {/* Tab: Banco */}
+                      <TabsContent value="banco" className="mt-0 space-y-4 animate-in fade-in-50 duration-200">
+                        {(() => {
+                          const isSuccessResponse = (resp: unknown) => {
+                            const raw = (resp as { status?: unknown })?.status ?? (resp as { statusCode?: unknown })?.statusCode ?? (resp as { code?: unknown })?.code;
+                            const numeric = typeof raw === 'string' ? Number(raw) : (raw as number | undefined);
+                            if (numeric === 200 || numeric === 201) return true;
+                            const text = typeof raw === 'string' ? raw.toLowerCase() : '';
+                            return text.includes('200') || text === 'ok' || text === 'created' || text.includes('201');
+                          };
+                          const resolveStatus = (finishedAt?: string | null, resp?: unknown) => {
+                            if (isSuccessResponse(resp) || finishedAt) return { tone: 'ok' as const, label: 'Completado', done: true };
+                            if (resp) return { tone: 'error' as const, label: 'Error', done: false };
+                            return { tone: 'pending' as const, label: 'Pendiente', done: false };
+                          };
+                          const formatBirthDate = (date?: string | null) => {
+                            if (!date) return '';
+                            const digits = date.replace(/\D/g, '').slice(0, 8);
+                            return digits.length === 8 ? digits : '';
+                          };
+                          const mutateWithError = <T,>(mutation: { mutate: (args: T, opts?: { onError?: (e: unknown) => void; onSuccess?: () => void }) => void }, args: T, label: string, key: string) => {
+                            mutation.mutate(args, {
+                              onError: (e) => onActionError(`Fallo ${label}`, e, key),
+                              onSuccess: () => { toast({ title: `${label} OK` }); detailQuery.refetch(); },
+                            });
+                          };
+
+                          const endpoints = [
+                            { key: 'blacklist', label: 'Blacklist Check', desc: 'Verificar listas negras', icon: Shield, finishedAt: account.bank_blacklist_finished_at, resp: account.bank_blacklist_response, action: () => mutateWithError(bridgeBlacklist, { dpi: account.document_number, C75000: account.document_type || '11', C75016: `D${(account.document_number || '').replace(/^D/i, '')}`, C75804: '', C75020: '', C75503: account.document_country || 'GT', C75043: account.document_country || 'GT', C75084: formatBirthDate(account.birth_date) }, 'Blacklist', 'blacklist'), pending: bridgeBlacklist.isPending, needsClient: false },
+                            { key: 'onboarding', label: 'Onboarding', desc: 'Datos iniciales', icon: User, finishedAt: account.bank_onboarding_finished_at, resp: account.bank_onboarding_response, action: () => mutateWithError(bridgeUpdateOnboarding, { clientId: bankClientId ?? '', body: { email: account.email, phone: phoneForBank, full_name: account.full_name } }, 'Onboarding', 'onboarding'), pending: bridgeUpdateOnboarding.isPending, needsClient: true },
+                            { key: 'account', label: 'Crear Cuenta', desc: 'Apertura de cuenta', icon: CreditCard, finishedAt: account.bank_account_finished_at, resp: account.bank_account_response, action: () => mutateWithError(bridgeCreateAccount, { clientId: bankClientId ?? '', body: { currency: account.account_currency, product: account.product_type, phone: phoneForBank } }, 'Cuenta', 'account'), pending: bridgeCreateAccount.isPending, needsClient: true },
+                            { key: 'complementary', label: 'Datos Complementarios', desc: 'Información adicional', icon: FileText, finishedAt: account.bank_complementary_finished_at, resp: account.bank_complementary_response, action: () => mutateWithError(bridgeComplementaryCreate, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Complementary', 'complementary'), pending: bridgeComplementaryCreate.isPending, needsClient: true },
+                          ];
+
+                          return (
+                            <>
+                              {/* Bank Header */}
+                              <div className="rounded-xl bg-gradient-to-r from-sky-500/10 to-blue-500/5 border border-sky-500/20 p-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-sky-500/20 flex items-center justify-center">
+                                      <Building2 size={20} className="text-sky-500" />
+                                    </div>
+                                    <div>
+                                      <h4 className="font-semibold text-foreground">{valueOrDash(account.institution_name)}</h4>
+                                      <p className="text-xs text-muted-foreground font-mono">{valueOrDash(bankClientId)}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-accent/10 text-[10px] text-accent font-medium">
+                                      <Radio size={10} className="animate-pulse" />
+                                      Auto-refresh 60s
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Pipeline */}
+                              <div className="grid gap-2">
+                                {endpoints.map((ep) => {
+                                  const st = resolveStatus(ep.finishedAt, ep.resp);
+                                  const cooldownKey = `${selectedId}_${ep.key}`;
+                                  const cooldownRemaining = getCooldownRemaining(cooldownKey);
+                                  const isOnCooldown = cooldownRemaining > 0;
+                                  const disabled = st.done || ep.pending || isOnCooldown || (ep.needsClient && !bankClientId);
+                                  const hasError = bankError?.key === ep.key;
+
+                                  return (
+                                    <div key={ep.key} className="group">
+                                      <div className={`relative rounded-xl border p-4 transition-all ${
+                                        hasError ? 'bg-red-500/5 border-red-500/40' :
+                                        st.done ? 'bg-emerald-500/5 border-emerald-500/30' :
+                                        isOnCooldown ? 'bg-amber-500/5 border-amber-500/30' :
+                                        'bg-muted/30 border-border/30 hover:border-accent/30'
+                                      }`}>
+                                        <div className="flex items-center gap-4">
+                                          {/* Step number */}
+                                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                                            st.done ? 'bg-emerald-500/20' :
+                                            hasError ? 'bg-red-500/20' :
+                                            'bg-muted/50'
+                                          }`}>
+                                            {st.done ? (
+                                              <CheckCircle2 size={20} className="text-emerald-500" />
+                                            ) : hasError ? (
+                                              <AlertCircle size={20} className="text-red-500" />
+                                            ) : ep.pending ? (
+                                              <Loader2 size={20} className="text-accent animate-spin" />
+                                            ) : (
+                                              <ep.icon size={20} className="text-muted-foreground" />
+                                            )}
+                                          </div>
+
+                                          {/* Info */}
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                              <h4 className="font-semibold text-sm text-foreground">{ep.label}</h4>
+                                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                                st.done ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
+                                                hasError ? 'bg-red-500/20 text-red-600 dark:text-red-400' :
+                                                'bg-muted text-muted-foreground'
+                                              }`}>
+                                                {hasError ? 'Error' : st.label}
+                                              </span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">{ep.desc}</p>
+                                            {ep.finishedAt && (
+                                              <p className="text-[10px] text-muted-foreground/70 mt-1">{formatDate(ep.finishedAt)}</p>
+                                            )}
+                                          </div>
+
+                                          {/* Action */}
+                                          <Button 
+                                            size="sm" 
+                                            variant={st.done ? 'ghost' : hasError ? 'destructive' : 'outline'}
+                                            disabled={disabled}
+                                            className={`h-9 min-w-[90px] text-xs transition-all ${st.done ? 'text-emerald-600 dark:text-emerald-400' : ''}`}
+                                            onClick={() => { triggerCooldown(cooldownKey); setBankError(null); ep.action(); }}
+                                          >
+                                            {st.done ? (
+                                              <>
+                                                <CheckCircle2 size={14} className="mr-1" /> OK
+                                              </>
+                                            ) : ep.pending ? (
+                                              <Loader2 size={14} className="animate-spin" />
+                                            ) : isOnCooldown ? (
+                                              <span className="font-mono">{formatCooldown(cooldownRemaining)}</span>
+                                            ) : (
+                                              <>
+                                                <Zap size={14} className="mr-1" /> Ejecutar
+                                              </>
+                                            )}
+                                          </Button>
+                                        </div>
+
+                                        {/* Error details */}
+                                        {hasError && (
+                                          <div className="mt-3 pt-3 border-t border-red-500/20">
+                                            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10">
+                                              <AlertTriangle size={14} className="text-red-400 mt-0.5 shrink-0" />
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                  <span className="px-1.5 py-0.5 rounded bg-red-500/30 text-[10px] font-bold text-red-300">{bankError?.code}</span>
+                                                  <button onClick={() => setBankError(null)} className="ml-auto text-red-400/60 hover:text-red-300 text-sm">×</button>
+                                                </div>
+                                                <p className="text-xs text-red-200/90">{bankError?.message}</p>
+                                                {bankError?.correlationId && (
+                                                  <p className="text-[9px] font-mono text-red-400/50 mt-1 flex items-center gap-1">
+                                                    <Hash size={9} /> {bankError.correlationId}
+                                                  </p>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Advanced endpoints (collapsed) */}
+                              <details className="group">
+                                <summary className="cursor-pointer px-4 py-2 rounded-lg bg-muted/30 border border-border/30 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2">
+                                  <ChevronRight size={14} className="transition-transform group-open:rotate-90" />
+                                  Endpoints avanzados
+                                </summary>
+                                <div className="mt-2 grid gap-2">
+                                  {[
+                                    { key: 'complement_query', label: 'Query Complement', finishedAt: account.bank_complement_query_finished_at, resp: account.bank_complement_query_response, action: () => mutateWithError(bridgeQueryComplement, bankClientId ?? '', 'Query Complement', 'complement_query'), pending: bridgeQueryComplement.isPending },
+                                    { key: 'complement_update', label: 'Update Complement', finishedAt: account.bank_complementary_update_finished_at, resp: account.bank_complementary_update_response, action: () => mutateWithError(bridgeUpdateComplementary, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Update Complement', 'complement_update'), pending: bridgeUpdateComplementary.isPending },
+                                    { key: 'cliente', label: 'Consulta Micoope', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => mutateWithError(bridgeMicoopeClient, bankClientId ?? '', 'Consulta Micoope', 'cliente'), pending: bridgeMicoopeClient.isPending },
+                                    { key: 'crear_cliente', label: 'Crear Individual', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => mutateWithError(bridgeCreateIndividual, { clientId: bankClientId ?? '', document_number: account.document_number, full_name: account.full_name, phone: phoneForBank } as never, 'Crear Individual', 'crear_cliente'), pending: bridgeCreateIndividual.isPending },
+                                  ].map((ep) => {
+                                    const st = resolveStatus(ep.finishedAt, ep.resp);
+                                    const cooldownKey = `${selectedId}_${ep.key}`;
+                                    const cooldownRemaining = getCooldownRemaining(cooldownKey);
+                                    const isOnCooldown = cooldownRemaining > 0;
+                                    const disabled = st.done || ep.pending || isOnCooldown || !bankClientId;
+                                    const hasError = bankError?.key === ep.key;
+                                    
+                                    return (
+                                      <div key={ep.key} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 transition-all ${hasError ? 'border-red-500/40 bg-red-500/5' : st.done ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border/30 bg-muted/20'}`}>
+                                        <div className="flex items-center gap-2">
+                                          <span className={`w-2 h-2 rounded-full ${st.done ? 'bg-emerald-500' : hasError ? 'bg-red-500' : 'bg-muted-foreground'}`} />
+                                          <span className="text-xs font-medium text-foreground">{ep.label}</span>
+                                          <span className="text-[10px] text-muted-foreground">{hasError ? 'Error' : st.label}</span>
+                                        </div>
+                                        <Button size="sm" variant="ghost" disabled={disabled} className="h-6 text-[10px]" onClick={() => { triggerCooldown(cooldownKey); setBankError(null); ep.action(); }}>
+                                          {st.done ? 'OK' : ep.pending ? <Loader2 size={10} className="animate-spin" /> : isOnCooldown ? formatCooldown(cooldownRemaining) : 'Run'}
+                                        </Button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </details>
+                            </>
                           );
-                        }}
-                      >
-                        <Repeat2 size={12} className="mr-1" /> Retry
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs"
-                        disabled={rerunMutation.isPending}
-                        onClick={() => {
-                          if (!confirmDanger('Rerun incluye eventos. ¿Continuar?')) return;
-                          rerunMutation.mutate(
-                            { include_events: true, ...auditFields },
-                            { onError: (er) => onActionError('Fallo rerun', er), onSuccess: () => toast({ title: 'Rerun disparado' }) },
-                          );
-                        }}
-                      >
-                        <Sparkles size={12} className="mr-1" /> Rerun
-                      </Button>
-                      {[
-                        { value: 'ready_for_bank', label: 'Listo' },
-                        { value: 'bank_processing', label: 'Procesando' },
-                        { value: 'bank_retry', label: 'Retry' },
-                        { value: 'bank_rejected', label: 'Rechazado' },
-                        { value: 'account_created', label: 'Creada' },
-                      ].map((s) => (
+                        })()}
+                      </TabsContent>
+
+                      {/* Tab: JSON Raw */}
+                      <TabsContent value="raw" className="mt-0 space-y-3 animate-in fade-in-50 duration-200">
+                        {[
+                          { key: 'account', label: 'Account Object', data: account, icon: Database },
+                          { key: 'extra', label: 'Extra Data', data: account.extra_data, icon: FileJson },
+                          { key: 'didit', label: 'DIDIT Metadata', data: account.didit_metadata, icon: Eye },
+                          { key: 'renap', label: 'RENAP Data', data: account.renap_citizen_data, icon: FileText },
+                        ].filter(item => item.data).map((item) => (
+                          <details key={item.key} className="group rounded-xl border border-border/30 bg-gradient-to-br from-muted/30 to-muted/10 overflow-hidden" open={item.key === 'account'}>
+                            <summary className="cursor-pointer px-4 py-3 flex items-center justify-between hover:bg-muted/30 transition-colors">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center">
+                                  <item.icon size={14} className="text-accent" />
+                                </div>
+                                <span className="text-sm font-medium text-foreground">{item.label}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={(e) => { e.preventDefault(); copyToClipboard(JSON.stringify(item.data, null, 2), `${item.label} copiado`); }}
+                                  className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  <Copy size={12} />
+                                </button>
+                                <ChevronRight size={14} className="text-muted-foreground transition-transform group-open:rotate-90" />
+                              </div>
+                            </summary>
+                            <div className="border-t border-border/30">
+                              <pre className="max-h-80 overflow-auto p-4 text-[11px] font-mono leading-relaxed bg-black/5 dark:bg-black/40">
+                                <code dangerouslySetInnerHTML={{
+                                  __html: JSON.stringify(item.data, null, 2)
+                                    .replace(/(".*?")(?=:)/g, '<span class="text-cyan-600 dark:text-cyan-400">$1</span>')
+                                    .replace(/: "(.*?)"/g, ': <span class="text-emerald-600 dark:text-emerald-300">"$1"</span>')
+                                    .replace(/: ([0-9.\-]+)/g, ': <span class="text-amber-600 dark:text-amber-300">$1</span>')
+                                    .replace(/: (true)/g, ': <span class="text-green-600 dark:text-green-400">$1</span>')
+                                    .replace(/: (false)/g, ': <span class="text-red-600 dark:text-red-400">$1</span>')
+                                    .replace(/: (null)/g, ': <span class="text-purple-600 dark:text-purple-400">$1</span>')
+                                }} />
+                              </pre>
+                            </div>
+                          </details>
+                        ))}
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+
+                  {/* Footer Actions */}
+                  <div className="sticky bottom-0 border-t border-border/30 bg-gradient-to-t from-background via-background to-background/95 backdrop-blur-sm p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
                         <Button
-                          key={s.value}
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="text-xs"
-                          disabled={statusMutation.isPending}
+                          className="h-9 text-xs rounded-lg"
+                          disabled={retryMutation.isPending}
                           onClick={() => {
-                            if (!confirmDanger(`Forzar estado "${s.label}"?`)) return;
-                            statusMutation.mutate(
-                              { status: s.value, ...auditFields },
-                              { onError: (e) => onActionError('Fallo al forzar estado', e), onSuccess: () => toast({ title: 'Estado ajustado', description: s.label }) },
+                            if (!confirmDanger('Recolocar en retry?')) return;
+                            retryMutation.mutate(
+                              { operator: auditOperator, reason: '' },
+                              { onError: (er) => onActionError('Fallo retry', er), onSuccess: () => toast({ title: 'Retry enviado' }) },
                             );
                           }}
                         >
-                          → {s.label}
+                          <Repeat2 size={14} className="mr-1" /> Retry
                         </Button>
-                      ))}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 text-xs rounded-lg"
+                          disabled={rerunMutation.isPending}
+                          onClick={() => {
+                            if (!confirmDanger('Rerun incluye eventos. ¿Continuar?')) return;
+                            rerunMutation.mutate(
+                              { include_events: true, operator: auditOperator, reason: '' },
+                              { onError: (er) => onActionError('Fallo rerun', er), onSuccess: () => toast({ title: 'Rerun disparado' }) },
+                            );
+                          }}
+                        >
+                          <Sparkles size={14} className="mr-1" /> Rerun
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {[
+                          { value: 'ready_for_bank', label: 'Listo', color: 'emerald' },
+                          { value: 'bank_processing', label: 'Procesando', color: 'sky' },
+                          { value: 'bank_rejected', label: 'Rechazado', color: 'red' },
+                          { value: 'account_created', label: 'Creada', color: 'violet' },
+                        ].map((s) => (
+                          <Button
+                            key={s.value}
+                            variant="ghost"
+                            size="sm"
+                            className={`h-8 text-[11px] px-2 hover:bg-${s.color}-500/10 hover:text-${s.color}-600 dark:hover:text-${s.color}-400`}
+                            disabled={statusMutation.isPending}
+                            onClick={() => {
+                              if (!confirmDanger(`Forzar estado "${s.label}"?`)) return;
+                              statusMutation.mutate(
+                                { status: s.value, operator: auditOperator, reason: '' },
+                                { onError: (e) => onActionError('Fallo al forzar estado', e), onSuccess: () => toast({ title: 'Estado ajustado', description: s.label }) },
+                              );
+                            }}
+                          >
+                            <ChevronRight size={10} className="mr-0.5" />{s.label}
+                          </Button>
+                        ))}
+                      </div>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-2">Retry = reintentar worker. Rerun = rehacer eventos.</p>
                   </div>
                 </div>
               );
             })()
           ) : (
-            <div className="py-8 text-center text-muted-foreground">
-              <Database size={32} className="mx-auto mb-3 opacity-40" />
-              <p>Seleccione un proceso</p>
+            <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+              <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+                <Database size={36} className="text-muted-foreground/40" />
+              </div>
+              <p className="font-medium text-foreground mb-1">Seleccione un proceso</p>
+              <p className="text-sm text-muted-foreground">Haga clic en una conversación para ver sus detalles</p>
             </div>
           )}
         </SheetContent>

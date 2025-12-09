@@ -96,7 +96,7 @@ type SampleProcessDetail = z.infer<typeof processDetailSchema>;
 type SampleProcessEvent = z.infer<typeof processEventSchema>;
 
 const sampleProcessDetailsMap: Record<string, SampleProcessDetail> = {
-  prc_demo_ready: processDetailSchema.parse({
+  prc_gt_001: processDetailSchema.parse({
     ...sampleProcessesAdmin[0],
     account: {
       id: 'acc_demo_01',
@@ -236,7 +236,7 @@ const sampleProcessDetailsMap: Record<string, SampleProcessDetail> = {
       },
     ],
   }),
-  prc_demo_retry: processDetailSchema.parse({
+  prc_br_001: processDetailSchema.parse({
     ...sampleProcessesAdmin[1],
     account: {
       id: 'acc_demo_02',
@@ -346,20 +346,20 @@ const sampleProcessDetailsMap: Record<string, SampleProcessDetail> = {
 };
 
 const sampleProcessEventsMap: Record<string, SampleProcessEvent[]> = {
-  prc_demo_ready: sampleProcessDetailsMap.prc_demo_ready.timeline || [],
-  prc_demo_retry: sampleProcessDetailsMap.prc_demo_retry.timeline || [],
+  prc_gt_001: sampleProcessDetailsMap.prc_gt_001.timeline || [],
+  prc_br_001: sampleProcessDetailsMap.prc_br_001.timeline || [],
 };
 
 export const sampleProcessDetailById = (id?: string) => {
   const detail = id ? sampleProcessDetailsMap[id] : undefined;
   if (detail) return detail;
-  return sampleProcessDetailsMap.prc_demo_ready;
+  return sampleProcessDetailsMap.prc_gt_001;
 };
 
 export const sampleProcessEventsById = (id?: string) => {
   const events = id ? sampleProcessEventsMap[id] : undefined;
   if (events) return events;
-  return sampleProcessEventsMap.prc_demo_ready;
+  return sampleProcessEventsMap.prc_gt_001;
 };
 
 // Sample Conversations

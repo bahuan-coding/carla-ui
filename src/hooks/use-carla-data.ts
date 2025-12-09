@@ -282,7 +282,11 @@ export const useProcessDetail = (id?: string) =>
       const sampleDetail = sampleProcessDetailById(id) as ProcessDetail;
       const fallbackDetail = sampleDetail || defaultProcess(id);
       const raw = API_URL
-        ? await apiGet<unknown>(`/admin/processes/${id}`, z.any(), fallbackDetail as ProcessDetail)
+        ? await withSampleFallback(
+            'process-detail',
+            () => apiGet<unknown>(`/admin/processes/${id}`, z.any(), fallbackDetail as ProcessDetail),
+            fallbackDetail as unknown,
+          )
         : fallbackDetail;
       const base = unwrapProcessDetail(raw, fallbackDetail, id);
 
@@ -324,7 +328,11 @@ export const useProcessEvents = (id?: string) =>
     queryFn: () => {
       const sampleEvents = sampleProcessEventsById(id);
       if (!API_URL) return Promise.resolve(sampleEvents);
-      return apiGet(`/admin/processes/${id}/events`, processEventsSchema, sampleEvents);
+      return withSampleFallback(
+        'process-events',
+        () => apiGet(`/admin/processes/${id}/events`, processEventsSchema, sampleEvents),
+        sampleEvents,
+      );
     },
     staleTime: 1000 * 20,
     refetchInterval: 20000,
