@@ -98,5 +98,3 @@ Cada card contém:
 
 
 
-
-
