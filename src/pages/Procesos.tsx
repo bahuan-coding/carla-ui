@@ -1009,159 +1009,117 @@ export function ProcesosPage() {
                                 </div>
                               </div>
 
-                              {/* Vertical Stepper Pipeline */}
-                              <div className="relative">
-                                {/* Vertical line */}
-                                <div className="absolute left-5 top-6 bottom-6 w-0.5 bg-gradient-to-b from-accent/50 via-border to-border/30" />
-                                
-                                <div className="space-y-1">
-                                  {bankingSteps.map((step) => {
-                                    const cooldownKey = `${selectedId}_${step.key}`;
-                                    const cooldownRemaining = getCooldownRemaining(cooldownKey);
-                                    const isOnCooldown = cooldownRemaining > 0;
-                                    const isPending = stepPending[step.key] || false;
-                                    const hasError = bankError?.key === step.key;
-                                    const isNextStep = nextStep?.key === step.key;
-                                    const isLocked = step.status === 'locked';
-                                    const isCompleted = step.status === 'completed';
-                                    const isError = step.status === 'error' || hasError;
-                                    const canClick = step.canExecute && !isPending && !isOnCooldown && !isCompleted;
+                              {/* Clean Step Cards */}
+                              <div className="space-y-2">
+                                {bankingSteps.map((step) => {
+                                  const cooldownKey = `${selectedId}_${step.key}`;
+                                  const cooldownRemaining = getCooldownRemaining(cooldownKey);
+                                  const isOnCooldown = cooldownRemaining > 0;
+                                  const isPending = stepPending[step.key] || false;
+                                  const hasError = bankError?.key === step.key;
+                                  const isNextStep = nextStep?.key === step.key;
+                                  const isLocked = step.status === 'locked';
+                                  const isCompleted = step.status === 'completed';
+                                  const isError = step.status === 'error' || hasError;
+                                  const canClick = step.canExecute && !isPending && !isOnCooldown && !isCompleted;
 
-                                    return (
-                                      <div key={step.key} className="relative pl-12">
-                                        {/* Step indicator */}
-                                        <div className={`absolute left-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                                          isCompleted ? 'bg-emerald-500/20 ring-2 ring-emerald-500/30' :
-                                          isError ? 'bg-red-500/20 ring-2 ring-red-500/30' :
-                                          isPending ? 'bg-accent/20 ring-2 ring-accent/30' :
-                                          isNextStep ? 'bg-sky-500/20 ring-2 ring-sky-500/50 animate-pulse' :
-                                          isLocked ? 'bg-muted/30' :
-                                          'bg-muted/50'
+                                  return (
+                                    <div 
+                                      key={step.key} 
+                                      className={`group rounded-2xl border transition-all duration-200 overflow-hidden ${
+                                        isCompleted ? 'bg-emerald-500/5 border-emerald-500/20 hover:border-emerald-500/40' :
+                                        isError ? 'bg-red-500/5 border-red-500/30' :
+                                        isNextStep ? 'bg-gradient-to-r from-sky-500/10 to-blue-500/5 border-sky-500/30 shadow-md' :
+                                        isLocked ? 'bg-muted/5 border-border/10 opacity-50' :
+                                        'bg-muted/20 border-border/20 hover:border-border/40'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-3 p-3">
+                                        {/* Step number circle */}
+                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-all ${
+                                          isCompleted ? 'bg-emerald-500 text-white' :
+                                          isError ? 'bg-red-500 text-white' :
+                                          isPending ? 'bg-accent text-white' :
+                                          isNextStep ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' :
+                                          isLocked ? 'bg-muted/50 text-muted-foreground/40' :
+                                          'bg-muted text-muted-foreground'
                                         }`}>
                                           {isCompleted ? (
-                                            <CheckCircle2 size={20} className="text-emerald-500" />
+                                            <CheckCircle2 size={18} />
                                           ) : isError ? (
-                                            <AlertCircle size={20} className="text-red-500" />
+                                            <AlertCircle size={16} />
                                           ) : isPending ? (
-                                            <Loader2 size={20} className="text-accent animate-spin" />
-                                          ) : isLocked ? (
-                                            <Lock size={16} className="text-muted-foreground/50" />
+                                            <Loader2 size={16} className="animate-spin" />
                                           ) : (
-                                            <span className="text-sm font-bold text-foreground/70">{step.stepNumber}</span>
+                                            step.stepNumber
                                           )}
                                         </div>
 
-                                        {/* Step card */}
-                                        <div className={`rounded-xl border p-4 transition-all ${
-                                          isCompleted ? 'bg-emerald-500/5 border-emerald-500/30' :
-                                          isError ? 'bg-red-500/5 border-red-500/40' :
-                                          isNextStep ? 'bg-sky-500/5 border-sky-500/40 shadow-lg shadow-sky-500/5' :
-                                          isLocked ? 'bg-muted/10 border-border/20 opacity-60' :
-                                          'bg-muted/30 border-border/30'
-                                        }`}>
-                                          <div className="flex items-center gap-4">
-                                            {/* Step info */}
-                                            <div className="flex-1 min-w-0">
-                                              <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="text-[10px] font-mono text-muted-foreground">PASO {step.stepNumber}</span>
-                                                <h4 className={`font-semibold text-sm ${isLocked ? 'text-muted-foreground' : 'text-foreground'}`}>{step.label}</h4>
-                                                {/* Status badge */}
-                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                                  isCompleted ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
-                                                  isError ? 'bg-red-500/20 text-red-600 dark:text-red-400' :
-                                                  isPending ? 'bg-accent/20 text-accent' :
-                                                  isNextStep ? 'bg-sky-500/20 text-sky-600 dark:text-sky-400' :
-                                                  isLocked ? 'bg-muted/50 text-muted-foreground' :
-                                                  'bg-muted text-muted-foreground'
-                                                }`}>
-                                                  {isCompleted ? 'Completado' :
-                                                   isError ? 'Error' :
-                                                   isPending ? 'Procesando...' :
-                                                   isNextStep ? 'Próximo paso' :
-                                                   isLocked ? 'Bloqueado' : 'Pendiente'}
-                                                </span>
-                                              </div>
-                                              <p className={`text-xs mt-0.5 ${isLocked ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>{step.desc}</p>
-                                              
-                                              {/* Dependency indicator for locked steps */}
-                                              {isLocked && step.requiresLabel && (
-                                                <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
-                                                  <Lock size={9} />
-                                                  Requiere: {step.requiresLabel}
-                                                </p>
-                                              )}
-                                              
-                                              {/* Completed timestamp */}
-                                              {isCompleted && step.finishedAt && (
-                                                <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 mt-1">{formatDate(step.finishedAt)}</p>
-                                              )}
-                                            </div>
-
-                                            {/* Action button */}
-                                            <div className="shrink-0">
-                                              {isCompleted ? (
-                                                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium px-3 py-1.5">
-                                                  <CheckCircle2 size={14} /> OK
-                                                </div>
-                                              ) : isLocked ? (
-                                                <div className="flex items-center gap-1 text-muted-foreground/50 text-xs px-3 py-1.5">
-                                                  <Lock size={12} />
-                                                </div>
-                                              ) : (
-                                                <Button 
-                                                  size="sm" 
-                                                  variant={isError ? 'destructive' : isNextStep ? 'default' : 'outline'}
-                                                  disabled={!canClick}
-                                                  className={`h-9 min-w-[100px] text-xs transition-all ${isNextStep ? 'shadow-lg shadow-sky-500/20' : ''}`}
-                                                  onClick={() => { 
-                                                    triggerCooldown(cooldownKey); 
-                                                    setBankError(null); 
-                                                    stepActions[step.key]?.(); 
-                                                  }}
-                                                >
-                                                  {isPending ? (
-                                                    <Loader2 size={14} className="animate-spin" />
-                                                  ) : isOnCooldown ? (
-                                                    <span className="font-mono">{formatCooldown(cooldownRemaining)}</span>
-                                                  ) : isError ? (
-                                                    <>
-                                                      <RefreshCw size={14} className="mr-1" /> Reintentar
-                                                    </>
-                                                  ) : (
-                                                    <>
-                                                      <Zap size={14} className="mr-1" /> Ejecutar
-                                                    </>
-                                                  )}
-                                                </Button>
-                                              )}
-                                            </div>
+                                        {/* Content */}
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2">
+                                            <h4 className={`font-medium text-sm truncate ${isLocked ? 'text-muted-foreground/50' : 'text-foreground'}`}>
+                                              {step.label}
+                                            </h4>
+                                            {isNextStep && (
+                                              <span className="px-1.5 py-0.5 rounded-full bg-sky-500/20 text-[9px] font-semibold text-sky-500 uppercase tracking-wide">
+                                                Siguiente
+                                              </span>
+                                            )}
                                           </div>
+                                          <p className={`text-[11px] truncate ${isLocked ? 'text-muted-foreground/30' : 'text-muted-foreground'}`}>
+                                            {isCompleted && step.finishedAt ? formatDate(step.finishedAt) : step.desc}
+                                          </p>
+                                        </div>
 
-                                          {/* Error details */}
-                                          {hasError && bankError && (
-                                            <div className="mt-3 pt-3 border-t border-red-500/20">
-                                              <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10">
-                                                <AlertTriangle size={14} className="text-red-400 mt-0.5 shrink-0" />
-                                                <div className="flex-1 min-w-0">
-                                                  <div className="flex items-center gap-2 mb-1">
-                                                    <span className="px-1.5 py-0.5 rounded bg-red-500/30 text-[10px] font-bold text-red-300">{bankError.code}</span>
-                                                    <button onClick={() => setBankError(null)} className="ml-auto text-red-400/60 hover:text-red-300 text-sm">×</button>
-                                                  </div>
-                                                  <p className="text-xs text-red-200/90">{bankError.message}</p>
-                                                  {bankError.correlationId && (
-                                                    <p className="text-[9px] font-mono text-red-400/50 mt-1 flex items-center gap-1">
-                                                      <Hash size={9} /> {bankError.correlationId}
-                                                    </p>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            </div>
+                                        {/* Action */}
+                                        <div className="shrink-0">
+                                          {isCompleted ? (
+                                            <span className="text-emerald-500 text-xs font-medium">✓</span>
+                                          ) : isLocked ? (
+                                            <span className="text-muted-foreground/30 text-[10px]">—</span>
+                                          ) : (
+                                            <Button 
+                                              size="sm" 
+                                              variant={isError ? 'destructive' : isNextStep ? 'default' : 'ghost'}
+                                              disabled={!canClick}
+                                              className={`h-8 px-3 text-xs rounded-lg ${isNextStep ? 'shadow-md' : ''}`}
+                                              onClick={() => { 
+                                                triggerCooldown(cooldownKey); 
+                                                setBankError(null); 
+                                                stepActions[step.key]?.(); 
+                                              }}
+                                            >
+                                              {isPending ? (
+                                                <Loader2 size={12} className="animate-spin" />
+                                              ) : isOnCooldown ? (
+                                                <span className="font-mono text-[10px]">{formatCooldown(cooldownRemaining)}</span>
+                                              ) : isError ? (
+                                                <RefreshCw size={12} />
+                                              ) : (
+                                                <Zap size={12} />
+                                              )}
+                                            </Button>
                                           )}
                                         </div>
                                       </div>
-                                    );
-                                  })}
-                                </div>
+
+                                      {/* Error inline */}
+                                      {hasError && bankError && (
+                                        <div className="px-3 pb-3">
+                                          <div className="flex items-start gap-2 p-2 rounded-lg bg-red-500/10 text-xs">
+                                            <AlertTriangle size={12} className="text-red-400 mt-0.5 shrink-0" />
+                                            <div className="flex-1 min-w-0">
+                                              <span className="font-mono text-red-400 text-[10px]">{bankError.code}</span>
+                                              <span className="text-red-300 ml-2">{bankError.message}</span>
+                                            </div>
+                                            <button onClick={() => setBankError(null)} className="text-red-400/50 hover:text-red-300">×</button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
 
                               {/* Success message when all steps complete */}
