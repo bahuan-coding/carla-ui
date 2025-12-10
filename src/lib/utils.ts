@@ -21,13 +21,38 @@ const STATUS_DICT: Record<string, StatusDisplay> = {
   phone_verified: { label: 'Teléfono verificado', tone: 'ok', icon: 'Phone' },
   started: { label: 'Iniciado', tone: 'info', icon: 'Play' },
   demo_completed: { label: 'Demo completada', tone: 'ok', icon: 'Sparkles' },
+  bank_blacklist_approved: { label: 'Completado', tone: 'ok', icon: 'CheckCircle' },
+  bank_client_created: { label: 'Completado', tone: 'ok', icon: 'CheckCircle' },
+  bank_complementary_completed: { label: 'Completado', tone: 'ok', icon: 'CheckCircle' },
+  bank_account_created: { label: 'Completado', tone: 'ok', icon: 'CheckCircle' },
+  bank_blacklist_in_progress: { label: 'Procesando', tone: 'warn', icon: 'Loader' },
+  bank_client_in_progress: { label: 'Procesando', tone: 'warn', icon: 'Loader' },
+  bank_complementary_in_progress: { label: 'Procesando', tone: 'warn', icon: 'Loader' },
+  bank_account_in_progress: { label: 'Procesando', tone: 'warn', icon: 'Loader' },
+  bank_blacklist_pending: { label: 'Pendiente', tone: 'info', icon: 'Clock' },
+  bank_client_pending: { label: 'Pendiente', tone: 'info', icon: 'Clock' },
+  bank_complementary_pending: { label: 'Pendiente', tone: 'info', icon: 'Clock' },
+  bank_account_pending: { label: 'Pendiente', tone: 'info', icon: 'Clock' },
+  bank_blacklist_error: { label: 'Rechazado/Erro', tone: 'error', icon: 'TriangleAlert' },
+  bank_client_error: { label: 'Rechazado/Erro', tone: 'error', icon: 'TriangleAlert' },
+  bank_complementary_error: { label: 'Rechazado/Erro', tone: 'error', icon: 'TriangleAlert' },
+  bank_account_error: { label: 'Rechazado/Erro', tone: 'error', icon: 'TriangleAlert' },
+  bank_blacklist_rejected: { label: 'Rechazado/Erro', tone: 'error', icon: 'TriangleAlert' },
+  bank_client_rejected: { label: 'Rechazado/Erro', tone: 'error', icon: 'TriangleAlert' },
+  bank_complementary_rejected: { label: 'Rechazado/Erro', tone: 'error', icon: 'TriangleAlert' },
+  bank_account_rejected: { label: 'Rechazado/Erro', tone: 'error', icon: 'TriangleAlert' },
   default: { label: 'En curso', tone: 'info', icon: 'Dot' },
 }
 
 export const mapStatusDisplay = (status?: string): StatusDisplay => {
   if (!status) return STATUS_DICT.default
   const key = status.toLowerCase()
-  return STATUS_DICT[key] || { ...STATUS_DICT.default, label: status }
+  if (STATUS_DICT[key]) return STATUS_DICT[key]
+  if (/_error|_rejected|fail/.test(key)) return { label: 'Rechazado/Erro', tone: 'error', icon: 'TriangleAlert' }
+  if (/_in_progress|processing/.test(key)) return { label: 'Procesando', tone: 'warn', icon: 'Loader' }
+  if (/pending|waiting/.test(key)) return { label: 'Pendiente', tone: 'info', icon: 'Clock' }
+  if (/approved|created|completed|success|ok/.test(key)) return { label: 'Completado', tone: 'ok', icon: 'CheckCircle' }
+  return { ...STATUS_DICT.default, label: status }
 }
 
 export const toneBadge = (tone: StatusTone) =>
