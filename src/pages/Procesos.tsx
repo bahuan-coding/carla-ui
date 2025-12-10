@@ -56,7 +56,6 @@ import {
   useProcessStatus,
   useProcessesAdmin,
   useBridgeBlacklistQuery,
-  useBridgeMicoopeClient,
   useBridgeCreateMicoopeIndividual,
   useBridgeComplementaryDataCreate,
   useBridgeCreateStandardAccount,
@@ -71,6 +70,118 @@ import type { Account } from '@/types/account';
 const confirmDanger = (message: string) => window.confirm(message || '¿Continuar?');
 
 type FilterStatus = '' | 'ready_for_bank' | 'bank_processing' | 'bank_retry' | 'bank_rejected';
+
+// Banking Flow Types
+type BankStepStatus = 'locked' | 'pending' | 'in_progress' | 'completed' | 'error';
+
+type BankStep = {
+  key: string;
+  stepNumber: number;
+  label: string;
+  desc: string;
+  requires: string | null;
+  requiresLabel: string | null;
+  status: BankStepStatus;
+  canExecute: boolean;
+  finishedAt?: string | null;
+  response?: unknown;
+  icon: typeof Shield;
+};
+
+// Status maps for computing step states
+const STEP_STATUS_MAP: Record<string, { completed: string[]; in_progress: string[]; error: string[]; pending: string[] }> = {
+  blacklist: {
+    completed: ['bank_blacklist_approved', 'bank_client_created', 'bank_account_created', 'bank_complementary_completed', 'bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
+    in_progress: ['bank_blacklist_in_progress'],
+    error: ['bank_blacklist_error', 'bank_blacklist_rejected'],
+    pending: ['ready_for_bank', 'didit_verified']
+  },
+  client: {
+    completed: ['bank_client_created', 'bank_account_created', 'bank_complementary_completed', 'bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
+    in_progress: ['bank_client_creation_in_progress', 'bank_client_lookup_in_progress'],
+    error: ['bank_client_creation_error'],
+    pending: ['bank_blacklist_approved']
+  },
+  account: {
+    completed: ['bank_account_created', 'bank_complementary_completed', 'bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
+    in_progress: ['bank_account_creation_in_progress'],
+    error: ['bank_account_creation_error'],
+    pending: ['bank_client_created']
+  },
+  complementary: {
+    completed: ['bank_complementary_completed', 'bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
+    in_progress: ['bank_complementary_in_progress'],
+    error: ['bank_complementary_error'],
+    pending: ['bank_account_created']
+  },
+  onboarding_update: {
+    completed: ['bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
+    in_progress: ['bank_onboarding_update_in_progress'],
+    error: ['bank_onboarding_update_error'],
+    pending: ['bank_complementary_completed']
+  },
+  complementary_update: {
+    completed: ['bank_complementary_updated', 'account_created'],
+    in_progress: ['bank_complementary_update_in_progress'],
+    error: ['bank_complementary_update_error'],
+    pending: ['bank_onboarding_updated']
+  },
+  complement_query: {
+    completed: ['account_created'],
+    in_progress: ['bank_complement_query_in_progress'],
+    error: ['bank_complement_query_error'],
+    pending: ['bank_complementary_updated']
+  }
+};
+
+const getStepStatus = (currentStatus: string, stepKey: string): BankStepStatus => {
+  const stepMap = STEP_STATUS_MAP[stepKey];
+  if (!stepMap) return 'locked';
+  if (stepMap.completed.includes(currentStatus)) return 'completed';
+  if (stepMap.in_progress.includes(currentStatus)) return 'in_progress';
+  if (stepMap.error.includes(currentStatus)) return 'error';
+  if (stepMap.pending.includes(currentStatus)) return 'pending';
+  return 'locked';
+};
+
+const computeBankingSteps = (account: Account, currentStatus: string): BankStep[] => {
+  const clientId = account.bank_partner_client_id;
+  const status = currentStatus.toLowerCase();
+  
+  const stepConfigs = [
+    { key: 'blacklist', stepNumber: 1, label: 'Blacklist Check', desc: 'Verificar listas negras', requires: null, requiresLabel: null, icon: Shield, finishedAt: account.bank_blacklist_finished_at, response: account.bank_blacklist_response },
+    { key: 'client', stepNumber: 2, label: 'Crear Cliente', desc: 'Onboarding bancario', requires: 'blacklist', requiresLabel: 'Blacklist Check', icon: User, finishedAt: account.bank_client_finished_at, response: account.bank_client_response },
+    { key: 'account', stepNumber: 3, label: 'Crear Cuenta', desc: 'Apertura de cuenta bancaria', requires: 'client', requiresLabel: 'Crear Cliente', icon: CreditCard, finishedAt: account.bank_account_finished_at, response: account.bank_account_response },
+    { key: 'complementary', stepNumber: 4, label: 'Datos Complementarios', desc: 'Información adicional del cliente', requires: 'account', requiresLabel: 'Crear Cuenta', icon: FileText, finishedAt: account.bank_complementary_finished_at, response: account.bank_complementary_response },
+    { key: 'onboarding_update', stepNumber: 5, label: 'Actualizar Onboarding', desc: 'Actualizar datos de onboarding', requires: 'complementary', requiresLabel: 'Datos Complementarios', icon: RefreshCw, finishedAt: account.bank_onboarding_finished_at, response: account.bank_onboarding_response },
+    { key: 'complementary_update', stepNumber: 6, label: 'Actualizar Complemento', desc: 'Actualizar datos complementarios', requires: 'onboarding_update', requiresLabel: 'Actualizar Onboarding', icon: Database, finishedAt: account.bank_complementary_update_finished_at, response: account.bank_complementary_update_response },
+    { key: 'complement_query', stepNumber: 7, label: 'Consulta Final', desc: 'Verificación final del registro', requires: 'complementary_update', requiresLabel: 'Actualizar Complemento', icon: CheckCircle2, finishedAt: account.bank_complement_query_finished_at, response: account.bank_complement_query_response },
+  ];
+
+  return stepConfigs.map((config) => {
+    const stepStatus = getStepStatus(status, config.key);
+    
+    // Determine if step can be executed
+    let canExecute = false;
+    if (stepStatus === 'pending') {
+      canExecute = true;
+    } else if (stepStatus === 'error') {
+      // Allow retry on error
+      canExecute = config.key === 'blacklist' || !!clientId;
+    }
+    
+    // For steps requiring client_id, ensure it exists
+    if (config.requires && config.requires !== 'blacklist' && !clientId && stepStatus !== 'completed') {
+      canExecute = false;
+    }
+
+    return {
+      ...config,
+      status: stepStatus,
+      canExecute,
+    };
+  });
+};
 
 const STATUS_FILTERS: { value: FilterStatus; label: string; icon: React.ReactNode }[] = [
   { value: '', label: 'Todos', icon: <CircleDot size={12} /> },
@@ -168,7 +279,6 @@ export function ProcesosPage() {
   const retryMutation = useProcessRetry(selectedId);
   const rerunMutation = useProcessRerun(selectedId);
   const bridgeBlacklist = useBridgeBlacklistQuery(selectedId);
-  const bridgeMicoopeClient = useBridgeMicoopeClient(selectedId);
   const bridgeCreateIndividual = useBridgeCreateMicoopeIndividual(selectedId);
   const bridgeComplementaryCreate = useBridgeComplementaryDataCreate(selectedId);
   const bridgeCreateAccount = useBridgeCreateStandardAccount(selectedId);
@@ -820,26 +930,15 @@ export function ProcesosPage() {
                         )}
                       </TabsContent>
 
-                      {/* Tab: Banco */}
+                      {/* Tab: Banco - Sequential Banking Flow */}
                       <TabsContent value="banco" className="mt-0 space-y-4 animate-in fade-in-50 duration-200">
                         {(() => {
-                          const isSuccessResponse = (resp: unknown) => {
-                            const raw = (resp as { status?: unknown })?.status ?? (resp as { statusCode?: unknown })?.statusCode ?? (resp as { code?: unknown })?.code;
-                            const numeric = typeof raw === 'string' ? Number(raw) : (raw as number | undefined);
-                            if (numeric === 200 || numeric === 201) return true;
-                            const text = typeof raw === 'string' ? raw.toLowerCase() : '';
-                            return text.includes('200') || text === 'ok' || text === 'created' || text.includes('201');
-                          };
-                          const resolveStatus = (finishedAt?: string | null, resp?: unknown) => {
-                            if (isSuccessResponse(resp) || finishedAt) return { tone: 'ok' as const, label: 'Completado', done: true };
-                            if (resp) return { tone: 'error' as const, label: 'Error', done: false };
-                            return { tone: 'pending' as const, label: 'Pendiente', done: false };
-                          };
                           const formatBirthDate = (date?: string | null) => {
                             if (!date) return '';
                             const digits = date.replace(/\D/g, '').slice(0, 8);
                             return digits.length === 8 ? digits : '';
                           };
+                          
                           const mutateWithError = <T,>(mutation: { mutate: (args: T, opts?: { onError?: (e: unknown) => void; onSuccess?: () => void }) => void }, args: T, label: string, key: string) => {
                             mutation.mutate(args, {
                               onError: (e) => onActionError(`Fallo ${label}`, e, key),
@@ -847,18 +946,38 @@ export function ProcesosPage() {
                             });
                           };
 
-                          const endpoints = [
-                            { key: 'blacklist', label: 'Blacklist Check', desc: 'Verificar listas negras', icon: Shield, finishedAt: account.bank_blacklist_finished_at, resp: account.bank_blacklist_response, action: () => mutateWithError(bridgeBlacklist, { dpi: account.document_number, C75000: account.document_type || '11', C75016: `D${(account.document_number || '').replace(/^D/i, '')}`, C75804: '', C75020: '', C75503: account.document_country || 'GT', C75043: account.document_country || 'GT', C75084: formatBirthDate(account.birth_date) }, 'Blacklist', 'blacklist'), pending: bridgeBlacklist.isPending, needsClient: false },
-                            { key: 'onboarding', label: 'Onboarding', desc: 'Datos iniciales', icon: User, finishedAt: account.bank_onboarding_finished_at, resp: account.bank_onboarding_response, action: () => mutateWithError(bridgeUpdateOnboarding, { clientId: bankClientId ?? '', body: { email: account.email, phone: phoneForBank, full_name: account.full_name } }, 'Onboarding', 'onboarding'), pending: bridgeUpdateOnboarding.isPending, needsClient: true },
-                            { key: 'account', label: 'Crear Cuenta', desc: 'Apertura de cuenta', icon: CreditCard, finishedAt: account.bank_account_finished_at, resp: account.bank_account_response, action: () => mutateWithError(bridgeCreateAccount, { clientId: bankClientId ?? '', body: { currency: account.account_currency, product: account.product_type, phone: phoneForBank } }, 'Cuenta', 'account'), pending: bridgeCreateAccount.isPending, needsClient: true },
-                            { key: 'complementary', label: 'Datos Complementarios', desc: 'Información adicional', icon: FileText, finishedAt: account.bank_complementary_finished_at, resp: account.bank_complementary_response, action: () => mutateWithError(bridgeComplementaryCreate, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Complementary', 'complementary'), pending: bridgeComplementaryCreate.isPending, needsClient: true },
-                          ];
+                          // Compute all 7 steps with their states
+                          const currentStatus = detailQuery.data?.status || account.status || 'ready_for_bank';
+                          const bankingSteps = computeBankingSteps(account, currentStatus);
+                          const completedSteps = bankingSteps.filter(s => s.status === 'completed').length;
+                          const nextStep = bankingSteps.find(s => s.status === 'pending' || s.status === 'error');
+
+                          // Step action mappings
+                          const stepActions: Record<string, () => void> = {
+                            blacklist: () => mutateWithError(bridgeBlacklist, { dpi: account.document_number, C75000: account.document_type || '11', C75016: `D${(account.document_number || '').replace(/^D/i, '')}`, C75804: '', C75020: '', C75503: account.document_country || 'GT', C75043: account.document_country || 'GT', C75084: formatBirthDate(account.birth_date) }, 'Blacklist', 'blacklist'),
+                            client: () => mutateWithError(bridgeCreateIndividual, { account_opening_id: detailQuery.data?.id } as never, 'Crear Cliente', 'client'),
+                            account: () => mutateWithError(bridgeCreateAccount, { clientId: bankClientId ?? '', body: { currency: account.account_currency, product: account.product_type, phone: phoneForBank } }, 'Crear Cuenta', 'account'),
+                            complementary: () => mutateWithError(bridgeComplementaryCreate, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Datos Complementarios', 'complementary'),
+                            onboarding_update: () => mutateWithError(bridgeUpdateOnboarding, { clientId: bankClientId ?? '', body: { email: account.email, phone: phoneForBank, full_name: account.full_name } }, 'Actualizar Onboarding', 'onboarding_update'),
+                            complementary_update: () => mutateWithError(bridgeUpdateComplementary, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Actualizar Complemento', 'complementary_update'),
+                            complement_query: () => mutateWithError(bridgeQueryComplement, bankClientId ?? '', 'Consulta Final', 'complement_query'),
+                          };
+
+                          const stepPending: Record<string, boolean> = {
+                            blacklist: bridgeBlacklist.isPending,
+                            client: bridgeCreateIndividual.isPending,
+                            account: bridgeCreateAccount.isPending,
+                            complementary: bridgeComplementaryCreate.isPending,
+                            onboarding_update: bridgeUpdateOnboarding.isPending,
+                            complementary_update: bridgeUpdateComplementary.isPending,
+                            complement_query: bridgeQueryComplement.isPending,
+                          };
 
                           return (
                             <>
-                              {/* Bank Header */}
+                              {/* Bank Header with Progress */}
                               <div className="rounded-xl bg-gradient-to-r from-sky-500/10 to-blue-500/5 border border-sky-500/20 p-4">
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between mb-3">
                                   <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-sky-500/20 flex items-center justify-center">
                                       <Building2 size={20} className="text-sky-500" />
@@ -875,147 +994,188 @@ export function ProcesosPage() {
                                     </span>
                                   </div>
                                 </div>
+                                {/* Progress Bar */}
+                                <div className="mt-3">
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-xs font-medium text-foreground">{completedSteps}/7 pasos completados</span>
+                                    <span className="text-[10px] text-muted-foreground">{Math.round((completedSteps / 7) * 100)}%</span>
+                                  </div>
+                                  <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
+                                    <div 
+                                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
+                                      style={{ width: `${(completedSteps / 7) * 100}%` }}
+                                    />
+                                  </div>
+                                </div>
                               </div>
 
-                              {/* Pipeline */}
-                              <div className="grid gap-2">
-                                {endpoints.map((ep) => {
-                                  const st = resolveStatus(ep.finishedAt, ep.resp);
-                                  const cooldownKey = `${selectedId}_${ep.key}`;
-                                  const cooldownRemaining = getCooldownRemaining(cooldownKey);
-                                  const isOnCooldown = cooldownRemaining > 0;
-                                  const disabled = st.done || ep.pending || isOnCooldown || (ep.needsClient && !bankClientId);
-                                  const hasError = bankError?.key === ep.key;
-
-                                  return (
-                                    <div key={ep.key} className="group">
-                                      <div className={`relative rounded-xl border p-4 transition-all ${
-                                        hasError ? 'bg-red-500/5 border-red-500/40' :
-                                        st.done ? 'bg-emerald-500/5 border-emerald-500/30' :
-                                        isOnCooldown ? 'bg-amber-500/5 border-amber-500/30' :
-                                        'bg-muted/30 border-border/30 hover:border-accent/30'
-                                      }`}>
-                                        <div className="flex items-center gap-4">
-                                          {/* Step number */}
-                                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                                            st.done ? 'bg-emerald-500/20' :
-                                            hasError ? 'bg-red-500/20' :
-                                            'bg-muted/50'
-                                          }`}>
-                                            {st.done ? (
-                                              <CheckCircle2 size={20} className="text-emerald-500" />
-                                            ) : hasError ? (
-                                              <AlertCircle size={20} className="text-red-500" />
-                                            ) : ep.pending ? (
-                                              <Loader2 size={20} className="text-accent animate-spin" />
-                                            ) : (
-                                              <ep.icon size={20} className="text-muted-foreground" />
-                                            )}
-                                          </div>
-
-                                          {/* Info */}
-                                          <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                              <h4 className="font-semibold text-sm text-foreground">{ep.label}</h4>
-                                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                                st.done ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
-                                                hasError ? 'bg-red-500/20 text-red-600 dark:text-red-400' :
-                                                'bg-muted text-muted-foreground'
-                                              }`}>
-                                                {hasError ? 'Error' : st.label}
-                                              </span>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground">{ep.desc}</p>
-                                            {ep.finishedAt && (
-                                              <p className="text-[10px] text-muted-foreground/70 mt-1">{formatDate(ep.finishedAt)}</p>
-                                            )}
-                                          </div>
-
-                                          {/* Action */}
-                                          <Button 
-                                            size="sm" 
-                                            variant={st.done ? 'ghost' : hasError ? 'destructive' : 'outline'}
-                                            disabled={disabled}
-                                            className={`h-9 min-w-[90px] text-xs transition-all ${st.done ? 'text-emerald-600 dark:text-emerald-400' : ''}`}
-                                            onClick={() => { triggerCooldown(cooldownKey); setBankError(null); ep.action(); }}
-                                          >
-                                            {st.done ? (
-                                              <>
-                                                <CheckCircle2 size={14} className="mr-1" /> OK
-                                              </>
-                                            ) : ep.pending ? (
-                                              <Loader2 size={14} className="animate-spin" />
-                                            ) : isOnCooldown ? (
-                                              <span className="font-mono">{formatCooldown(cooldownRemaining)}</span>
-                                            ) : (
-                                              <>
-                                                <Zap size={14} className="mr-1" /> Ejecutar
-                                              </>
-                                            )}
-                                          </Button>
-                                        </div>
-
-                                        {/* Error details */}
-                                        {hasError && (
-                                          <div className="mt-3 pt-3 border-t border-red-500/20">
-                                            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10">
-                                              <AlertTriangle size={14} className="text-red-400 mt-0.5 shrink-0" />
-                                              <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                  <span className="px-1.5 py-0.5 rounded bg-red-500/30 text-[10px] font-bold text-red-300">{bankError?.code}</span>
-                                                  <button onClick={() => setBankError(null)} className="ml-auto text-red-400/60 hover:text-red-300 text-sm">×</button>
-                                                </div>
-                                                <p className="text-xs text-red-200/90">{bankError?.message}</p>
-                                                {bankError?.correlationId && (
-                                                  <p className="text-[9px] font-mono text-red-400/50 mt-1 flex items-center gap-1">
-                                                    <Hash size={9} /> {bankError.correlationId}
-                                                  </p>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-
-                              {/* Advanced endpoints (collapsed) */}
-                              <details className="group">
-                                <summary className="cursor-pointer px-4 py-2 rounded-lg bg-muted/30 border border-border/30 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2">
-                                  <ChevronRight size={14} className="transition-transform group-open:rotate-90" />
-                                  Endpoints avanzados
-                                </summary>
-                                <div className="mt-2 grid gap-2">
-                                  {[
-                                    { key: 'complement_query', label: 'Query Complement', finishedAt: account.bank_complement_query_finished_at, resp: account.bank_complement_query_response, action: () => mutateWithError(bridgeQueryComplement, bankClientId ?? '', 'Query Complement', 'complement_query'), pending: bridgeQueryComplement.isPending },
-                                    { key: 'complement_update', label: 'Update Complement', finishedAt: account.bank_complementary_update_finished_at, resp: account.bank_complementary_update_response, action: () => mutateWithError(bridgeUpdateComplementary, { clientId: bankClientId ?? '', body: account.extra_data?.complete_flow_data || account.extra_data || {} }, 'Update Complement', 'complement_update'), pending: bridgeUpdateComplementary.isPending },
-                                    { key: 'cliente', label: 'Consulta Micoope', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => mutateWithError(bridgeMicoopeClient, bankClientId ?? '', 'Consulta Micoope', 'cliente'), pending: bridgeMicoopeClient.isPending },
-                                    { key: 'crear_cliente', label: 'Crear Individual', finishedAt: account.bank_client_finished_at, resp: account.bank_client_response, action: () => mutateWithError(bridgeCreateIndividual, { clientId: bankClientId ?? '', document_number: account.document_number, full_name: account.full_name, phone: phoneForBank } as never, 'Crear Individual', 'crear_cliente'), pending: bridgeCreateIndividual.isPending },
-                                  ].map((ep) => {
-                                    const st = resolveStatus(ep.finishedAt, ep.resp);
-                                    const cooldownKey = `${selectedId}_${ep.key}`;
+                              {/* Vertical Stepper Pipeline */}
+                              <div className="relative">
+                                {/* Vertical line */}
+                                <div className="absolute left-5 top-6 bottom-6 w-0.5 bg-gradient-to-b from-accent/50 via-border to-border/30" />
+                                
+                                <div className="space-y-1">
+                                  {bankingSteps.map((step) => {
+                                    const cooldownKey = `${selectedId}_${step.key}`;
                                     const cooldownRemaining = getCooldownRemaining(cooldownKey);
                                     const isOnCooldown = cooldownRemaining > 0;
-                                    const disabled = st.done || ep.pending || isOnCooldown || !bankClientId;
-                                    const hasError = bankError?.key === ep.key;
-                                    
+                                    const isPending = stepPending[step.key] || false;
+                                    const hasError = bankError?.key === step.key;
+                                    const isNextStep = nextStep?.key === step.key;
+                                    const isLocked = step.status === 'locked';
+                                    const isCompleted = step.status === 'completed';
+                                    const isError = step.status === 'error' || hasError;
+                                    const canClick = step.canExecute && !isPending && !isOnCooldown && !isCompleted;
+
                                     return (
-                                      <div key={ep.key} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 transition-all ${hasError ? 'border-red-500/40 bg-red-500/5' : st.done ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border/30 bg-muted/20'}`}>
-                                        <div className="flex items-center gap-2">
-                                          <span className={`w-2 h-2 rounded-full ${st.done ? 'bg-emerald-500' : hasError ? 'bg-red-500' : 'bg-muted-foreground'}`} />
-                                          <span className="text-xs font-medium text-foreground">{ep.label}</span>
-                                          <span className="text-[10px] text-muted-foreground">{hasError ? 'Error' : st.label}</span>
+                                      <div key={step.key} className="relative pl-12">
+                                        {/* Step indicator */}
+                                        <div className={`absolute left-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                                          isCompleted ? 'bg-emerald-500/20 ring-2 ring-emerald-500/30' :
+                                          isError ? 'bg-red-500/20 ring-2 ring-red-500/30' :
+                                          isPending ? 'bg-accent/20 ring-2 ring-accent/30' :
+                                          isNextStep ? 'bg-sky-500/20 ring-2 ring-sky-500/50 animate-pulse' :
+                                          isLocked ? 'bg-muted/30' :
+                                          'bg-muted/50'
+                                        }`}>
+                                          {isCompleted ? (
+                                            <CheckCircle2 size={20} className="text-emerald-500" />
+                                          ) : isError ? (
+                                            <AlertCircle size={20} className="text-red-500" />
+                                          ) : isPending ? (
+                                            <Loader2 size={20} className="text-accent animate-spin" />
+                                          ) : isLocked ? (
+                                            <Lock size={16} className="text-muted-foreground/50" />
+                                          ) : (
+                                            <span className="text-sm font-bold text-foreground/70">{step.stepNumber}</span>
+                                          )}
                                         </div>
-                                        <Button size="sm" variant="ghost" disabled={disabled} className="h-6 text-[10px]" onClick={() => { triggerCooldown(cooldownKey); setBankError(null); ep.action(); }}>
-                                          {st.done ? 'OK' : ep.pending ? <Loader2 size={10} className="animate-spin" /> : isOnCooldown ? formatCooldown(cooldownRemaining) : 'Run'}
-                                        </Button>
+
+                                        {/* Step card */}
+                                        <div className={`rounded-xl border p-4 transition-all ${
+                                          isCompleted ? 'bg-emerald-500/5 border-emerald-500/30' :
+                                          isError ? 'bg-red-500/5 border-red-500/40' :
+                                          isNextStep ? 'bg-sky-500/5 border-sky-500/40 shadow-lg shadow-sky-500/5' :
+                                          isLocked ? 'bg-muted/10 border-border/20 opacity-60' :
+                                          'bg-muted/30 border-border/30'
+                                        }`}>
+                                          <div className="flex items-center gap-4">
+                                            {/* Step info */}
+                                            <div className="flex-1 min-w-0">
+                                              <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-[10px] font-mono text-muted-foreground">PASO {step.stepNumber}</span>
+                                                <h4 className={`font-semibold text-sm ${isLocked ? 'text-muted-foreground' : 'text-foreground'}`}>{step.label}</h4>
+                                                {/* Status badge */}
+                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                                  isCompleted ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
+                                                  isError ? 'bg-red-500/20 text-red-600 dark:text-red-400' :
+                                                  isPending ? 'bg-accent/20 text-accent' :
+                                                  isNextStep ? 'bg-sky-500/20 text-sky-600 dark:text-sky-400' :
+                                                  isLocked ? 'bg-muted/50 text-muted-foreground' :
+                                                  'bg-muted text-muted-foreground'
+                                                }`}>
+                                                  {isCompleted ? 'Completado' :
+                                                   isError ? 'Error' :
+                                                   isPending ? 'Procesando...' :
+                                                   isNextStep ? 'Próximo paso' :
+                                                   isLocked ? 'Bloqueado' : 'Pendiente'}
+                                                </span>
+                                              </div>
+                                              <p className={`text-xs mt-0.5 ${isLocked ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>{step.desc}</p>
+                                              
+                                              {/* Dependency indicator for locked steps */}
+                                              {isLocked && step.requiresLabel && (
+                                                <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                                                  <Lock size={9} />
+                                                  Requiere: {step.requiresLabel}
+                                                </p>
+                                              )}
+                                              
+                                              {/* Completed timestamp */}
+                                              {isCompleted && step.finishedAt && (
+                                                <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 mt-1">{formatDate(step.finishedAt)}</p>
+                                              )}
+                                            </div>
+
+                                            {/* Action button */}
+                                            <div className="shrink-0">
+                                              {isCompleted ? (
+                                                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium px-3 py-1.5">
+                                                  <CheckCircle2 size={14} /> OK
+                                                </div>
+                                              ) : isLocked ? (
+                                                <div className="flex items-center gap-1 text-muted-foreground/50 text-xs px-3 py-1.5">
+                                                  <Lock size={12} />
+                                                </div>
+                                              ) : (
+                                                <Button 
+                                                  size="sm" 
+                                                  variant={isError ? 'destructive' : isNextStep ? 'default' : 'outline'}
+                                                  disabled={!canClick}
+                                                  className={`h-9 min-w-[100px] text-xs transition-all ${isNextStep ? 'shadow-lg shadow-sky-500/20' : ''}`}
+                                                  onClick={() => { 
+                                                    triggerCooldown(cooldownKey); 
+                                                    setBankError(null); 
+                                                    stepActions[step.key]?.(); 
+                                                  }}
+                                                >
+                                                  {isPending ? (
+                                                    <Loader2 size={14} className="animate-spin" />
+                                                  ) : isOnCooldown ? (
+                                                    <span className="font-mono">{formatCooldown(cooldownRemaining)}</span>
+                                                  ) : isError ? (
+                                                    <>
+                                                      <RefreshCw size={14} className="mr-1" /> Reintentar
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <Zap size={14} className="mr-1" /> Ejecutar
+                                                    </>
+                                                  )}
+                                                </Button>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          {/* Error details */}
+                                          {hasError && bankError && (
+                                            <div className="mt-3 pt-3 border-t border-red-500/20">
+                                              <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10">
+                                                <AlertTriangle size={14} className="text-red-400 mt-0.5 shrink-0" />
+                                                <div className="flex-1 min-w-0">
+                                                  <div className="flex items-center gap-2 mb-1">
+                                                    <span className="px-1.5 py-0.5 rounded bg-red-500/30 text-[10px] font-bold text-red-300">{bankError.code}</span>
+                                                    <button onClick={() => setBankError(null)} className="ml-auto text-red-400/60 hover:text-red-300 text-sm">×</button>
+                                                  </div>
+                                                  <p className="text-xs text-red-200/90">{bankError.message}</p>
+                                                  {bankError.correlationId && (
+                                                    <p className="text-[9px] font-mono text-red-400/50 mt-1 flex items-center gap-1">
+                                                      <Hash size={9} /> {bankError.correlationId}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
                                     );
                                   })}
                                 </div>
-                              </details>
+                              </div>
+
+                              {/* Success message when all steps complete */}
+                              {completedSteps === 7 && (
+                                <div className="rounded-xl bg-gradient-to-r from-emerald-500/15 to-teal-500/10 border border-emerald-500/30 p-4 flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 size={24} className="text-emerald-500" />
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-emerald-700 dark:text-emerald-300">Flujo Bancario Completado</h4>
+                                    <p className="text-sm text-emerald-600/80 dark:text-emerald-200/80">Todos los 7 pasos se han ejecutado exitosamente. La cuenta está creada.</p>
+                                  </div>
+                                </div>
+                              )}
                             </>
                           );
                         })()}

@@ -41,6 +41,21 @@ const STATUS_DICT: Record<string, StatusDisplay> = {
   bank_client_rejected: { label: 'Rechazado/Erro', tone: 'error', icon: 'TriangleAlert' },
   bank_complementary_rejected: { label: 'Rechazado/Erro', tone: 'error', icon: 'TriangleAlert' },
   bank_account_rejected: { label: 'Rechazado/Erro', tone: 'error', icon: 'TriangleAlert' },
+  // Additional bank flow statuses
+  didit_verified: { label: 'DIDIT Verificado', tone: 'ok', icon: 'CheckCircle' },
+  bank_onboarding_updated: { label: 'Onboarding Actualizado', tone: 'ok', icon: 'CheckCircle' },
+  bank_onboarding_update_in_progress: { label: 'Actualizando Onboarding', tone: 'warn', icon: 'Loader' },
+  bank_onboarding_update_error: { label: 'Error Onboarding', tone: 'error', icon: 'TriangleAlert' },
+  bank_complementary_updated: { label: 'Complemento Actualizado', tone: 'ok', icon: 'CheckCircle' },
+  bank_complementary_update_in_progress: { label: 'Actualizando Complemento', tone: 'warn', icon: 'Loader' },
+  bank_complementary_update_error: { label: 'Error Complemento', tone: 'error', icon: 'TriangleAlert' },
+  bank_complement_query_in_progress: { label: 'Consultando', tone: 'warn', icon: 'Loader' },
+  bank_complement_query_error: { label: 'Error Consulta', tone: 'error', icon: 'TriangleAlert' },
+  bank_client_creation_in_progress: { label: 'Creando Cliente', tone: 'warn', icon: 'Loader' },
+  bank_client_creation_error: { label: 'Error Cliente', tone: 'error', icon: 'TriangleAlert' },
+  bank_client_lookup_in_progress: { label: 'Buscando Cliente', tone: 'warn', icon: 'Loader' },
+  bank_account_creation_in_progress: { label: 'Creando Cuenta', tone: 'warn', icon: 'Loader' },
+  bank_account_creation_error: { label: 'Error Cuenta', tone: 'error', icon: 'TriangleAlert' },
   default: { label: 'En curso', tone: 'info', icon: 'Dot' },
 }
 
