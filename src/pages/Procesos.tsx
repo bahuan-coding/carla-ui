@@ -89,36 +89,39 @@ type BankStep = {
 };
 
 // Status maps for computing step states
+// CORRETO: Blacklist → Cliente → Datos Complementarios (KYC) → Crear Cuenta → Onboarding
 const STEP_STATUS_MAP: Record<string, { completed: string[]; in_progress: string[]; error: string[]; pending: string[] }> = {
   blacklist: {
-    completed: ['bank_blacklist_approved', 'bank_client_created', 'bank_account_created', 'bank_complementary_completed', 'bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
+    completed: ['bank_blacklist_approved', 'bank_client_created', 'bank_complementary_completed', 'bank_account_created', 'bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
     in_progress: ['bank_blacklist_in_progress'],
     error: ['bank_blacklist_error', 'bank_blacklist_rejected'],
     pending: ['ready_for_bank', 'didit_verified']
   },
   client: {
-    completed: ['bank_client_created', 'bank_account_created', 'bank_complementary_completed', 'bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
+    completed: ['bank_client_created', 'bank_complementary_completed', 'bank_account_created', 'bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
     in_progress: ['bank_client_creation_in_progress', 'bank_client_lookup_in_progress'],
     error: ['bank_client_creation_error'],
     pending: ['bank_blacklist_approved']
   },
-  account: {
-    completed: ['bank_account_created', 'bank_complementary_completed', 'bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
-    in_progress: ['bank_account_creation_in_progress'],
-    error: ['bank_account_creation_error'],
-    pending: ['bank_client_created']
-  },
+  // Step 3: Datos Complementarios (KYC) - T24 precisa dos dados ANTES de criar conta
   complementary: {
-    completed: ['bank_complementary_completed', 'bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
+    completed: ['bank_complementary_completed', 'bank_account_created', 'bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
     in_progress: ['bank_complementary_in_progress'],
     error: ['bank_complementary_error'],
-    pending: ['bank_account_created']
+    pending: ['bank_client_created']
+  },
+  // Step 4: Crear Cuenta - agora depende de complementary (KYC)
+  account: {
+    completed: ['bank_account_created', 'bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
+    in_progress: ['bank_account_creation_in_progress'],
+    error: ['bank_account_creation_error'],
+    pending: ['bank_complementary_completed']
   },
   onboarding_update: {
     completed: ['bank_onboarding_updated', 'bank_complementary_updated', 'account_created'],
     in_progress: ['bank_onboarding_update_in_progress'],
     error: ['bank_onboarding_update_error'],
-    pending: ['bank_complementary_completed']
+    pending: ['bank_account_created']
   },
   complementary_update: {
     completed: ['bank_complementary_updated', 'account_created'],
@@ -148,12 +151,13 @@ const computeBankingSteps = (account: Account, currentStatus: string): BankStep[
   const clientId = account.bank_partner_client_id;
   const status = currentStatus.toLowerCase();
   
+  // CORRETO: KYC (Datos Complementarios) ANTES de Crear Cuenta - T24 precisa dos dados!
   const stepConfigs = [
     { key: 'blacklist', stepNumber: 1, label: 'Blacklist Check', desc: 'Verificar listas negras', requires: null, requiresLabel: null, icon: Shield, finishedAt: account.bank_blacklist_finished_at, response: account.bank_blacklist_response },
     { key: 'client', stepNumber: 2, label: 'Crear Cliente', desc: 'Onboarding bancario', requires: 'blacklist', requiresLabel: 'Blacklist Check', icon: User, finishedAt: account.bank_client_finished_at, response: account.bank_client_response },
-    { key: 'account', stepNumber: 3, label: 'Crear Cuenta', desc: 'Apertura de cuenta bancaria', requires: 'client', requiresLabel: 'Crear Cliente', icon: CreditCard, finishedAt: account.bank_account_finished_at, response: account.bank_account_response },
-    { key: 'complementary', stepNumber: 4, label: 'Datos Complementarios', desc: 'Información adicional del cliente', requires: 'account', requiresLabel: 'Crear Cuenta', icon: FileText, finishedAt: account.bank_complementary_finished_at, response: account.bank_complementary_response },
-    { key: 'onboarding_update', stepNumber: 5, label: 'Actualizar Onboarding', desc: 'Actualizar datos de onboarding', requires: 'complementary', requiresLabel: 'Datos Complementarios', icon: RefreshCw, finishedAt: account.bank_onboarding_finished_at, response: account.bank_onboarding_response },
+    { key: 'complementary', stepNumber: 3, label: 'Datos Complementarios', desc: 'KYC - Información requerida por T24', requires: 'client', requiresLabel: 'Crear Cliente', icon: FileText, finishedAt: account.bank_complementary_finished_at, response: account.bank_complementary_response },
+    { key: 'account', stepNumber: 4, label: 'Crear Cuenta', desc: 'Apertura de cuenta bancaria', requires: 'complementary', requiresLabel: 'Datos Complementarios', icon: CreditCard, finishedAt: account.bank_account_finished_at, response: account.bank_account_response },
+    { key: 'onboarding_update', stepNumber: 5, label: 'Actualizar Onboarding', desc: 'Actualizar datos de onboarding', requires: 'account', requiresLabel: 'Crear Cuenta', icon: RefreshCw, finishedAt: account.bank_onboarding_finished_at, response: account.bank_onboarding_response },
     { key: 'complementary_update', stepNumber: 6, label: 'Actualizar Complemento', desc: 'Actualizar datos complementarios', requires: 'onboarding_update', requiresLabel: 'Actualizar Onboarding', icon: Database, finishedAt: account.bank_complementary_update_finished_at, response: account.bank_complementary_update_response },
     { key: 'complement_query', stepNumber: 7, label: 'Consulta Final', desc: 'Verificación final del registro', requires: 'complementary_update', requiresLabel: 'Actualizar Complemento', icon: CheckCircle2, finishedAt: account.bank_complement_query_finished_at, response: account.bank_complement_query_response },
   ];
@@ -1222,6 +1226,7 @@ export function ProcesosPage() {
                       <div className="flex items-center gap-1">
                         {[
                           { value: 'ready_for_bank', label: 'Listo', color: 'emerald' },
+                          { value: 'bank_client_created', label: 'Cliente ✓', color: 'cyan', hint: 'Re-ejecutar desde Datos Complementarios' },
                           { value: 'bank_processing', label: 'Procesando', color: 'sky' },
                           { value: 'bank_rejected', label: 'Rechazado', color: 'red' },
                           { value: 'account_created', label: 'Creada', color: 'violet' },
