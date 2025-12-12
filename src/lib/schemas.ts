@@ -43,7 +43,7 @@ export const messageSchema = z.object({
   from: z.string(),
   body: z.string(),
   at: z.string(),
-  direction: z.enum(['in', 'out']).optional(),
+  direction: z.enum(['in', 'out', 'inbound', 'outbound']).optional(),
 });
 
 export const conversationDetailSchema = z.object({

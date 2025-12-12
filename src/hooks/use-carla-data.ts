@@ -95,7 +95,7 @@ export const useSendMessage = (conversationId?: string) => {
         from: 'agent',
         body: body.text,
         at: new Date().toISOString(),
-        direction: 'out',
+        direction: 'outbound',
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
@@ -121,9 +121,16 @@ export const useConversationStream = (conversationId?: string) => {
 
     const ws = new WebSocket(url);
     ws.onmessage = (event) => {
-      const parsed = messageSchema.safeParse(JSON.parse(event.data));
-      if (parsed.success) {
-        setMessages((prev) => [...prev, parsed.data]);
+      try {
+        const data = JSON.parse(event.data);
+        // Handle wrapped format { type: "message", payload: {...} }
+        const payload = data?.type === 'message' ? data.payload : data;
+        const parsed = messageSchema.safeParse(payload);
+        if (parsed.success) {
+          setMessages((prev) => [...prev, parsed.data]);
+        }
+      } catch {
+        // Ignore malformed messages
       }
     };
     ws.onerror = () => {

@@ -362,125 +362,18 @@ export const sampleProcessEventsById = (id?: string) => {
   return sampleProcessEventsMap.prc_gt_001;
 };
 
-// Sample Conversations
+// Sample Conversations - fallback when API unavailable
 import { conversationListSchema, conversationDetailSchema } from '@/lib/schemas';
 
-export const sampleConversations = conversationListSchema.parse([
-  {
-    id: 'conv_demo_01',
-    name: 'María García',
-    product: 'Cuenta digital',
-    status: 'activa',
-    unread: 2,
-    updatedAt: '2025-01-15T14:30:00Z',
-    tags: ['vip', 'onboarding'],
-  },
-  {
-    id: 'conv_demo_02',
-    name: 'Juan Pérez',
-    product: 'Crédito simple',
-    status: 'pendiente',
-    unread: 0,
-    updatedAt: '2025-01-15T13:15:00Z',
-    tags: ['soporte'],
-  },
-  {
-    id: 'conv_demo_03',
-    name: 'Ana López',
-    product: 'Tarjeta débito',
-    status: 'activa',
-    unread: 1,
-    updatedAt: '2025-01-15T12:45:00Z',
-    tags: ['consulta'],
-  },
-  {
-    id: 'conv_demo_04',
-    name: 'Roberto Méndez',
-    product: 'Cuenta empresarial',
-    status: 'en espera',
-    unread: 0,
-    updatedAt: '2025-01-15T11:20:00Z',
-    tags: ['pyme'],
-  },
-]);
+export const sampleConversations = conversationListSchema.parse([]);
 
-const sampleConversationDetailsMap: Record<string, z.infer<typeof conversationDetailSchema>> = {
-  conv_demo_01: conversationDetailSchema.parse({
-    id: 'conv_demo_01',
-    name: 'María García',
-    product: 'Cuenta digital',
-    status: 'activa',
-    phone: '+50255501234',
-    unread: 2,
-    tags: ['vip', 'onboarding'],
-    proceso: 'Apertura de cuenta',
-    progreso: '75%',
-    assignedTo: 'Agente Carlos',
-    messages: [
-      { id: 'msg_01', from: 'María García', body: 'Hola, necesito ayuda con mi cuenta', at: '2025-01-15T14:00:00Z', direction: 'in' },
-      { id: 'msg_02', from: 'agent', body: 'Hola María, con gusto te ayudo. ¿Cuál es tu consulta?', at: '2025-01-15T14:02:00Z', direction: 'out' },
-      { id: 'msg_03', from: 'María García', body: 'No puedo ver mi saldo en la app', at: '2025-01-15T14:05:00Z', direction: 'in' },
-      { id: 'msg_04', from: 'agent', body: 'Entiendo, déjame verificar tu cuenta. ¿Me puedes confirmar tu número de documento?', at: '2025-01-15T14:07:00Z', direction: 'out' },
-      { id: 'msg_05', from: 'María García', body: '1234567890101', at: '2025-01-15T14:10:00Z', direction: 'in' },
-    ],
-  }),
-  conv_demo_02: conversationDetailSchema.parse({
-    id: 'conv_demo_02',
-    name: 'Juan Pérez',
-    product: 'Crédito simple',
-    status: 'pendiente',
-    phone: '+50255505678',
-    unread: 0,
-    tags: ['soporte'],
-    proceso: 'Solicitud de crédito',
-    progreso: '40%',
-    assignedTo: 'Agente Ana',
-    messages: [
-      { id: 'msg_06', from: 'Juan Pérez', body: 'Quisiera información sobre créditos', at: '2025-01-15T13:00:00Z', direction: 'in' },
-      { id: 'msg_07', from: 'agent', body: 'Claro Juan, tenemos varias opciones. ¿Cuánto necesitas y en qué plazo?', at: '2025-01-15T13:05:00Z', direction: 'out' },
-      { id: 'msg_08', from: 'Juan Pérez', body: 'Unos Q10,000 a 12 meses', at: '2025-01-15T13:10:00Z', direction: 'in' },
-    ],
-  }),
-  conv_demo_03: conversationDetailSchema.parse({
-    id: 'conv_demo_03',
-    name: 'Ana López',
-    product: 'Tarjeta débito',
-    status: 'activa',
-    phone: '+50255509012',
-    unread: 1,
-    tags: ['consulta'],
-    proceso: 'Activación de tarjeta',
-    progreso: '90%',
-    assignedTo: 'Agente Pedro',
-    messages: [
-      { id: 'msg_09', from: 'Ana López', body: 'Mi tarjeta no funciona en el ATM', at: '2025-01-15T12:30:00Z', direction: 'in' },
-      { id: 'msg_10', from: 'agent', body: 'Hola Ana, verifico el estado de tu tarjeta', at: '2025-01-15T12:32:00Z', direction: 'out' },
-      { id: 'msg_11', from: 'agent', body: 'Tu tarjeta requiere activación. Te envío el código por SMS', at: '2025-01-15T12:35:00Z', direction: 'out' },
-      { id: 'msg_12', from: 'Ana López', body: 'Listo, ya la activé. Gracias!', at: '2025-01-15T12:40:00Z', direction: 'in' },
-    ],
-  }),
-  conv_demo_04: conversationDetailSchema.parse({
-    id: 'conv_demo_04',
-    name: 'Roberto Méndez',
-    product: 'Cuenta empresarial',
-    status: 'en espera',
-    phone: '+50255503456',
-    unread: 0,
-    tags: ['pyme'],
-    proceso: 'Apertura cuenta empresarial',
-    progreso: '25%',
-    assignedTo: 'Agente María',
-    messages: [
-      { id: 'msg_13', from: 'Roberto Méndez', body: 'Necesito abrir una cuenta para mi empresa', at: '2025-01-15T11:00:00Z', direction: 'in' },
-      { id: 'msg_14', from: 'agent', body: 'Hola Roberto, con gusto. ¿Qué tipo de empresa es?', at: '2025-01-15T11:05:00Z', direction: 'out' },
-      { id: 'msg_15', from: 'Roberto Méndez', body: 'Es una sociedad anónima, tenemos 3 años operando', at: '2025-01-15T11:10:00Z', direction: 'in' },
-    ],
-  }),
-};
-
+// Empty fallback for conversation details - real data comes from API
 export const sampleConversationDetailById = (id?: string) => {
-  const detail = id ? sampleConversationDetailsMap[id] : undefined;
-  if (detail) return detail;
-  return sampleConversationDetailsMap.conv_demo_01;
+  return conversationDetailSchema.parse({
+    id: id || 'unknown',
+    name: id || 'Sin datos',
+    messages: [],
+    tags: [],
+  });
 };
 

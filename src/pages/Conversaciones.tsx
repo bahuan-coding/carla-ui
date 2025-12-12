@@ -144,17 +144,20 @@ export function ConversacionesPage() {
             <Skeleton className="h-40 w-full bg-foreground/10" />
           ) : (
             <div className="flex flex-col gap-2 text-sm">
-              {messages.map((m) => (
-                <div
-                  key={`${m.id}-${m.at}`}
-                  className={`max-w-[80%] rounded-xl px-3 py-2 ${
-                    m.direction === 'out' ? 'self-end bg-secondary text-foreground' : 'self-start bg-primary/10 text-primary'
-                  }`}
-                >
-                  <p>{m.body}</p>
-                  <p className="mt-1 text-[10px] text-foreground/60">{new Date(m.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
-              ))}
+              {messages.map((m) => {
+                const isOutbound = m.direction === 'out' || m.direction === 'outbound';
+                return (
+                  <div
+                    key={`${m.id}-${m.at}`}
+                    className={`max-w-[80%] rounded-xl px-3 py-2 ${
+                      isOutbound ? 'self-end bg-secondary text-foreground' : 'self-start bg-primary/10 text-primary'
+                    }`}
+                  >
+                    <p>{m.body}</p>
+                    <p className="mt-1 text-[10px] text-foreground/60">{new Date(m.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                );
+              })}
               {!messages.length ? <p className="text-xs text-foreground/60">Sin mensajes aún.</p> : null}
             </div>
           )}
