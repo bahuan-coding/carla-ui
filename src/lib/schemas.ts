@@ -29,11 +29,11 @@ export const processDistributionSchema = z.array(
 export const conversationSchema = z.object({
   id: z.string(),
   name: z.string(),
-  product: z.string().optional(),
-  status: z.string().optional(),
-  unread: z.number().optional(),
-  updatedAt: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  product: z.string().nullable().optional(),
+  status: z.string().nullable().optional(),
+  unread: z.number().nullable().optional(),
+  updatedAt: z.string().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
 });
 
 export const conversationListSchema = z.array(conversationSchema);
