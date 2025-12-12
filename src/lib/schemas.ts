@@ -39,31 +39,33 @@ export const conversationSchema = z.object({
 export const conversationListSchema = z.array(conversationSchema);
 
 export const messageSchema = z.object({
-  id: z.string().optional(),
+  id: z.string().nullable().optional(),
   from: z.string(),
   body: z.string(),
-  at: z.string(),
-  direction: z.enum(['in', 'out', 'inbound', 'outbound']).optional(),
+  at: z.union([z.string(), z.coerce.string()]),
+  direction: z.enum(['in', 'out', 'inbound', 'outbound']).nullable().optional(),
 });
 
 export const conversationDetailSchema = z.object({
   id: z.string(),
   name: z.string(),
-  product: z.string().optional(),
-  status: z.string().optional(),
-  phone: z.string().optional(),
-  unread: z.number().optional(),
-  tags: z.array(z.string()).default([]),
-  proceso: z.string().optional(),
-  progreso: z.string().optional(),
-  assignedTo: z.string().optional(),
+  product: z.string().nullable().optional(),
+  status: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  unread: z.number().nullable().optional(),
+  tags: z.array(z.string()).nullable().default([]),
+  proceso: z.string().nullable().optional(),
+  progreso: z.string().nullable().optional(),
+  assignedTo: z.string().nullable().optional(),
   messages: z.array(messageSchema).default([]),
   profile: z
     .object({
-      email: z.string().optional(),
-      location: z.string().optional(),
-      lastSeen: z.string().optional(),
+      email: z.string().nullable().optional(),
+      location: z.string().nullable().optional(),
+      lastSeen: z.string().nullable().optional(),
+      phone: z.string().nullable().optional(),
     })
+    .nullable()
     .optional(),
 });
 
