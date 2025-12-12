@@ -7,10 +7,12 @@
 
 [context.production.environment]
   VITE_API_URL = "https://x.carla.money"
+  VITE_CHANNELS_API_URL = "https://x.carla.money"
   NODE_ENV = "production"
 
 [context.deploy-preview.environment]
   VITE_API_URL = "https://x.carla.money"
+  VITE_CHANNELS_API_URL = "https://x.carla.money"
 
 [[redirects]]
   from = "/*"

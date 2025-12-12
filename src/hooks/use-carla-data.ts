@@ -27,9 +27,11 @@ import {
 const IS_DEV = import.meta.env.DEV;
 const withSampleFallback = async <T>(label: string, runner: () => Promise<T>, fallback: T): Promise<T> => {
   try {
-    return await runner();
+    const result = await runner();
+    if (IS_DEV) console.log(`[api:${label}] success`, result);
+    return result;
   } catch (error) {
-    if (IS_DEV) console.warn(`[fallback:${label}]`, error);
+    console.warn(`[fallback:${label}]`, error);
     return fallback;
   }
 };
