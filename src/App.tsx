@@ -3,17 +3,25 @@ import { NavLink, Route, Routes } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useUiStore } from '@/stores/ui';
-import { ChartPie, Command, MessageCircle, Sun, Moon, Workflow } from 'lucide-react';
+import { ChartPie, Command, MessageCircle, Sun, Moon, Workflow, ArrowLeftRight, Blocks, Bell, Settings } from 'lucide-react';
 import { DashboardPage } from '@/pages/Dashboard';
 import { ConversacionesPage } from '@/pages/Conversaciones';
 import { ProcesosPage } from '@/pages/Procesos';
 import { PainelControlePage } from '@/pages/PainelControle';
+import { ComponentesPage } from '@/pages/Componentes';
+import { TransaccionesPage } from '@/pages/Transacciones';
+import { NotificacionesPage } from '@/pages/Notificaciones';
+import { ConfiguracionPage } from '@/pages/Configuracion';
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: ChartPie },
   { to: '/conversaciones', label: 'Conversaciones', icon: MessageCircle },
-  { to: '/painel', label: 'Painel', icon: Command },
+  { to: '/transacciones', label: 'Transacciones', icon: ArrowLeftRight },
   { to: '/procesos', label: 'Procesos', icon: Workflow },
+  { to: '/componentes', label: 'Componentes', icon: Blocks },
+  { to: '/painel', label: 'Painel', icon: Command },
+  { to: '/notificaciones', label: 'Notificaciones', icon: Bell },
+  { to: '/configuracion', label: 'Configuración', icon: Settings },
 ];
 
 export default function App() {
@@ -36,8 +44,8 @@ export default function App() {
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-accent/20" />
             <div>
-              <p className="text-sm font-semibold">Carla</p>
-              <p className="text-xs text-foreground/60">Mission Control</p>
+            <p className="text-sm font-semibold">Carla</p>
+            <p className="text-xs text-foreground/60">Automatización Financiera</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(false)}>
@@ -104,8 +112,12 @@ export default function App() {
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/conversaciones" element={<ConversacionesPage />} />
-          <Route path="/painel" element={<PainelControlePage />} />
+          <Route path="/transacciones" element={<TransaccionesPage />} />
           <Route path="/procesos" element={<ProcesosPage />} />
+          <Route path="/componentes" element={<ComponentesPage />} />
+          <Route path="/painel" element={<PainelControlePage />} />
+          <Route path="/notificaciones" element={<NotificacionesPage />} />
+          <Route path="/configuracion" element={<ConfiguracionPage />} />
         </Routes>
       </main>
       <Toaster />

@@ -337,6 +337,11 @@ export function ProcesosPage() {
     const realName = normalized.fullName || p.name || account?.full_name;
     const title = realName || (docNumber ? `${docType || 'Doc'} ${docNumber}` : `#${shortId(p.id)}`);
     
+    // Get gender for avatar
+    const gender = account?.gender?.toLowerCase() || '';
+    const isMale = gender === 'masculino' || gender === 'm' || gender === 'male';
+    const isFemale = gender === 'femenino' || gender === 'f' || gender === 'female';
+    
     return {
       id: p.id,
       title,
@@ -353,6 +358,7 @@ export function ProcesosPage() {
       verificationDisplay,
       bankingDisplay,
       correlationId: p.correlation_id,
+      gender: isMale ? 'male' : isFemale ? 'female' : null,
     };
   }), [processes]);
 
@@ -462,9 +468,21 @@ export function ProcesosPage() {
                   className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors cursor-pointer group"
                   onClick={() => setSelectedId(card.id)}
                 >
-                  {/* Avatar */}
+                  {/* Avatar with Gender Icons */}
                   <div className={`relative w-12 h-12 rounded-full bg-gradient-to-br ${getAvatarColor(card.id)} flex items-center justify-center text-white font-semibold text-sm shadow-lg`}>
-                    {getInitials(card.title)}
+                    {card.gender === 'male' ? (
+                      <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current" aria-label="Masculino">
+                        <circle cx="10" cy="14" r="5" fill="none" stroke="currentColor" strokeWidth="2"/>
+                        <path d="M14.5 9.5L19 5M19 5v4M19 5h-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                    ) : card.gender === 'female' ? (
+                      <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current" aria-label="Femenino">
+                        <circle cx="12" cy="9" r="5" fill="none" stroke="currentColor" strokeWidth="2"/>
+                        <path d="M12 14v6M9 17h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                    ) : (
+                      getInitials(card.title)
+                    )}
                     <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full ${colors.dot} border-2 border-card`} />
                   </div>
 

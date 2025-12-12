@@ -216,3 +216,35 @@ export const otpHealthSchema = z.union([
   otpHealthEnvelopeSchema,
 ]);
 
+// WhatsApp Flow schemas
+export const flowStepSchema = z.object({
+  id: z.string(),
+  flow_id: z.string(),
+  order_index: z.number(),
+  type: z.enum(['message', 'question', 'api_call', 'condition', 'wait']),
+  name: z.string(),
+  config: z.record(z.string(), z.unknown()).default({}),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export const flowStepsSchema = z.array(flowStepSchema);
+
+export const whatsappFlowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().nullable().optional(),
+  status: z.enum(['draft', 'active', 'archived']).default('draft'),
+  icon: z.string().default('workflow'),
+  steps_count: z.number().default(0),
+  usage_count: z.number().default(0),
+  cooperative_id: z.string().nullable().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+  created_by: z.string().nullable().optional(),
+  config: z.record(z.string(), z.unknown()).default({}),
+  steps: flowStepsSchema.optional(),
+});
+
+export const whatsappFlowsSchema = z.array(whatsappFlowSchema);
+
