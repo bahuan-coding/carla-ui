@@ -61,9 +61,12 @@ const withBase = (path: string) => {
   return `${API_URL}${normalized}`;
 };
 
-// Token selection: admin endpoints use CHANNELS_API_KEY, others use bridge or localStorage
+// Token selection: admin and api endpoints use CHANNELS_API_KEY
 const getTokenForPath = (path: string) => {
-  if (path.startsWith('/admin')) return CHANNELS_API_KEY || null;
+  // Admin and API v1 endpoints use the channels API key
+  if (path.startsWith('/admin') || path.startsWith('/api/v1')) {
+    return CHANNELS_API_KEY || null;
+  }
   if (typeof window !== 'undefined') {
     const stored = localStorage.getItem('carla_token');
     if (stored) return stored;
