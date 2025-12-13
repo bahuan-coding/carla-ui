@@ -34,7 +34,14 @@ export const conversationSchema = z.object({
   unread: z.number().nullable().optional(),
   updatedAt: z.string().nullable().optional(),
   tags: z.array(z.string()).nullable().optional(),
-});
+  // Additional fields that API might return - capture if available
+  phone: z.string().nullable().optional(),
+  whatsapp_phone: z.string().nullable().optional(),
+  customer_name: z.string().nullable().optional(),
+  contact_name: z.string().nullable().optional(),
+  lastMessage: z.string().nullable().optional(),
+  lastMessagePreview: z.string().nullable().optional(),
+}).passthrough(); // Accept additional fields from API
 
 export const conversationListSchema = z.array(conversationSchema);
 

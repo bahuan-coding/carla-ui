@@ -21,7 +21,6 @@ import {
   Tag,
   Archive,
   Sparkles,
-  Link2,
 } from 'lucide-react';
 
 type FormFields = { message: string };
@@ -130,22 +129,26 @@ function ConversationCard({
             </div>
             <span className="text-[11px] text-muted-foreground shrink-0">{formatTime(conv.lastMessageAt)}</span>
           </div>
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{conv.lastMessage}</p>
-          <div className="flex items-center justify-between mt-2">
+          {/* Show phone if different from name, or last message */}
+          {conv.phone && conv.phone !== conv.name ? (
+            <p className="text-xs text-muted-foreground truncate mt-0.5 font-mono">{conv.phone}</p>
+          ) : conv.lastMessage ? (
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{conv.lastMessage}</p>
+          ) : null}
+          <div className="flex items-center justify-between mt-1.5">
             <div className="flex items-center gap-1.5">
               <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${productColor}`}>
                 {conv.product}
               </Badge>
+              {conv.proceso && conv.proceso !== conv.product && (
+                <span className="text-[10px] text-muted-foreground truncate">{conv.proceso}</span>
+              )}
             </div>
             {conv.unread > 0 && (
               <span className="flex items-center justify-center h-5 w-5 rounded-full bg-accent text-[10px] font-semibold text-accent-foreground">
                 {conv.unread}
               </span>
             )}
-          </div>
-          <div className="flex items-center gap-1 mt-1.5 text-[10px] text-muted-foreground">
-            <Link2 size={10} />
-            <span>{conv.proceso}</span>
           </div>
         </div>
       </div>
@@ -365,26 +368,41 @@ const getConversationGroupKey = (id: string): string => {
   return match ? match[1] : id;
 };
 
-// Create a human-readable name from technical ID
-const humanizeTechnicalId = (id: string): string => {
-  // Remove common prefixes
-  let clean = id.replace(/^conv_test_/i, '').replace(/^conv_/i, '').replace(/^test_/i, '');
-  // Remove trailing hash
-  clean = clean.replace(/_[a-f0-9]{6,}$/i, '');
-  // If still has underscores, take first meaningful part
-  const parts = clean.split('_').filter(Boolean);
-  if (parts.length > 0) {
-    // Capitalize and format
-    const name = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
-    const number = parts[1] ? ` #${parts[1]}` : '';
-    return `Cliente ${name}${number}`;
+// Format phone number for display
+const formatPhoneDisplay = (phone?: string | null): string => {
+  if (!phone) return '';
+  // Clean and format
+  const clean = phone.replace(/[^\d+]/g, '');
+  if (clean.length >= 10) {
+    // Format: +XX XX XXXXX-XXXX or similar
+    if (clean.startsWith('+')) {
+      const country = clean.slice(0, 3);
+      const area = clean.slice(3, 5);
+      const rest = clean.slice(5);
+      return `${country} ${area} ${rest.slice(0, 5)}-${rest.slice(5)}`;
+    }
   }
-  // Last resort: short ID
-  return `Cliente #${id.slice(-6).toUpperCase()}`;
+  return phone;
 };
 
 // Group API conversations by prefix and aggregate
-type ApiConversation = { id: string; name: string; product?: string | null; status?: string | null; unread?: number | null; updatedAt?: string | null; tags?: string[] | null };
+type ApiConversation = { 
+  id: string; 
+  name: string; 
+  product?: string | null; 
+  status?: string | null; 
+  unread?: number | null; 
+  updatedAt?: string | null; 
+  tags?: string[] | null;
+  // New fields we might receive from API
+  phone?: string | null;
+  whatsapp_phone?: string | null;
+  customer_name?: string | null;
+  contact_name?: string | null;
+  lastMessage?: string | null;
+  lastMessagePreview?: string | null;
+  [key: string]: unknown; // Allow any extra fields
+};
 
 const groupAndTransformConversations = (apiData: ApiConversation[]): SampleConversation[] => {
   // Group by conversation prefix
@@ -408,16 +426,27 @@ const groupAndTransformConversations = (apiData: ApiConversation[]): SampleConve
     const latest = sorted[0];
     const totalUnread = convs.reduce((sum, c) => sum + (c.unread ?? 0), 0);
     
-    // Determine display name
-    let displayName = latest.name;
-    if (isTechnicalId(displayName)) {
-      displayName = humanizeTechnicalId(groupKey);
+    // Extract phone from any available field
+    const phone = latest.phone || latest.whatsapp_phone || 
+      (latest as Record<string, unknown>).whatsapp_phone_e164 as string || '';
+    
+    // Determine display name - priority: customer_name > contact_name > name > phone > ID
+    let displayName = latest.customer_name || latest.contact_name || '';
+    if (!displayName || isTechnicalId(displayName)) {
+      displayName = latest.name;
     }
+    if (!displayName || isTechnicalId(displayName)) {
+      // Use phone as display name if available
+      displayName = phone ? formatPhoneDisplay(phone) : `Cliente #${groupKey.slice(-8).toUpperCase()}`;
+    }
+    
+    // Get last message preview
+    const lastMessagePreview = latest.lastMessage || latest.lastMessagePreview || '';
     
     result.push({
       id: groupKey, // Use group key as ID for the merged conversation
       name: displayName,
-      phone: '', // Will be fetched from detail
+      phone: formatPhoneDisplay(phone),
       channel: 'whatsapp' as const,
       product: latest.product || 'General',
       productColor: 'emerald', // Real conversations get emerald color
@@ -426,7 +455,7 @@ const groupAndTransformConversations = (apiData: ApiConversation[]): SampleConve
         ? latest.status 
         : 'active',
       unread: totalUnread,
-      lastMessage: '',
+      lastMessage: lastMessagePreview,
       lastMessageAt: latest.updatedAt || new Date().toISOString(),
       tags: latest.tags || [],
       assignedTo: null,
