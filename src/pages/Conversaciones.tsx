@@ -63,7 +63,19 @@ function formatDate(dateStr: string) {
 }
 
 function getInitials(name: string) {
-  return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+  if (!name) return '??';
+  // For "Cliente X" format, use "CX"
+  if (name.startsWith('Cliente ')) {
+    const rest = name.replace('Cliente ', '').trim();
+    return 'C' + (rest[0] || '?').toUpperCase();
+  }
+  // For names with spaces, take first letter of each word
+  const parts = name.split(' ').filter(p => p.length > 0);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  // Single word: take first two chars
+  return name.slice(0, 2).toUpperCase();
 }
 
 // Conversation List Item
@@ -71,32 +83,50 @@ function ConversationCard({
   conv,
   isSelected,
   onClick,
+  isDemo = false,
 }: {
   conv: SampleConversation;
   isSelected: boolean;
   onClick: () => void;
+  isDemo?: boolean;
 }) {
   const channel = CHANNEL_ICONS[conv.channel] || CHANNEL_ICONS.web;
   const productColor = PRODUCT_COLORS[conv.productColor] || PRODUCT_COLORS.blue;
+  
+  // Avatar color based on real vs demo
+  const avatarBg = isDemo 
+    ? 'bg-gradient-to-br from-violet-500/20 to-purple-500/10' 
+    : 'bg-gradient-to-br from-emerald-500/20 to-teal-500/10';
 
   return (
     <button
       onClick={onClick}
       className={`w-full text-left p-4 transition-all border-b border-border/30 hover:bg-foreground/5 ${
         isSelected ? 'bg-accent/5 border-l-2 border-l-accent' : ''
-      }`}
+      } ${isDemo ? 'opacity-75' : ''}`}
     >
       <div className="flex gap-3">
-        <Avatar className="h-11 w-11 shrink-0">
-          <AvatarFallback className="bg-gradient-to-br from-accent/20 to-accent/5 text-sm font-medium">
-            {getInitials(conv.name)}
-          </AvatarFallback>
-        </Avatar>
+        <div className="relative">
+          <Avatar className="h-11 w-11 shrink-0">
+            <AvatarFallback className={`${avatarBg} text-sm font-medium`}>
+              {getInitials(conv.name)}
+            </AvatarFallback>
+          </Avatar>
+          {/* Online indicator for real conversations */}
+          {!isDemo && (
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-background rounded-full" />
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
               <span className="font-semibold text-sm truncate">{conv.name}</span>
               <span className={channel.color} title={conv.channel}>{channel.icon}</span>
+              {isDemo && (
+                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-violet-500/10 text-violet-500 border-violet-500/30">
+                  Demo
+                </Badge>
+              )}
             </div>
             <span className="text-[11px] text-muted-foreground shrink-0">{formatTime(conv.lastMessageAt)}</span>
           </div>
@@ -124,25 +154,42 @@ function ConversationCard({
 }
 
 // Chat Header
-function ChatHeader({ conv }: { conv: SampleConversation }) {
+function ChatHeader({ conv, isDemo = false }: { conv: SampleConversation; isDemo?: boolean }) {
   const productColor = PRODUCT_COLORS[conv.productColor] || PRODUCT_COLORS.blue;
+  const avatarBg = isDemo 
+    ? 'bg-gradient-to-br from-violet-500/20 to-purple-500/10' 
+    : 'bg-gradient-to-br from-emerald-500/20 to-teal-500/10';
 
   return (
     <div className="flex items-center justify-between px-5 py-3 border-b border-border/40 bg-background/60">
       <div className="flex items-center gap-3">
-        <Avatar className="h-10 w-10">
-          <AvatarFallback className="bg-gradient-to-br from-accent/20 to-accent/5 text-sm font-medium">
-            {getInitials(conv.name)}
-          </AvatarFallback>
-        </Avatar>
+        <div className="relative">
+          <Avatar className="h-10 w-10">
+            <AvatarFallback className={`${avatarBg} text-sm font-medium`}>
+              {getInitials(conv.name)}
+            </AvatarFallback>
+          </Avatar>
+          {!isDemo && (
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-background rounded-full" />
+          )}
+        </div>
         <div>
           <div className="flex items-center gap-2">
             <span className="font-semibold text-sm">{conv.name}</span>
             <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${productColor}`}>
               {conv.product}
             </Badge>
+            {isDemo ? (
+              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-violet-500/10 text-violet-500 border-violet-500/30">
+                Demo
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-emerald-500/10 text-emerald-500 border-emerald-500/30">
+                Live
+              </Badge>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground">{conv.phone}</p>
+          <p className="text-xs text-muted-foreground">{conv.phone || conv.id}</p>
         </div>
       </div>
       <div className="flex items-center gap-1">
@@ -300,26 +347,99 @@ function ClientSidebar({ conv }: { conv: SampleConversation }) {
   );
 }
 
-// Transform API conversation to SampleConversation format
-const apiToSampleConversation = (api: { id: string; name: string; product?: string | null; status?: string | null; unread?: number | null; updatedAt?: string | null; tags?: string[] | null }): SampleConversation => ({
-  id: api.id,
-  name: api.name || 'Sin nombre',
-  phone: '', // API doesn't provide phone in list
-  channel: 'whatsapp' as const,
-  product: api.product || 'General',
-  productColor: 'blue',
-  proceso: api.product || 'Proceso',
-  status: (api.status === 'active' || api.status === 'pending' || api.status === 'resolved' || api.status === 'archived') 
-    ? api.status 
-    : 'active',
-  unread: api.unread ?? 0,
-  lastMessage: '',
-  lastMessageAt: api.updatedAt || new Date().toISOString(),
-  tags: api.tags || [],
-  assignedTo: null,
-  aiEnabled: true, // Real conversations are AI-handled
-  transaction: null,
-});
+// Detect if a name looks like a technical ID
+const isTechnicalId = (name: string): boolean => {
+  if (!name) return true;
+  // Patterns that indicate technical IDs
+  return /^conv_/i.test(name) || 
+         /^test_/i.test(name) || 
+         /^[a-f0-9]{8,}$/i.test(name) ||
+         /^[a-f0-9-]{36}$/i.test(name) || // UUID
+         /_[a-f0-9]{6,}$/i.test(name); // ends with hash
+};
+
+// Extract a conversation group key from ID (e.g., conv_test_micoope_001 from conv_test_micoope_001_abc123)
+const getConversationGroupKey = (id: string): string => {
+  // Pattern: take everything before the last underscore + hash
+  const match = id.match(/^(.+?)_[a-f0-9]{6,}$/i);
+  return match ? match[1] : id;
+};
+
+// Create a human-readable name from technical ID
+const humanizeTechnicalId = (id: string): string => {
+  // Remove common prefixes
+  let clean = id.replace(/^conv_test_/i, '').replace(/^conv_/i, '').replace(/^test_/i, '');
+  // Remove trailing hash
+  clean = clean.replace(/_[a-f0-9]{6,}$/i, '');
+  // If still has underscores, take first meaningful part
+  const parts = clean.split('_').filter(Boolean);
+  if (parts.length > 0) {
+    // Capitalize and format
+    const name = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+    const number = parts[1] ? ` #${parts[1]}` : '';
+    return `Cliente ${name}${number}`;
+  }
+  // Last resort: short ID
+  return `Cliente #${id.slice(-6).toUpperCase()}`;
+};
+
+// Group API conversations by prefix and aggregate
+type ApiConversation = { id: string; name: string; product?: string | null; status?: string | null; unread?: number | null; updatedAt?: string | null; tags?: string[] | null };
+
+const groupAndTransformConversations = (apiData: ApiConversation[]): SampleConversation[] => {
+  // Group by conversation prefix
+  const groups = new Map<string, ApiConversation[]>();
+  
+  for (const conv of apiData) {
+    const groupKey = getConversationGroupKey(conv.id);
+    const existing = groups.get(groupKey) || [];
+    existing.push(conv);
+    groups.set(groupKey, existing);
+  }
+  
+  // Transform each group into a single conversation
+  const result: SampleConversation[] = [];
+  
+  for (const [groupKey, convs] of groups) {
+    // Sort by date to get latest
+    const sorted = [...convs].sort((a, b) => 
+      new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
+    );
+    const latest = sorted[0];
+    const totalUnread = convs.reduce((sum, c) => sum + (c.unread ?? 0), 0);
+    
+    // Determine display name
+    let displayName = latest.name;
+    if (isTechnicalId(displayName)) {
+      displayName = humanizeTechnicalId(groupKey);
+    }
+    
+    result.push({
+      id: groupKey, // Use group key as ID for the merged conversation
+      name: displayName,
+      phone: '', // Will be fetched from detail
+      channel: 'whatsapp' as const,
+      product: latest.product || 'General',
+      productColor: 'emerald', // Real conversations get emerald color
+      proceso: latest.product || 'Proceso',
+      status: (latest.status === 'active' || latest.status === 'pending' || latest.status === 'resolved' || latest.status === 'archived') 
+        ? latest.status 
+        : 'active',
+      unread: totalUnread,
+      lastMessage: '',
+      lastMessageAt: latest.updatedAt || new Date().toISOString(),
+      tags: latest.tags || [],
+      assignedTo: null,
+      aiEnabled: true,
+      transaction: null,
+    });
+  }
+  
+  // Sort by latest activity
+  return result.sort((a, b) => 
+    new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+  );
+};
 
 export function ConversacionesPage() {
   const { toast } = useToast();
@@ -327,15 +447,25 @@ export function ConversacionesPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>('todas');
   const conversationsQuery = useConversations();
 
-  // Merge real API data with demo data (API first, then demos)
+  // Merge real API data with demo data (API first, then demos only if needed)
   const conversations = useMemo(() => {
     const apiData = conversationsQuery.data || [];
-    const apiConverted = apiData.map(apiToSampleConversation);
-    // Combine: real conversations first, then demo samples
-    // Filter out demos if there's any ID collision (shouldn't happen with conv_XXX IDs)
-    const demoIds = new Set(sampleConversationsRich.map(d => d.id));
-    const uniqueApi = apiConverted.filter(a => !demoIds.has(a.id));
-    return [...uniqueApi, ...sampleConversationsRich];
+    const apiGrouped = groupAndTransformConversations(apiData);
+    
+    // Only show demos if we have fewer than 3 real conversations
+    // This keeps the UI populated but prioritizes real data
+    if (apiGrouped.length >= 3) {
+      return apiGrouped;
+    }
+    
+    // Add demos but mark them visually different
+    const demosNeeded = 3 - apiGrouped.length;
+    const demos = sampleConversationsRich.slice(0, demosNeeded).map(d => ({
+      ...d,
+      productColor: 'violet', // Demos get violet color to distinguish
+    }));
+    
+    return [...apiGrouped, ...demos];
   }, [conversationsQuery.data]);
 
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
@@ -437,6 +567,7 @@ export function ConversacionesPage() {
                   conv={c}
                   isSelected={c.id === effectiveSelectedId}
                   onClick={() => setSelectedId(c.id)}
+                  isDemo={c.id.startsWith('conv_00')} // Demo IDs start with conv_00X
                 />
               ))}
           {!conversationsQuery.isLoading && filtered.length === 0 && (
@@ -449,7 +580,7 @@ export function ConversacionesPage() {
       <div className="flex-1 flex flex-col bg-background/50">
         {currentConversation ? (
           <>
-            <ChatHeader conv={currentConversation} />
+            <ChatHeader conv={currentConversation} isDemo={currentConversation.id.startsWith('conv_00')} />
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
