@@ -481,21 +481,18 @@ export function ConversacionesPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>('todas');
   const conversationsQuery = useConversations();
 
-  // Transform API data, fallback to demos if empty
+  // Transform API data and always include demos after real conversations
   const conversations = useMemo(() => {
     const apiData = conversationsQuery.data || [];
-    const transformed = transformConversations(apiData as ApiConversation[]);
+    const realConversations = transformConversations(apiData as ApiConversation[]);
     
-    if (transformed.length >= 3) return transformed;
-    
-    // Fill with demos if needed
-    const demosNeeded = 3 - transformed.length;
-    const demos = sampleConversationsRich.slice(0, demosNeeded).map(d => ({
+    // Always append demo conversations (marked with violet color)
+    const demos = sampleConversationsRich.map(d => ({
       ...d,
       productColor: 'violet',
     }));
     
-    return [...transformed, ...demos];
+    return [...realConversations, ...demos];
   }, [conversationsQuery.data]);
 
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
