@@ -333,9 +333,17 @@ export function ProcesosPage() {
     const docNumber = account?.document_number || '';
     const product = account?.product_type || p.product_type || '';
     
-    // Build display name - NEVER use phone as title (avoid duplicated data)
+    // Build display name with smart fallback chain for better UX
     const realName = normalized.fullName || p.name || account?.full_name;
-    const title = realName || (docNumber ? `${docType || 'Doc'} ${docNumber}` : `#${shortId(p.id)}`);
+    const formattedPhone = formatPhone(normalized.mainPhone || phoneVal);
+    const hasUsablePhone = formattedPhone && formattedPhone !== '—' && formattedPhone.length > 3;
+    
+    // Fallback: name > document > phone > ID (phone before hash for better identification)
+    const titleIsPhone = !realName && !docNumber && hasUsablePhone;
+    const title = realName 
+      || (docNumber ? `${docType || 'Doc'} ${docNumber}` : null)
+      || (hasUsablePhone ? formattedPhone : null)
+      || `Proceso ${shortId(p.id)}`;
     
     // Get gender for avatar
     const gender = account?.gender?.toLowerCase() || '';
@@ -346,8 +354,8 @@ export function ProcesosPage() {
       id: p.id,
       title,
       statusDisplay,
-      phoneFormatted: formatPhone(normalized.mainPhone || phoneVal),
-      hasPhone: Boolean(normalized.mainPhone || phoneVal),
+      phoneFormatted: formattedPhone,
+      hasPhone: hasUsablePhone && !titleIsPhone, // Don't show phone if title IS the phone
       docType,
       docNumber,
       product,

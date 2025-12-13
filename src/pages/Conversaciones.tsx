@@ -300,16 +300,49 @@ function ClientSidebar({ conv }: { conv: SampleConversation }) {
   );
 }
 
+// Transform API conversation to SampleConversation format
+const apiToSampleConversation = (api: { id: string; name: string; product?: string | null; status?: string | null; unread?: number | null; updatedAt?: string | null; tags?: string[] | null }): SampleConversation => ({
+  id: api.id,
+  name: api.name || 'Sin nombre',
+  phone: '', // API doesn't provide phone in list
+  channel: 'whatsapp' as const,
+  product: api.product || 'General',
+  productColor: 'blue',
+  proceso: api.product || 'Proceso',
+  status: (api.status === 'active' || api.status === 'pending' || api.status === 'resolved' || api.status === 'archived') 
+    ? api.status 
+    : 'active',
+  unread: api.unread ?? 0,
+  lastMessage: '',
+  lastMessageAt: api.updatedAt || new Date().toISOString(),
+  tags: api.tags || [],
+  assignedTo: null,
+  aiEnabled: true, // Real conversations are AI-handled
+  transaction: null,
+});
+
 export function ConversacionesPage() {
   const { toast } = useToast();
   const [filter, setFilter] = useState('');
   const [activeTab, setActiveTab] = useState<FilterTab>('todas');
-  const [selectedId, setSelectedId] = useState<string | undefined>(sampleConversationsRich[0]?.id);
   const conversationsQuery = useConversations();
 
-  // Use rich sample data
-  const conversations = sampleConversationsRich;
-  const currentConversation = selectedId ? getConversationRich(selectedId) : conversations[0];
+  // Merge real API data with demo data (API first, then demos)
+  const conversations = useMemo(() => {
+    const apiData = conversationsQuery.data || [];
+    const apiConverted = apiData.map(apiToSampleConversation);
+    // Combine: real conversations first, then demo samples
+    // Filter out demos if there's any ID collision (shouldn't happen with conv_XXX IDs)
+    const demoIds = new Set(sampleConversationsRich.map(d => d.id));
+    const uniqueApi = apiConverted.filter(a => !demoIds.has(a.id));
+    return [...uniqueApi, ...sampleConversationsRich];
+  }, [conversationsQuery.data]);
+
+  const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
+  
+  // Auto-select first conversation when data loads
+  const effectiveSelectedId = selectedId || conversations[0]?.id;
+  const currentConversation = effectiveSelectedId ? (getConversationRich(effectiveSelectedId) || conversations.find(c => c.id === effectiveSelectedId)) : conversations[0];
 
   const filtered = useMemo(() => {
     let result = conversations;
@@ -330,22 +363,22 @@ export function ConversacionesPage() {
     return result;
   }, [conversations, filter, activeTab]);
 
-  const detailQuery = useConversationDetail(selectedId);
-  const { liveMessages } = useConversationStream(selectedId);
+  const detailQuery = useConversationDetail(effectiveSelectedId);
+  const { liveMessages } = useConversationStream(effectiveSelectedId);
   const messages = useMemo(() => {
     // Use sample data as fallback when API returns empty
     const apiMessages = detailQuery.data?.messages || [];
-    const sampleMessages = selectedId ? sampleConversationDetailById(selectedId).messages : [];
+    const sampleMessages = effectiveSelectedId ? sampleConversationDetailById(effectiveSelectedId).messages : [];
     const baseMessages = apiMessages.length > 0 ? apiMessages : sampleMessages;
     const combined = [...baseMessages, ...liveMessages];
     return combined.sort((a, b) => a.at.localeCompare(b.at));
-  }, [detailQuery.data?.messages, liveMessages, selectedId]);
+  }, [detailQuery.data?.messages, liveMessages, effectiveSelectedId]);
 
-  const sendMessage = useSendMessage(selectedId);
+  const sendMessage = useSendMessage(effectiveSelectedId);
   const form = useForm<FormFields>();
 
   const submit = form.handleSubmit(async (data) => {
-    if (!selectedId) return;
+    if (!effectiveSelectedId) return;
     try {
       await sendMessage.mutateAsync({ text: data.message });
       form.reset();
@@ -402,7 +435,7 @@ export function ConversacionesPage() {
                 <ConversationCard
                   key={c.id}
                   conv={c}
-                  isSelected={c.id === selectedId}
+                  isSelected={c.id === effectiveSelectedId}
                   onClick={() => setSelectedId(c.id)}
                 />
               ))}
