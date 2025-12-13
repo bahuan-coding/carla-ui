@@ -22,6 +22,8 @@ import {
   Tag,
   Archive,
   Sparkles,
+  ArrowDownLeft,
+  ArrowUpRight,
 } from 'lucide-react';
 
 type FormFields = { message: string };
@@ -133,11 +135,18 @@ function ConversationCard({
             </div>
             <span className="text-[11px] text-muted-foreground shrink-0">{formatTime(conv.last_message_at)}</span>
           </div>
-          {/* Show phone if different from name, or last message */}
+          {/* Show phone if different from name, or last message with direction */}
           {conv.phone && conv.phone !== displayName ? (
             <p className="text-xs text-muted-foreground truncate mt-0.5 font-mono">{conv.phone}</p>
           ) : lastMessage ? (
-            <p className="text-xs text-muted-foreground truncate mt-0.5">{lastMessage}</p>
+            <p className="text-xs text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+              {conv.last_message_direction === 'inbound' ? (
+                <ArrowDownLeft size={10} className="shrink-0 text-emerald-500" />
+              ) : conv.last_message_direction === 'outbound' ? (
+                <ArrowUpRight size={10} className="shrink-0 text-blue-500" />
+              ) : null}
+              <span className="truncate">{lastMessage}</span>
+            </p>
           ) : null}
           <div className="flex items-center justify-between mt-1.5">
             <div className="flex items-center gap-1.5">
@@ -219,11 +228,34 @@ function ChatHeader({ conv, isDemo = false }: { conv: SampleConversation; isDemo
   );
 }
 
-// Client Sidebar
-function ClientSidebar({ conv }: { conv: SampleConversation }) {
+// Client Sidebar - uses detail data from API when available
+type ConversationDetailData = {
+  profile?: {
+    full_name?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    document_type?: string | null;
+    document_number?: string | null;
+    location?: string | null;
+    birth_date?: string | null;
+  } | null;
+  transaction?: {
+    id?: string | null;
+    name?: string | null;
+    status?: string | null;
+    stage?: string | null;
+    progress?: number | null;
+  } | null;
+};
+
+function ClientSidebar({ conv, detail }: { conv: SampleConversation; detail?: ConversationDetailData }) {
   const [aiEnabled, setAiEnabled] = useState(conv.ai_enabled);
   const statusColor = STATUS_COLORS[conv.status] || STATUS_COLORS.pending;
-  const txnStatusColor = conv.transaction ? STATUS_COLORS[conv.transaction.status] || STATUS_COLORS.pending : '';
+  
+  // Use detail data when available, fallback to conv data
+  const profile = detail?.profile || conv.profile;
+  const transaction = detail?.transaction || conv.transaction;
+  const txnStatusColor = transaction ? STATUS_COLORS[transaction.status || ''] || STATUS_COLORS.pending : '';
 
   const displayName = conv.customer_name || conv.phone || conv.id;
 
@@ -245,26 +277,26 @@ function ClientSidebar({ conv }: { conv: SampleConversation }) {
 
       <div className="p-4 space-y-5">
         {/* Profile */}
-        {conv.profile && (
+        {profile && (
           <div>
             <h4 className="text-xs font-medium text-muted-foreground mb-2">Perfil</h4>
             <div className="space-y-1.5 text-xs">
-              {conv.profile.document_type && conv.profile.document_number && (
+              {profile.document_type && profile.document_number && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">{conv.profile.document_type}</span>
-                  <span className="font-mono">{conv.profile.document_number}</span>
+                  <span className="text-muted-foreground">{profile.document_type}</span>
+                  <span className="font-mono">{profile.document_number}</span>
                 </div>
               )}
-              {conv.profile.location && (
+              {profile.location && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Ubicación</span>
-                  <span>{conv.profile.location}</span>
+                  <span>{profile.location}</span>
                 </div>
               )}
-              {conv.profile.birth_date && (
+              {profile.birth_date && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Nacimiento</span>
-                  <span>{formatDate(conv.profile.birth_date)}</span>
+                  <span>{formatDate(profile.birth_date)}</span>
                 </div>
               )}
             </div>
@@ -275,7 +307,7 @@ function ClientSidebar({ conv }: { conv: SampleConversation }) {
         <div>
           <h4 className="text-xs font-medium text-muted-foreground mb-2">Estado</h4>
           <Badge variant="outline" className={`text-xs capitalize ${statusColor}`}>
-            {conv.transaction?.stage || conv.status}
+            {transaction?.stage || conv.status}
           </Badge>
         </div>
 
@@ -326,30 +358,32 @@ function ClientSidebar({ conv }: { conv: SampleConversation }) {
         </div>
 
         {/* Transacción Actual */}
-        {conv.transaction && (
+        {transaction && (
           <div>
             <h4 className="text-xs font-medium text-muted-foreground mb-3">Transacción Actual</h4>
             <div className="p-3 rounded-lg border border-border/50 bg-muted/30 space-y-3">
               <div className="flex items-center gap-2">
                 <MessageCircle size={14} className="text-accent" />
-                <span className="text-sm font-medium">{conv.transaction.name}</span>
+                <span className="text-sm font-medium">{transaction.name}</span>
               </div>
-              <p className="text-xs text-muted-foreground">ID: {conv.transaction.id}</p>
+              {transaction.id && (
+                <p className="text-xs text-muted-foreground">ID: {transaction.id}</p>
+              )}
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Etapa</span>
                 <Badge variant="outline" className={`text-[10px] capitalize ${txnStatusColor}`}>
-                  {conv.transaction.stage}
+                  {transaction.stage}
                 </Badge>
               </div>
               <div>
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="text-muted-foreground">Progreso</span>
-                  <span className="text-foreground font-medium">{conv.transaction.progress}%</span>
+                  <span className="text-foreground font-medium">{transaction.progress ?? 0}%</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400 transition-all"
-                    style={{ width: `${conv.transaction.progress}%` }}
+                    style={{ width: `${transaction.progress ?? 0}%` }}
                   />
                 </div>
               </div>
@@ -380,42 +414,7 @@ function ClientSidebar({ conv }: { conv: SampleConversation }) {
   );
 }
 
-// Detect if a name looks like a technical ID
-const isTechnicalId = (name: string): boolean => {
-  if (!name) return true;
-  // Patterns that indicate technical IDs
-  return /^conv_/i.test(name) || 
-         /^test_/i.test(name) || 
-         /^[a-f0-9]{8,}$/i.test(name) ||
-         /^[a-f0-9-]{36}$/i.test(name) || // UUID
-         /_[a-f0-9]{6,}$/i.test(name); // ends with hash
-};
-
-// Extract a conversation group key from ID (e.g., conv_test_micoope_001 from conv_test_micoope_001_abc123)
-const getConversationGroupKey = (id: string): string => {
-  // Pattern: take everything before the last underscore + hash
-  const match = id.match(/^(.+?)_[a-f0-9]{6,}$/i);
-  return match ? match[1] : id;
-};
-
-// Format phone number for display
-const formatPhoneDisplay = (phone?: string | null): string => {
-  if (!phone) return '';
-  // Clean and format
-  const clean = phone.replace(/[^\d+]/g, '');
-  if (clean.length >= 10) {
-    // Format: +XX XX XXXXX-XXXX or similar
-    if (clean.startsWith('+')) {
-      const country = clean.slice(0, 3);
-      const area = clean.slice(3, 5);
-      const rest = clean.slice(5);
-      return `${country} ${area} ${rest.slice(0, 5)}-${rest.slice(5)}`;
-    }
-  }
-  return phone;
-};
-
-// Group API conversations by prefix and aggregate
+// Transform API conversation to UI format (simplified - API now returns structured data)
 type ApiConversation = { 
   id: string; 
   customer_name?: string | null;
@@ -433,90 +432,45 @@ type ApiConversation = {
   ai_enabled?: boolean | null;
   assigned_agent?: string | null;
   tags?: string[] | null;
-  // Legacy fields
+  // Legacy fields for backwards compatibility
   name?: string | null;
   unread?: number | null;
   updatedAt?: string | null;
-  whatsapp_phone?: string | null;
-  contact_name?: string | null;
-  lastMessage?: string | null;
-  lastMessagePreview?: string | null;
-  [key: string]: unknown;
 };
 
-const groupAndTransformConversations = (apiData: ApiConversation[]): SampleConversation[] => {
-  // Group by conversation prefix
-  const groups = new Map<string, ApiConversation[]>();
-  
-  for (const conv of apiData) {
-    const groupKey = getConversationGroupKey(conv.id);
-    const existing = groups.get(groupKey) || [];
-    existing.push(conv);
-    groups.set(groupKey, existing);
-  }
-  
-  // Transform each group into a single conversation
-  const result: SampleConversation[] = [];
-  
-  for (const [groupKey, convs] of groups) {
-    // Sort by date to get latest (prefer new field, fallback to legacy)
-    const sorted = [...convs].sort((a, b) => 
-      new Date(b.last_message_at || b.updatedAt || 0).getTime() - new Date(a.last_message_at || a.updatedAt || 0).getTime()
-    );
-    const latest = sorted[0];
-    const totalUnread = convs.reduce((sum, c) => sum + (c.unread_count ?? c.unread ?? 0), 0);
-    
-    // Extract phone from any available field
-    const phone = latest.phone || latest.whatsapp_phone || 
-      (latest as Record<string, unknown>).whatsapp_phone_e164 as string || '';
-    
-    // Determine display name - priority: customer_name > contact_name > name > phone > ID
-    let displayName = latest.customer_name || latest.contact_name || '';
-    if (!displayName || isTechnicalId(displayName)) {
-      displayName = latest.name || '';
-    }
-    if (!displayName || isTechnicalId(displayName)) {
-      displayName = phone ? formatPhoneDisplay(phone) : `Cliente #${groupKey.slice(-8).toUpperCase()}`;
-    }
-    
-    // Get last message preview (truncate to 80 chars per spec)
-    const lastMessageRaw = latest.last_message || latest.lastMessage || latest.lastMessagePreview || '';
-    const lastMessage = lastMessageRaw.length > 80 ? lastMessageRaw.slice(0, 80) + '...' : lastMessageRaw;
-    
-    // Get status and derive progress/stage
-    const status = latest.status || latest.process_status || 'started';
+const transformConversations = (apiData: ApiConversation[]): SampleConversation[] => {
+  return apiData.map((conv) => {
+    const status = conv.status || conv.process_status || 'started';
     const progressInfo = mapStatusToProgress(status);
+    const displayName = conv.customer_name || conv.name || conv.phone || conv.id;
     
-    result.push({
-      id: groupKey,
+    return {
+      id: conv.id,
       customer_name: displayName,
-      phone: formatPhoneDisplay(phone),
-      customer_email: latest.customer_email || undefined,
-      channel: (latest.channel as 'whatsapp' | 'web' | 'telegram' | 'instagram') || 'whatsapp',
-      product: latest.product || 'savings',
+      phone: conv.phone || '',
+      customer_email: conv.customer_email || undefined,
+      channel: (conv.channel as 'whatsapp' | 'web' | 'telegram' | 'instagram') || 'whatsapp',
+      product: conv.product || 'savings',
       productColor: 'emerald',
-      status: status,
-      process_id: latest.process_id || undefined,
-      process_status: latest.process_status || undefined,
-      unread_count: totalUnread,
-      last_message: lastMessage,
-      last_message_at: latest.last_message_at || latest.updatedAt || new Date().toISOString(),
-      last_message_direction: latest.last_message_direction || undefined,
-      tags: latest.tags || [],
-      ai_enabled: latest.ai_enabled ?? true,
-      assigned_agent: latest.assigned_agent || null,
+      status,
+      process_id: conv.process_id || undefined,
+      process_status: conv.process_status || undefined,
+      unread_count: conv.unread_count ?? conv.unread ?? 0,
+      last_message: conv.last_message || '',
+      last_message_at: conv.last_message_at || conv.updatedAt || new Date().toISOString(),
+      last_message_direction: conv.last_message_direction || undefined,
+      tags: conv.tags || [],
+      ai_enabled: conv.ai_enabled ?? true,
+      assigned_agent: conv.assigned_agent || null,
       transaction: {
-        id: latest.process_id || groupKey,
-        name: latest.product || 'savings',
-        status: status,
+        id: conv.process_id || conv.id,
+        name: conv.product || 'savings',
+        status,
         stage: progressInfo.stage,
         progress: progressInfo.progress,
       },
-    });
-  }
-  
-  // Sort by latest activity
-  return result.sort((a, b) => 
+    };
+  }).sort((a, b) => 
     new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
   );
 };
@@ -527,24 +481,21 @@ export function ConversacionesPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>('todas');
   const conversationsQuery = useConversations();
 
-  // Merge real API data with demo data (API first, then demos only if needed)
+  // Transform API data, fallback to demos if empty
   const conversations = useMemo(() => {
     const apiData = conversationsQuery.data || [];
-    const apiGrouped = groupAndTransformConversations(apiData as ApiConversation[]);
+    const transformed = transformConversations(apiData as ApiConversation[]);
     
-    // Only show demos if we have fewer than 3 real conversations
-    if (apiGrouped.length >= 3) {
-      return apiGrouped;
-    }
+    if (transformed.length >= 3) return transformed;
     
-    // Add demos but mark them visually different
-    const demosNeeded = 3 - apiGrouped.length;
+    // Fill with demos if needed
+    const demosNeeded = 3 - transformed.length;
     const demos = sampleConversationsRich.slice(0, demosNeeded).map(d => ({
       ...d,
       productColor: 'violet',
     }));
     
-    return [...apiGrouped, ...demos];
+    return [...transformed, ...demos];
   }, [conversationsQuery.data]);
 
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
@@ -734,7 +685,7 @@ export function ConversacionesPage() {
       {/* Client Sidebar */}
       {currentConversation && (
         <div className="w-[320px] shrink-0 border-l border-border/40 bg-background">
-          <ClientSidebar conv={currentConversation} />
+          <ClientSidebar conv={currentConversation} detail={detailQuery.data} />
         </div>
       )}
     </div>
