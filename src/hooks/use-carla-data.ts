@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, apiPut, apiWsUrl, API_URL } from '@/lib/api';
 import type { Account } from '@/types/account';
-import { mapStatusDisplay, maskPhone, normalizeAccountForUi, shortId } from '@/lib/utils';
+import { mapStatusDisplay, maskPhone, normalizeAccountForUi, normalizeToE164, shortId } from '@/lib/utils';
 import { sampleProcessDetailById, sampleProcessEventsById, sampleProcessesAdmin, sampleConversations, sampleConversationDetailById } from '@/lib/samples';
 import {
   conversationDetailSchema,
@@ -89,19 +89,32 @@ export const useConversationDetail = (id?: string) =>
     staleTime: 1000 * 20,
   });
 
-export const useSendMessage = (conversationId?: string) => {
+export const useSendMessage = (phone?: string, conversationId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (body: { text: string }) =>
-      apiPost(`/api/v1/conversations/${conversationId}/messages`, messageSchema, body, {
+    mutationFn: async (body: { text: string }) => {
+      const normalizedPhone = normalizeToE164(phone);
+      if (!normalizedPhone) {
+        throw new Error('Número de teléfono inválido. Formato esperado: E.164 (ej: +50212345678)');
+      }
+      if (body.text.length > 4096) {
+        throw new Error('Mensaje muy largo. Máximo 4096 caracteres.');
+      }
+      return apiPost(`/api/v1/conversations/${encodeURIComponent(normalizedPhone)}/messages`, messageSchema, body, {
         id: crypto.randomUUID(),
         from: 'agent',
         body: body.text,
         at: new Date().toISOString(),
         direction: 'outbound',
-      }),
+        wamid: null,
+        status: 'pending',
+      });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      if (conversationId) {
+        queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
+      }
     },
   });
 };

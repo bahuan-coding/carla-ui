@@ -16,7 +16,8 @@ O dashboard se comunica com:
 | `GET` | `/api/v1/dashboard/process-distribution` | Distribuição de processos |
 | `GET` | `/api/v1/conversations` | Lista conversas |
 | `GET` | `/api/v1/conversations/{id}` | Detalhes + mensagens |
-| `POST` | `/api/v1/conversations/{id}/messages` | Enviar mensagem |
+| `POST` | `/api/v1/conversations/{phone}/messages` | Enviar mensagem via WhatsApp |
+| `WS` | `/api/v1/conversations/ws/{id}` | WebSocket tempo real |
 | `GET` | `/api/v1/transactions` | Lista transações |
 | `GET` | `/api/v1/processes` | Lista processos |
 | `POST` | `/api/v1/processes` | Criar processo |
@@ -75,6 +76,95 @@ ws.onmessage = (event) => {
   setMessages(prev => [...prev, newMessage]);
 };
 ```
+
+## Envio de Mensagens via WhatsApp
+
+O endpoint de envio de mensagens integra com a WhatsApp Cloud API (Meta Graph API v18.0).
+
+### Endpoint
+
+```
+POST /api/v1/conversations/{phone}/messages
+```
+
+### Parâmetros
+
+| Parâmetro | Tipo | Descrição |
+| :--- | :--- | :--- |
+| `phone` | string (path) | Número de telefone no formato E.164 (ex: `+50212345678`) |
+| `text` | string (body) | Texto da mensagem (1-4096 caracteres) |
+
+### Request
+
+```typescript
+const response = await fetch('/api/v1/conversations/+50212345678/messages', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY'
+  },
+  body: JSON.stringify({ text: 'Olá, como posso ajudar?' })
+});
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "data": {
+    "id": "msg_abc123",
+    "from": "agent",
+    "body": "Olá, como posso ajudar?",
+    "at": "2025-12-13T10:30:00Z",
+    "direction": "outbound",
+    "wamid": "wamid.HBgNNTAy...",
+    "status": "sent"
+  }
+}
+```
+
+### Status da Mensagem
+
+| Status | Descrição |
+| :--- | :--- |
+| `pending` | Mensagem em fila para envio |
+| `sent` | Mensagem enviada ao WhatsApp |
+| `delivered` | Mensagem entregue ao dispositivo |
+| `read` | Mensagem lida pelo destinatário |
+| `failed` | Erro no envio |
+
+### Erros
+
+| Código | Descrição |
+| :--- | :--- |
+| 400 | Número de telefone inválido ou mensagem muito longa |
+| 429 | Rate limit excedido |
+| 500 | Erro interno do servidor |
+| 502 | Erro na comunicação com WhatsApp Cloud API |
+
+### Hook React
+
+```typescript
+import { useSendMessage } from '@/hooks/use-carla-data';
+
+const MyComponent = ({ phone, conversationId }) => {
+  const sendMessage = useSendMessage(phone, conversationId);
+  
+  const handleSend = async (text: string) => {
+    try {
+      const result = await sendMessage.mutateAsync({ text });
+      console.log('wamid:', result.wamid);
+      console.log('status:', result.status);
+    } catch (error) {
+      console.error('Erro ao enviar:', error.message);
+    }
+  };
+  
+  return (/* ... */);
+};
+```
+
 
 
 

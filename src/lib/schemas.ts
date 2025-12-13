@@ -69,6 +69,8 @@ export const messageSchema = z.object({
   body: z.string(),
   at: z.union([z.string(), z.coerce.string()]),
   direction: z.enum(['in', 'out', 'inbound', 'outbound']).nullable().optional(),
+  wamid: z.string().nullable().optional(),
+  status: z.enum(['pending', 'sent', 'delivered', 'read', 'failed']).nullable().optional(),
 });
 
 export const conversationDetailSchema = z.object({

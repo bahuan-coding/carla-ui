@@ -117,6 +117,25 @@ export const maskPhone = (phone?: string) => {
   return prefix ? `${prefix} *** ${last4}` : `*** ${last4}`
 }
 
+/** Normalize phone to E.164 format (+countrycode...). Default country code is Guatemala (+502). */
+export const normalizeToE164 = (phone?: string | null, defaultCountryCode = '502'): string | null => {
+  if (!phone) return null
+  const cleaned = phone.replace(/[\s\-().]/g, '')
+  if (cleaned.startsWith('+')) {
+    return /^\+\d{10,15}$/.test(cleaned) ? cleaned : null
+  }
+  const digits = cleaned.replace(/\D/g, '')
+  if (!digits || digits.length < 8) return null
+  const withCode = digits.length <= 8 ? `+${defaultCountryCode}${digits}` : `+${digits}`
+  return /^\+\d{10,15}$/.test(withCode) ? withCode : null
+}
+
+/** Validate if a phone is in valid E.164 format */
+export const isValidE164 = (phone?: string | null): boolean => {
+  if (!phone) return false
+  return /^\+\d{10,15}$/.test(phone)
+}
+
 export const formatPhone = (phone?: string | null) => {
   if (!phone) return '—'
   const cleaned = phone.replace(/[^\d+]/g, '')

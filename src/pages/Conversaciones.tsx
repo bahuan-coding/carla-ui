@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useConversationDetail, useConversationStream, useConversations, useSendMessage } from '@/hooks/use-carla-data';
-import { sampleConversationsRich, type SampleConversation } from '@/lib/samples';
+import { type SampleConversation } from '@/lib/samples';
 import { mapStatusToProgress } from '@/lib/utils';
 import {
   MessageCircle,
@@ -486,13 +486,8 @@ export function ConversacionesPage() {
     const apiData = conversationsQuery.data || [];
     const realConversations = transformConversations(apiData as ApiConversation[]);
     
-    // Always append demo conversations (marked with violet color)
-    const demos = sampleConversationsRich.map(d => ({
-      ...d,
-      productColor: 'violet',
-    }));
-    
-    return [...realConversations, ...demos];
+    // Only show real conversations - no demo data in production
+    return realConversations;
   }, [conversationsQuery.data]);
 
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
@@ -531,11 +526,18 @@ export function ConversacionesPage() {
     return combined.sort((a, b) => a.at.localeCompare(b.at));
   }, [detailQuery.data?.messages, liveMessages]);
 
-  const sendMessage = useSendMessage(effectiveSelectedId);
+  const sendMessage = useSendMessage(currentConversation?.phone, effectiveSelectedId);
   const form = useForm<FormFields>();
 
   const submit = form.handleSubmit(async (data) => {
-    if (!effectiveSelectedId) return;
+    if (!effectiveSelectedId || !currentConversation?.phone) {
+      toast({
+        title: 'Error al enviar mensaje',
+        description: 'No hay número de teléfono disponible para esta conversación',
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
       await sendMessage.mutateAsync({ text: data.message });
       form.reset();
