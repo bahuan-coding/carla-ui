@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useConversationDetail, useConversationStream, useConversations, useSendMessage } from '@/hooks/use-carla-data';
-import { sampleConversationsRich, getConversationRich, sampleConversationDetailById, type SampleConversation } from '@/lib/samples';
+import { sampleConversationsRich, type SampleConversation } from '@/lib/samples';
 import { mapStatusToProgress } from '@/lib/utils';
 import {
   MessageCircle,
@@ -551,7 +551,9 @@ export function ConversacionesPage() {
   
   // Auto-select first conversation when data loads
   const effectiveSelectedId = selectedId || conversations[0]?.id;
-  const currentConversation = effectiveSelectedId ? (getConversationRich(effectiveSelectedId) || conversations.find(c => c.id === effectiveSelectedId)) : conversations[0];
+  const currentConversation = effectiveSelectedId
+    ? conversations.find(c => c.id === effectiveSelectedId)
+    : conversations[0];
 
   const filtered = useMemo(() => {
     let result = conversations;
@@ -576,13 +578,10 @@ export function ConversacionesPage() {
   const detailQuery = useConversationDetail(effectiveSelectedId);
   const { liveMessages } = useConversationStream(effectiveSelectedId);
   const messages = useMemo(() => {
-    // Use sample data as fallback when API returns empty
     const apiMessages = detailQuery.data?.messages || [];
-    const sampleMessages = effectiveSelectedId ? sampleConversationDetailById(effectiveSelectedId).messages : [];
-    const baseMessages = apiMessages.length > 0 ? apiMessages : sampleMessages;
-    const combined = [...baseMessages, ...liveMessages];
+    const combined = [...apiMessages, ...liveMessages];
     return combined.sort((a, b) => a.at.localeCompare(b.at));
-  }, [detailQuery.data?.messages, liveMessages, effectiveSelectedId]);
+  }, [detailQuery.data?.messages, liveMessages]);
 
   const sendMessage = useSendMessage(effectiveSelectedId);
   const form = useForm<FormFields>();
