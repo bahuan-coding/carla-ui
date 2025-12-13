@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,9 +21,7 @@ import {
   Tag,
   Archive,
   Sparkles,
-  Clock,
   Link2,
-  ChevronRight,
 } from 'lucide-react';
 
 type FormFields = { message: string };
