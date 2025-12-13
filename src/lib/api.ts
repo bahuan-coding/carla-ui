@@ -53,6 +53,20 @@ const resolveBaseUrl = () =>
 const CHANNELS_API_KEY = (import.meta.env.VITE_CHANNELS_API_KEY || '').trim();
 const BRIDGE_API_KEY = (import.meta.env.VITE_CARLA_SERVICIOS_API_KEY || '').trim();
 
+// #region agent log - H1/H2/H3 Environment diagnostics
+const _debugEnv = () => {
+  console.log('%c[DEBUG ENV]', 'background:#ff6b6b;color:white;padding:2px 6px;border-radius:3px', {
+    H1_CHANNELS_KEY_EXISTS: Boolean(import.meta.env.VITE_CHANNELS_API_KEY),
+    H2_API_URL: resolveBaseUrl() || '(EMPTY!)',
+    H3_CHANNELS_KEY_LENGTH: CHANNELS_API_KEY.length,
+    H3_CHANNELS_KEY_PREVIEW: CHANNELS_API_KEY ? `${CHANNELS_API_KEY.slice(0,8)}...${CHANNELS_API_KEY.slice(-4)}` : '(EMPTY!)',
+    BRIDGE_KEY_LENGTH: BRIDGE_API_KEY.length,
+    ALL_VITE_VARS: Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')),
+  });
+};
+_debugEnv();
+// #endregion
+
 const API_URL = resolveBaseUrl();
 const IS_DEV = import.meta.env.DEV;
 
@@ -164,14 +178,34 @@ async function request<T>({
     hasBridgeToken: Boolean(bridgeToken),
   });
 
-  const response = await fetch(fullUrl, {
-    ...init,
-    headers,
-    body: init?.body ? JSON.stringify(init.body) : undefined,
-  });
+  // #region agent log - H5 Request attempt
+  let response: Response;
+  try {
+    response = await fetch(fullUrl, {
+      ...init,
+      headers,
+      body: init?.body ? JSON.stringify(init.body) : undefined,
+    });
+  } catch (fetchError) {
+    console.error('%c[DEBUG CORS/NETWORK ERROR]', 'background:#e74c3c;color:white;padding:2px 6px;border-radius:3px', {
+      H5_path: path,
+      H5_fullUrl: fullUrl,
+      H5_error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+      H5_errorType: fetchError instanceof TypeError ? 'CORS/Network' : 'Unknown',
+    });
+    throw fetchError;
+  }
+  // #endregion
 
-  // Log response status
-  console.log(`[api] ${path} → ${response.status} ${response.statusText}`);
+  // #region agent log - H4 Response status
+  console.log('%c[DEBUG RESPONSE]', 'background:#4ecdc4;color:white;padding:2px 6px;border-radius:3px', {
+    H4_path: path,
+    H4_status: response.status,
+    H4_statusText: response.statusText,
+    H4_ok: response.ok,
+    H4_headers: Object.fromEntries(response.headers.entries()),
+  });
+  // #endregion
 
   // Retry once on 401/403 for bridge endpoints (token may have expired)
   if (isBridge && !_retried && (response.status === 401 || response.status === 403)) {
