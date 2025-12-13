@@ -26,6 +26,14 @@ export const processDistributionSchema = z.array(
   }),
 );
 
+// Helper to parse tags that can be string "[]" or actual array
+const tagsSchema = z.union([
+  z.array(z.string()),
+  z.string().transform((s) => {
+    try { return JSON.parse(s) as string[]; } catch { return []; }
+  }),
+]).nullable().optional().default([]);
+
 export const conversationSchema = z.object({
   id: z.string(),
   customer_name: z.string().nullable().optional(),
@@ -42,7 +50,7 @@ export const conversationSchema = z.object({
   channel: z.string().nullable().optional(),
   ai_enabled: z.boolean().nullable().optional(),
   assigned_agent: z.string().nullable().optional(),
-  tags: z.array(z.string()).nullable().optional(),
+  tags: tagsSchema,
   // Legacy fields for backwards compatibility
   name: z.string().nullable().optional(),
   unread: z.number().nullable().optional(),
@@ -74,7 +82,7 @@ export const conversationDetailSchema = z.object({
   channel: z.string().nullable().optional(),
   ai_enabled: z.boolean().nullable().optional(),
   assigned_agent: z.string().nullable().optional(),
-  tags: z.array(z.string()).nullable().default([]),
+  tags: tagsSchema,
   profile: z
     .object({
       full_name: z.string().nullable().optional(),
