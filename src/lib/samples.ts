@@ -365,15 +365,269 @@ export const sampleProcessEventsById = (id?: string) => {
 // Sample Conversations - fallback when API unavailable
 import { conversationListSchema, conversationDetailSchema } from '@/lib/schemas';
 
-export const sampleConversations = conversationListSchema.parse([]);
+export type ConversationChannel = 'whatsapp' | 'web' | 'telegram' | 'instagram';
+export type ConversationStatus = 'active' | 'pending' | 'resolved' | 'archived';
 
-// Empty fallback for conversation details - real data comes from API
+export type SampleConversation = {
+  id: string;
+  name: string;
+  phone: string;
+  channel: ConversationChannel;
+  product: string;
+  productColor: string;
+  proceso: string;
+  status: ConversationStatus;
+  unread: number;
+  lastMessage: string;
+  lastMessageAt: string;
+  tags: string[];
+  assignedTo: string | null;
+  aiEnabled: boolean;
+  transaction: {
+    id: string;
+    name: string;
+    status: 'pending' | 'in_progress' | 'completed' | 'failed';
+    stage: string;
+    progress: number;
+    startedAt: string;
+  } | null;
+};
+
+const now = Date.now();
+
+export const sampleConversationsRich: SampleConversation[] = [
+  {
+    id: 'conv_001',
+    name: 'Juan Pérez',
+    phone: '+52 55 1234 5678',
+    channel: 'whatsapp',
+    product: 'Crédito',
+    productColor: 'amber',
+    proceso: 'Solicitud de Crédito',
+    status: 'active',
+    unread: 2,
+    lastMessage: 'Gracias, ya envié los documentos que me solicitaron',
+    lastMessageAt: new Date(now - 1000 * 60 * 23).toISOString(),
+    tags: ['Crédito Personal', 'Documentos Pendientes'],
+    assignedTo: 'Carlos Ruiz',
+    aiEnabled: true,
+    transaction: {
+      id: 'TXN-2024-1089',
+      name: 'Crédito Personal',
+      status: 'in_progress',
+      stage: 'Verificación Documentos',
+      progress: 65,
+      startedAt: '2024-11-18',
+    },
+  },
+  {
+    id: 'conv_002',
+    name: 'María García',
+    phone: '+52 55 2345 6789',
+    channel: 'web',
+    product: 'Apertura de Cuenta',
+    productColor: 'emerald',
+    proceso: 'Apertura de Cuenta',
+    status: 'pending',
+    unread: 0,
+    lastMessage: '¿Cuánto tiempo tarda la verificación de identidad?',
+    lastMessageAt: new Date(now - 1000 * 60 * 15).toISOString(),
+    tags: ['Apertura de Cuenta', 'KYC'],
+    assignedTo: null,
+    aiEnabled: false,
+    transaction: {
+      id: 'TXN-2024-1157',
+      name: 'Apertura de Cuenta',
+      status: 'in_progress',
+      stage: 'Verificación KYC',
+      progress: 45,
+      startedAt: '2024-11-21',
+    },
+  },
+  {
+    id: 'conv_003',
+    name: 'Carlos López',
+    phone: '+52 55 3456 7890',
+    channel: 'telegram',
+    product: 'KYC',
+    productColor: 'violet',
+    proceso: 'Verificación Cliente',
+    status: 'active',
+    unread: 0,
+    lastMessage: 'Todo listo, esperando aprobación final del banco',
+    lastMessageAt: new Date(now - 1000 * 60 * 58).toISOString(),
+    tags: ['KYC', 'Verificación Completa'],
+    assignedTo: 'Ana Martínez',
+    aiEnabled: true,
+    transaction: {
+      id: 'TXN-2024-1203',
+      name: 'Verificación KYC',
+      status: 'in_progress',
+      stage: 'Aprobación Final',
+      progress: 90,
+      startedAt: '2024-11-19',
+    },
+  },
+  {
+    id: 'conv_004',
+    name: 'Ana Martínez',
+    phone: '+52 55 4567 8901',
+    channel: 'instagram',
+    product: 'Soporte',
+    productColor: 'blue',
+    proceso: 'Soporte General',
+    status: 'resolved',
+    unread: 0,
+    lastMessage: 'Perfecto, muchas gracias por la ayuda',
+    lastMessageAt: new Date(now - 1000 * 60 * 45).toISOString(),
+    tags: ['Soporte', 'Resuelto'],
+    assignedTo: 'Luis Hernández',
+    aiEnabled: false,
+    transaction: null,
+  },
+  {
+    id: 'conv_005',
+    name: 'Roberto Silva',
+    phone: '+52 55 5678 9012',
+    channel: 'whatsapp',
+    product: 'Firma Digital',
+    productColor: 'cyan',
+    proceso: 'Solicitud de Crédito',
+    status: 'pending',
+    unread: 5,
+    lastMessage: 'Necesito ayuda con la firma digital del contrato',
+    lastMessageAt: new Date(now - 1000 * 60 * 30).toISOString(),
+    tags: ['Firma Digital', 'Contrato Pendiente'],
+    assignedTo: null,
+    aiEnabled: true,
+    transaction: {
+      id: 'TXN-2024-1245',
+      name: 'Firma de Contrato',
+      status: 'pending',
+      stage: 'Esperando Firma',
+      progress: 80,
+      startedAt: '2024-11-20',
+    },
+  },
+  {
+    id: 'conv_006',
+    name: 'Laura Sánchez',
+    phone: '+52 55 6789 0123',
+    channel: 'whatsapp',
+    product: 'Tarjeta de Crédito',
+    productColor: 'rose',
+    proceso: 'Solicitud Tarjeta',
+    status: 'active',
+    unread: 1,
+    lastMessage: '¿Cuál es el límite inicial de la tarjeta?',
+    lastMessageAt: new Date(now - 1000 * 60 * 120).toISOString(),
+    tags: ['Tarjeta de Crédito', 'Consulta'],
+    assignedTo: 'Carlos Ruiz',
+    aiEnabled: true,
+    transaction: {
+      id: 'TXN-2024-1178',
+      name: 'Tarjeta de Crédito',
+      status: 'in_progress',
+      stage: 'Análisis Crediticio',
+      progress: 55,
+      startedAt: '2024-11-17',
+    },
+  },
+  {
+    id: 'conv_007',
+    name: 'Miguel Torres',
+    phone: '+52 55 7890 1234',
+    channel: 'web',
+    product: 'Inversiones',
+    productColor: 'teal',
+    proceso: 'Apertura Inversión',
+    status: 'pending',
+    unread: 3,
+    lastMessage: 'Me interesa el fondo de inversión a 12 meses',
+    lastMessageAt: new Date(now - 1000 * 60 * 180).toISOString(),
+    tags: ['Inversiones', 'Fondo 12M'],
+    assignedTo: null,
+    aiEnabled: false,
+    transaction: {
+      id: 'TXN-2024-1290',
+      name: 'Fondo de Inversión',
+      status: 'pending',
+      stage: 'Perfil de Riesgo',
+      progress: 20,
+      startedAt: '2024-11-22',
+    },
+  },
+];
+
+// Mensajes realísticos por conversa
+const sampleMessagesMap: Record<string, Array<{ id: string; from: string; body: string; at: string; direction: 'in' | 'out' }>> = {
+  conv_001: [
+    { id: 'm1', from: 'Juan Pérez', body: 'Hola, quisiera solicitar un crédito personal', at: new Date(now - 1000 * 60 * 60).toISOString(), direction: 'in' },
+    { id: 'm2', from: 'Carla IA', body: '¡Hola Juan! Con gusto te ayudo. Para iniciar tu solicitud necesitamos: INE vigente, comprobante de domicilio y últimos 3 recibos de nómina. ¿Los tienes disponibles?', at: new Date(now - 1000 * 60 * 58).toISOString(), direction: 'out' },
+    { id: 'm3', from: 'Juan Pérez', body: 'Sí, los tengo todos. ¿Cómo los envío?', at: new Date(now - 1000 * 60 * 55).toISOString(), direction: 'in' },
+    { id: 'm4', from: 'Carla IA', body: 'Perfecto. Puedes enviarlos como fotos por este mismo chat. Asegúrate de que sean legibles y estén completos.', at: new Date(now - 1000 * 60 * 53).toISOString(), direction: 'out' },
+    { id: 'm5', from: 'Juan Pérez', body: 'Gracias, ya envié los documentos que me solicitaron', at: new Date(now - 1000 * 60 * 23).toISOString(), direction: 'in' },
+  ],
+  conv_002: [
+    { id: 'm1', from: 'María García', body: 'Buenos días, quiero abrir una cuenta digital', at: new Date(now - 1000 * 60 * 45).toISOString(), direction: 'in' },
+    { id: 'm2', from: 'Carla IA', body: '¡Bienvenida María! La apertura de cuenta digital es 100% en línea y toma solo 5 minutos. Necesitaremos verificar tu identidad con una selfie y tu INE.', at: new Date(now - 1000 * 60 * 43).toISOString(), direction: 'out' },
+    { id: 'm3', from: 'María García', body: 'Ya hice la verificación con selfie. ¿Cuánto tiempo tarda la verificación de identidad?', at: new Date(now - 1000 * 60 * 15).toISOString(), direction: 'in' },
+  ],
+  conv_003: [
+    { id: 'm1', from: 'Carlos López', body: 'Hola, me pidieron actualizar mis datos KYC', at: new Date(now - 1000 * 60 * 120).toISOString(), direction: 'in' },
+    { id: 'm2', from: 'Carla IA', body: 'Hola Carlos. Sí, por regulación necesitamos actualizar tu información cada 2 años. ¿Podrías confirmar tu dirección actual?', at: new Date(now - 1000 * 60 * 118).toISOString(), direction: 'out' },
+    { id: 'm3', from: 'Carlos López', body: 'Claro, sigo en la misma dirección: Av. Insurgentes 1234, CDMX', at: new Date(now - 1000 * 60 * 100).toISOString(), direction: 'in' },
+    { id: 'm4', from: 'Carla IA', body: 'Perfecto, he actualizado tu información. Tu verificación KYC está completa y pendiente de aprobación final.', at: new Date(now - 1000 * 60 * 98).toISOString(), direction: 'out' },
+    { id: 'm5', from: 'Carlos López', body: 'Todo listo, esperando aprobación final del banco', at: new Date(now - 1000 * 60 * 58).toISOString(), direction: 'in' },
+  ],
+  conv_004: [
+    { id: 'm1', from: 'Ana Martínez', body: 'No puedo acceder a mi banca en línea', at: new Date(now - 1000 * 60 * 90).toISOString(), direction: 'in' },
+    { id: 'm2', from: 'Luis Hernández', body: 'Hola Ana, soy Luis del equipo de soporte. ¿Qué mensaje de error te aparece?', at: new Date(now - 1000 * 60 * 88).toISOString(), direction: 'out' },
+    { id: 'm3', from: 'Ana Martínez', body: 'Dice "contraseña incorrecta" pero estoy segura que es la correcta', at: new Date(now - 1000 * 60 * 85).toISOString(), direction: 'in' },
+    { id: 'm4', from: 'Luis Hernández', body: 'Entiendo. Te he enviado un enlace para restablecer tu contraseña al correo registrado. ¿Lo recibiste?', at: new Date(now - 1000 * 60 * 80).toISOString(), direction: 'out' },
+    { id: 'm5', from: 'Ana Martínez', body: 'Sí, ya lo recibí y pude cambiar mi contraseña', at: new Date(now - 1000 * 60 * 50).toISOString(), direction: 'in' },
+    { id: 'm6', from: 'Luis Hernández', body: '¡Excelente! ¿Pudiste ingresar correctamente?', at: new Date(now - 1000 * 60 * 48).toISOString(), direction: 'out' },
+    { id: 'm7', from: 'Ana Martínez', body: 'Perfecto, muchas gracias por la ayuda', at: new Date(now - 1000 * 60 * 45).toISOString(), direction: 'in' },
+  ],
+  conv_005: [
+    { id: 'm1', from: 'Roberto Silva', body: 'Hola, tengo un problema con la firma digital', at: new Date(now - 1000 * 60 * 40).toISOString(), direction: 'in' },
+    { id: 'm2', from: 'Carla IA', body: 'Hola Roberto. ¿Qué problema tienes con la firma? ¿El enlace no funciona o hay algún error?', at: new Date(now - 1000 * 60 * 38).toISOString(), direction: 'out' },
+    { id: 'm3', from: 'Roberto Silva', body: 'El enlace sí abre pero cuando intento firmar no pasa nada', at: new Date(now - 1000 * 60 * 35).toISOString(), direction: 'in' },
+    { id: 'm4', from: 'Carla IA', body: 'Entiendo. ¿Podrías intentar desde otro navegador como Chrome o Safari? A veces hay incompatibilidades.', at: new Date(now - 1000 * 60 * 33).toISOString(), direction: 'out' },
+    { id: 'm5', from: 'Roberto Silva', body: 'Necesito ayuda con la firma digital del contrato', at: new Date(now - 1000 * 60 * 30).toISOString(), direction: 'in' },
+  ],
+};
+
+export const sampleConversations = conversationListSchema.parse(
+  sampleConversationsRich.map((c) => ({
+    id: c.id,
+    name: c.name,
+    product: c.product,
+    status: c.status,
+    unread: c.unread,
+    updatedAt: c.lastMessageAt,
+    tags: c.tags,
+  }))
+);
+
 export const sampleConversationDetailById = (id?: string) => {
+  const conv = sampleConversationsRich.find((c) => c.id === id) || sampleConversationsRich[0];
+  const messages = sampleMessagesMap[conv.id] || [];
   return conversationDetailSchema.parse({
-    id: id || 'unknown',
-    name: id || 'Sin datos',
-    messages: [],
-    tags: [],
+    id: conv.id,
+    name: conv.name,
+    product: conv.product,
+    status: conv.status,
+    phone: conv.phone,
+    unread: conv.unread,
+    tags: conv.tags,
+    proceso: conv.proceso,
+    progreso: conv.transaction ? `${conv.transaction.progress}%` : undefined,
+    assignedTo: conv.assignedTo,
+    messages,
   });
 };
+
+// Exportar dados enriquecidos para a UI
+export const getConversationRich = (id: string) => sampleConversationsRich.find((c) => c.id === id);
 
