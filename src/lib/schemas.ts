@@ -28,20 +28,30 @@ export const processDistributionSchema = z.array(
 
 export const conversationSchema = z.object({
   id: z.string(),
-  name: z.string(),
-  product: z.string().nullable().optional(),
+  customer_name: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  customer_email: z.string().nullable().optional(),
+  last_message: z.string().nullable().optional(),
+  last_message_at: z.string().nullable().optional(),
+  last_message_direction: z.enum(['inbound', 'outbound']).nullable().optional(),
+  unread_count: z.number().nullable().optional(),
   status: z.string().nullable().optional(),
+  product: z.string().nullable().optional(),
+  process_id: z.string().nullable().optional(),
+  process_status: z.string().nullable().optional(),
+  channel: z.string().nullable().optional(),
+  ai_enabled: z.boolean().nullable().optional(),
+  assigned_agent: z.string().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  // Legacy fields for backwards compatibility
+  name: z.string().nullable().optional(),
   unread: z.number().nullable().optional(),
   updatedAt: z.string().nullable().optional(),
-  tags: z.array(z.string()).nullable().optional(),
-  // Additional fields that API might return - capture if available
-  phone: z.string().nullable().optional(),
   whatsapp_phone: z.string().nullable().optional(),
-  customer_name: z.string().nullable().optional(),
   contact_name: z.string().nullable().optional(),
   lastMessage: z.string().nullable().optional(),
   lastMessagePreview: z.string().nullable().optional(),
-}).passthrough(); // Accept additional fields from API
+}).passthrough();
 
 export const conversationListSchema = z.array(conversationSchema);
 
@@ -55,25 +65,45 @@ export const messageSchema = z.object({
 
 export const conversationDetailSchema = z.object({
   id: z.string(),
-  name: z.string(),
+  customer_name: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  customer_email: z.string().nullable().optional(),
   product: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
-  phone: z.string().nullable().optional(),
-  unread: z.number().nullable().optional(),
+  unread_count: z.number().nullable().optional(),
+  channel: z.string().nullable().optional(),
+  ai_enabled: z.boolean().nullable().optional(),
+  assigned_agent: z.string().nullable().optional(),
   tags: z.array(z.string()).nullable().default([]),
-  proceso: z.string().nullable().optional(),
-  progreso: z.string().nullable().optional(),
-  assignedTo: z.string().nullable().optional(),
-  messages: z.array(messageSchema).default([]),
   profile: z
     .object({
-      email: z.string().nullable().optional(),
-      location: z.string().nullable().optional(),
-      lastSeen: z.string().nullable().optional(),
+      full_name: z.string().nullable().optional(),
       phone: z.string().nullable().optional(),
+      email: z.string().nullable().optional(),
+      document_type: z.string().nullable().optional(),
+      document_number: z.string().nullable().optional(),
+      location: z.string().nullable().optional(),
+      birth_date: z.string().nullable().optional(),
     })
     .nullable()
     .optional(),
+  transaction: z
+    .object({
+      id: z.string().nullable().optional(),
+      name: z.string().nullable().optional(),
+      status: z.string().nullable().optional(),
+      stage: z.string().nullable().optional(),
+      progress: z.number().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
+  messages: z.array(messageSchema).default([]),
+  // Legacy fields for backwards compatibility
+  name: z.string().nullable().optional(),
+  unread: z.number().nullable().optional(),
+  proceso: z.string().nullable().optional(),
+  progreso: z.string().nullable().optional(),
+  assignedTo: z.string().nullable().optional(),
 });
 
 export const transactionSchema = z.object({

@@ -70,6 +70,32 @@ export const mapStatusDisplay = (status?: string): StatusDisplay => {
   return { ...STATUS_DICT.default, label: status }
 }
 
+// Status to progress/stage mapping for transaction display
+export type TransactionProgress = { progress: number; stage: string }
+
+const STATUS_PROGRESS_MAP: Record<string, TransactionProgress> = {
+  started: { progress: 5, stage: 'Iniciado' },
+  collecting_data: { progress: 10, stage: 'Recolectando Datos' },
+  form_completed: { progress: 20, stage: 'Formulario Completado' },
+  phone_verified: { progress: 30, stage: 'Teléfono Verificado' },
+  renap_approved: { progress: 40, stage: 'RENAP Aprobado' },
+  ready_for_bank: { progress: 50, stage: 'Listo para Banco' },
+  bank_client_creation_in_progress: { progress: 60, stage: 'Creando Cliente' },
+  bank_processing: { progress: 60, stage: 'Creando Cliente' },
+  bank_client_created: { progress: 65, stage: 'Cliente Creado' },
+  bank_account_creation_in_progress: { progress: 70, stage: 'Creando Cuenta' },
+  bank_account_created: { progress: 80, stage: 'Cuenta Creada' },
+  account_created: { progress: 100, stage: 'Cuenta Activa' },
+  bank_rejected: { progress: 100, stage: 'Rechazado' },
+  demo_completed: { progress: 100, stage: 'Demo Completado' },
+}
+
+export const mapStatusToProgress = (status?: string | null): TransactionProgress => {
+  if (!status) return { progress: 0, stage: 'Sin estado' }
+  const key = status.toLowerCase()
+  return STATUS_PROGRESS_MAP[key] || { progress: 0, stage: status }
+}
+
 export const toneBadge = (tone: StatusTone) =>
   tone === 'error'
     ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'

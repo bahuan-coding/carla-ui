@@ -366,30 +366,41 @@ export const sampleProcessEventsById = (id?: string) => {
 import { conversationListSchema, conversationDetailSchema } from '@/lib/schemas';
 
 export type ConversationChannel = 'whatsapp' | 'web' | 'telegram' | 'instagram';
-export type ConversationStatus = 'active' | 'pending' | 'resolved' | 'archived';
+export type ConversationStatus = 'active' | 'pending' | 'resolved' | 'archived' | string;
 
 export type SampleConversation = {
   id: string;
-  name: string;
+  customer_name: string;
   phone: string;
+  customer_email?: string;
   channel: ConversationChannel;
   product: string;
   productColor: string;
-  proceso: string;
   status: ConversationStatus;
-  unread: number;
-  lastMessage: string;
-  lastMessageAt: string;
+  process_id?: string;
+  process_status?: string;
+  unread_count: number;
+  last_message: string;
+  last_message_at: string;
+  last_message_direction?: 'inbound' | 'outbound';
   tags: string[];
-  assignedTo: string | null;
-  aiEnabled: boolean;
+  ai_enabled: boolean;
+  assigned_agent: string | null;
+  profile?: {
+    full_name: string;
+    phone: string;
+    email: string;
+    document_type: string;
+    document_number: string;
+    location: string;
+    birth_date: string;
+  };
   transaction: {
     id: string;
     name: string;
-    status: 'pending' | 'in_progress' | 'completed' | 'failed';
+    status: string;
     stage: string;
     progress: number;
-    startedAt: string;
   } | null;
 };
 
@@ -398,74 +409,107 @@ const now = Date.now();
 export const sampleConversationsRich: SampleConversation[] = [
   {
     id: 'conv_001',
-    name: 'Juan Pérez',
+    customer_name: 'Juan Pérez',
     phone: '+52 55 1234 5678',
+    customer_email: 'juan.perez@gmail.com',
     channel: 'whatsapp',
-    product: 'Crédito',
+    product: 'savings',
     productColor: 'amber',
-    proceso: 'Solicitud de Crédito',
-    status: 'active',
-    unread: 2,
-    lastMessage: 'Gracias, ya envié los documentos que me solicitaron',
-    lastMessageAt: new Date(now - 1000 * 60 * 23).toISOString(),
+    status: 'bank_processing',
+    process_id: 'TXN-2024-1089',
+    process_status: 'bank_processing',
+    unread_count: 2,
+    last_message: 'Gracias, ya envié los documentos que me solicitaron',
+    last_message_at: new Date(now - 1000 * 60 * 23).toISOString(),
+    last_message_direction: 'inbound',
     tags: ['Crédito Personal', 'Documentos Pendientes'],
-    assignedTo: 'Carlos Ruiz',
-    aiEnabled: true,
+    assigned_agent: null,
+    ai_enabled: true,
+    profile: {
+      full_name: 'Juan Pérez González',
+      phone: '+52 55 1234 5678',
+      email: 'juan.perez@gmail.com',
+      document_type: 'INE',
+      document_number: '123****101',
+      location: 'Ciudad de México',
+      birth_date: '1990-05-15',
+    },
     transaction: {
       id: 'TXN-2024-1089',
-      name: 'Crédito Personal',
-      status: 'in_progress',
-      stage: 'Verificación Documentos',
-      progress: 65,
-      startedAt: '2024-11-18',
+      name: 'savings',
+      status: 'bank_processing',
+      stage: 'Creando Cliente',
+      progress: 60,
     },
   },
   {
     id: 'conv_002',
-    name: 'María García',
+    customer_name: 'María García',
     phone: '+52 55 2345 6789',
+    customer_email: 'maria.garcia@gmail.com',
     channel: 'web',
-    product: 'Apertura de Cuenta',
+    product: 'savings',
     productColor: 'emerald',
-    proceso: 'Apertura de Cuenta',
-    status: 'pending',
-    unread: 0,
-    lastMessage: '¿Cuánto tiempo tarda la verificación de identidad?',
-    lastMessageAt: new Date(now - 1000 * 60 * 15).toISOString(),
+    status: 'phone_verified',
+    process_id: 'TXN-2024-1157',
+    process_status: 'phone_verified',
+    unread_count: 0,
+    last_message: '¿Cuánto tiempo tarda la verificación de identidad?',
+    last_message_at: new Date(now - 1000 * 60 * 15).toISOString(),
+    last_message_direction: 'inbound',
     tags: ['Apertura de Cuenta', 'KYC'],
-    assignedTo: null,
-    aiEnabled: false,
+    assigned_agent: null,
+    ai_enabled: false,
+    profile: {
+      full_name: 'María García López',
+      phone: '+52 55 2345 6789',
+      email: 'maria.garcia@gmail.com',
+      document_type: 'INE',
+      document_number: '456****202',
+      location: 'Guadalajara',
+      birth_date: '1988-11-22',
+    },
     transaction: {
       id: 'TXN-2024-1157',
-      name: 'Apertura de Cuenta',
-      status: 'in_progress',
-      stage: 'Verificación KYC',
-      progress: 45,
-      startedAt: '2024-11-21',
+      name: 'savings',
+      status: 'phone_verified',
+      stage: 'Teléfono Verificado',
+      progress: 30,
     },
   },
   {
     id: 'conv_005',
-    name: 'Roberto Silva',
+    customer_name: 'Roberto Silva',
     phone: '+52 55 5678 9012',
+    customer_email: 'roberto.silva@gmail.com',
     channel: 'whatsapp',
-    product: 'Firma Digital',
+    product: 'savings',
     productColor: 'cyan',
-    proceso: 'Solicitud de Crédito',
-    status: 'pending',
-    unread: 5,
-    lastMessage: 'Necesito ayuda con la firma digital del contrato',
-    lastMessageAt: new Date(now - 1000 * 60 * 30).toISOString(),
+    status: 'ready_for_bank',
+    process_id: 'TXN-2024-1245',
+    process_status: 'ready_for_bank',
+    unread_count: 5,
+    last_message: 'Necesito ayuda con la firma digital del contrato',
+    last_message_at: new Date(now - 1000 * 60 * 30).toISOString(),
+    last_message_direction: 'inbound',
     tags: ['Firma Digital', 'Contrato Pendiente'],
-    assignedTo: null,
-    aiEnabled: true,
+    assigned_agent: null,
+    ai_enabled: true,
+    profile: {
+      full_name: 'Roberto Silva Martínez',
+      phone: '+52 55 5678 9012',
+      email: 'roberto.silva@gmail.com',
+      document_type: 'INE',
+      document_number: '789****303',
+      location: 'Monterrey',
+      birth_date: '1985-03-10',
+    },
     transaction: {
       id: 'TXN-2024-1245',
-      name: 'Firma de Contrato',
-      status: 'pending',
-      stage: 'Esperando Firma',
-      progress: 80,
-      startedAt: '2024-11-20',
+      name: 'savings',
+      status: 'ready_for_bank',
+      stage: 'Listo para Banco',
+      progress: 50,
     },
   },
 ];
@@ -496,12 +540,25 @@ const sampleMessagesMap: Record<string, Array<{ id: string; from: string; body: 
 export const sampleConversations = conversationListSchema.parse(
   sampleConversationsRich.map((c) => ({
     id: c.id,
-    name: c.name,
-    product: c.product,
+    customer_name: c.customer_name,
+    phone: c.phone,
+    customer_email: c.customer_email,
+    last_message: c.last_message,
+    last_message_at: c.last_message_at,
+    last_message_direction: c.last_message_direction,
+    unread_count: c.unread_count,
     status: c.status,
-    unread: c.unread,
-    updatedAt: c.lastMessageAt,
+    product: c.product,
+    process_id: c.process_id,
+    process_status: c.process_status,
+    channel: c.channel,
+    ai_enabled: c.ai_enabled,
+    assigned_agent: c.assigned_agent,
     tags: c.tags,
+    // Legacy fields
+    name: c.customer_name,
+    unread: c.unread_count,
+    updatedAt: c.last_message_at,
   }))
 );
 
@@ -510,16 +567,22 @@ export const sampleConversationDetailById = (id?: string) => {
   const messages = sampleMessagesMap[conv.id] || [];
   return conversationDetailSchema.parse({
     id: conv.id,
-    name: conv.name,
+    customer_name: conv.customer_name,
+    phone: conv.phone,
+    customer_email: conv.customer_email,
     product: conv.product,
     status: conv.status,
-    phone: conv.phone,
-    unread: conv.unread,
+    unread_count: conv.unread_count,
+    channel: conv.channel,
+    ai_enabled: conv.ai_enabled,
+    assigned_agent: conv.assigned_agent,
     tags: conv.tags,
-    proceso: conv.proceso,
-    progreso: conv.transaction ? `${conv.transaction.progress}%` : undefined,
-    assignedTo: conv.assignedTo,
+    profile: conv.profile,
+    transaction: conv.transaction,
     messages,
+    // Legacy fields
+    name: conv.customer_name,
+    unread: conv.unread_count,
   });
 };
 
