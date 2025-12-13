@@ -156,11 +156,22 @@ async function request<T>({
     ...(init?.headers as Record<string, string> | undefined),
   };
 
-  const response = await fetch(withBase(path), {
+  // Debug logging for API calls
+  const fullUrl = withBase(path);
+  console.log(`[api] ${init?.method || 'GET'} ${fullUrl}`, {
+    hasToken: Boolean(token),
+    tokenPreview: token ? `${token.slice(0, 8)}...` : 'none',
+    hasBridgeToken: Boolean(bridgeToken),
+  });
+
+  const response = await fetch(fullUrl, {
     ...init,
     headers,
     body: init?.body ? JSON.stringify(init.body) : undefined,
   });
+
+  // Log response status
+  console.log(`[api] ${path} → ${response.status} ${response.statusText}`);
 
   // Retry once on 401/403 for bridge endpoints (token may have expired)
   if (isBridge && !_retried && (response.status === 401 || response.status === 403)) {

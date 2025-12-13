@@ -28,10 +28,11 @@ const IS_DEV = import.meta.env.DEV;
 const withSampleFallback = async <T>(label: string, runner: () => Promise<T>, fallback: T): Promise<T> => {
   try {
     const result = await runner();
-    if (IS_DEV) console.log(`[api:${label}] success`, result);
+    console.log(`[api:${label}] ✓ success`, Array.isArray(result) ? `${result.length} items` : result);
     return result;
   } catch (error) {
-    console.warn(`[fallback:${label}]`, error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[api:${label}] ✗ FAILED → using fallback`, { error: errMsg, fallbackType: Array.isArray(fallback) ? `${fallback.length} sample items` : typeof fallback });
     return fallback;
   }
 };
